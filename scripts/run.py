@@ -43,7 +43,7 @@ def run(client, args, item, out):
     t, text, usage, finish = time.time(), [], {}, None
     with open(f"{stem}.reasoning.txt", "w") as f:
         stream = client.chat.completions.create(
-            model=args.model, messages=[{"role": "user", "content": item["prompt"]}], max_tokens=100000,
+            model=args.model, messages=[{"role": "user", "content": item["prompt"]}], max_tokens=args.max_tokens,
             stream=True, stream_options={"include_usage": True}, extra_body={"reasoning_effort": args.effort})
         for chunk in stream:
             usage = chunk.usage.model_dump() if chunk.usage else usage
@@ -61,14 +61,15 @@ def run(client, args, item, out):
 
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--set", action="append", default=None, help="set_1 / set_2 (по умолчанию оба)")
+ap.add_argument("--set", action="append", default=None, help="set_1 / set_2 / set_3 (по умолчанию все)")
 ap.add_argument("--model", default="deepseek-ai/DeepSeek-V4-Flash-0731")
 ap.add_argument("--base-url", default="https://api.together.xyz/v1")
 ap.add_argument("--effort", default="high")
+ap.add_argument("--max-tokens", type=int, default=100000)
 args = ap.parse_args()
 
 out = ROOT / "results" / args.model.split("/")[-1].lower()
-items = [json.loads(l) for s in (args.set or ["set_1", "set_2"]) for l in open(ROOT / "bench" / f"{s}.jsonl")]
+items = [json.loads(l) for s in (args.set or ["set_1", "set_2", "set_3"]) for l in open(ROOT / "bench" / f"{s}.jsonl")]
 items = [it for it in items if not (out / it["set"] / f"{it['domain']}.json").exists()]
 client = OpenAI(api_key=os.environ["TOGETHER_API_KEY"], base_url=args.base_url, timeout=3600, max_retries=0)
 with ThreadPoolExecutor(5) as pool:
