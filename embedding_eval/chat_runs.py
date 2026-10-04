@@ -1,18 +1,18 @@
 # /// script
 # dependencies = ["openai>=1.40"]
 # ///
-"""Симуляция командного чата N=10 агентов на DeepSeek-V4-Flash (Together).
+"""Simulation of a team chat of N=10 agents on DeepSeek-V4-Flash (Together).
 
     TOGETHER_API_KEY=... uv run embedding_eval/chat_runs.py --bench set_3 --kind negotiation --runs 10
     TOGETHER_API_KEY=... uv run embedding_eval/chat_runs.py --bench set_3 --kind merge --runs 10
 
-Пул — все 10 задач бенча (set_3 или set_4), результаты в runs/chat/<bench>/<kind>/run_<k>/.
-Каждый ход — отдельный вызов LLM; рассуждение
-и сообщение агента пишутся в agent_<i>.jsonl. Невалидный прогон (нет ASSIGNMENT/FINAL) сохраняется
-как run_<k>_invalid_<n> и перезапускается.
+The pool is all 10 tasks of the bench (set_3 or set_4); results go to runs/chat/<bench>/<kind>/run_<k>/.
+Each turn is a separate LLM call; the agent's reasoning
+and message are written to agent_<i>.jsonl. An invalid run (no ASSIGNMENT/FINAL) is saved
+as run_<k>_invalid_<n> and restarted.
 
-merge run_<k> берёт распределение из negotiation run_<k>: каждый агент сначала решает свою задачу
-(отдельный вызов, solve/agent_<i>.json), затем идёт чат по полученным ответам.
+merge run_<k> takes the assignment from negotiation run_<k>: each agent first solves its own task
+(a separate call, solve/agent_<i>.json), then the chat runs over the obtained answers.
 """
 import argparse, json, os, random, re, threading, time
 from concurrent.futures import ThreadPoolExecutor
@@ -21,7 +21,7 @@ from pathlib import Path
 from openai import OpenAI
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT = ROOT / "embedding_eval" / "runs" / "chat"            # + /<bench>, задаётся в main()
+OUT = ROOT / "embedding_eval" / "runs" / "chat"            # + /<bench>, set in main()
 MODEL, PRICE_IN, PRICE_OUT = "deepseek-ai/DeepSeek-V4-Flash-0731", 0.14e-6, 0.28e-6
 
 NEG_SYSTEM = """You are Agent {i} of {n} in a team. The team must solve the {n} problems listed below.
@@ -56,8 +56,8 @@ FINAL: {"<problem_id>": "<answer>", ...}"""
 spent = {"usd": 0.0}
 
 
-BENCH = {}                                                  # id -> задача, заполняется в main()
-SOLVE_SLOTS = threading.Semaphore(8)                       # одновременных решений на все прогоны
+BENCH = {}                                                  # id -> task, filled in main()
+SOLVE_SLOTS = threading.Semaphore(8)                       # concurrent solves across all runs
 
 
 def load_pool(rng):
@@ -66,7 +66,7 @@ def load_pool(rng):
 
 
 def solve(client, task_id, seed, max_tokens):
-    """Агент решает свою задачу: поток, чтобы не упираться в тайм-ауты на длинных рассуждениях."""
+    """The agent solves its task: streaming, to avoid timeouts on long reasoning."""
     with SOLVE_SLOTS:
         for attempt in range(4):
             try:
@@ -77,7 +77,7 @@ def solve(client, task_id, seed, max_tokens):
                 for chunk in stream:
                     usage = chunk.usage or usage
                     for ch in chunk.choices:
-                        extra = ch.delta.model_extra or {}                # поле зависит от провайдера и даты
+                        extra = ch.delta.model_extra or {}                # the field depends on provider and date
                         reasoning.append(extra.get("reasoning") or extra.get("reasoning_content") or "")
                         content.append(ch.delta.content or "")
                         finish = ch.finish_reason or finish
@@ -104,7 +104,7 @@ def call(client, system, history, i, temperature, seed):
                 messages=[{"role": "system", "content": system},
                           {"role": "user", "content": f"Team chat so far:\n{hist}\n\nWrite your next message as Agent {i}."}])
             break
-        except Exception as e:  # 503 и обрывы у провайдера
+        except Exception as e:  # 503s and provider disconnects
             if attempt == 3:
                 raise
             time.sleep(5 * (attempt + 1))
@@ -129,18 +129,18 @@ def last_json(prefix, transcript):
 
 def run_one(client, kind, k, n, temperature, rounds, solve_tokens):
     rng = random.Random(f"{kind}-{k}-{time.time()}")
-    order = list(range(1, n + 1)); rng.shuffle(order)        # порядок ходов агентов
+    order = list(range(1, n + 1)); rng.shuffle(order)        # agent turn order
     d = OUT / kind / f"run_{k}"
     d.mkdir(parents=True, exist_ok=True)
     for f in d.glob("agent_*.jsonl"):
         f.unlink()
     if kind == "negotiation":
         pool = load_pool(rng)[:n]
-        rng.shuffle(pool)                                    # порядок задач в списке
+        rng.shuffle(pool)                                    # task order in the list
         problems = "\n".join(f"[{t['id']}] ({t['domain']}) {t['statement']}" for t in pool)
         systems = {i: NEG_SYSTEM.format(i=i, n=n, problems=problems) for i in order}
         owner = None
-    else:                                                    # распределение — из согласования с тем же k
+    else:                                                    # assignment comes from the negotiation with the same k
         neg = json.loads((OUT / "negotiation" / f"run_{k}" / "result.json").read_text())
         owner = {i: neg[f"agent_{i}"] for i in range(1, n + 1)}
         pool = [{"id": t, "domain": BENCH[t]["domain"]} for t in owner.values()]
@@ -155,7 +155,7 @@ def run_one(client, kind, k, n, temperature, rounds, solve_tokens):
                                           steps=steps[i]) for i in order}
     transcript, turns = [], [(r, i) for r in range(rounds) for i in order]
     if kind == "merge":
-        turns.append((rounds, 1))                            # Agent 1 пишет итог
+        turns.append((rounds, 1))                            # Agent 1 writes the final result
     for t, (rnd, i) in enumerate(turns):
         system = systems[i] + (FINAL_NOTE if kind == "merge" and rnd == rounds else "")
         seed = rng.randrange(2**31)
@@ -193,10 +193,10 @@ def main():
     ap.add_argument("--n", type=int, default=10)
     ap.add_argument("--rounds", type=int, default=2)
     ap.add_argument("--temperature", type=float, default=0.7)
-    ap.add_argument("--retries", type=int, default=3, help="перезапусков невалидного прогона")
-    ap.add_argument("--budget", type=float, default=2.0, help="лимит в USD")
+    ap.add_argument("--retries", type=int, default=3, help="restarts of an invalid run")
+    ap.add_argument("--budget", type=float, default=2.0, help="limit in USD")
     ap.add_argument("--parallel", type=int, default=4)
-    ap.add_argument("--solve-tokens", type=int, default=8000, help="max_tokens на решение задачи (merge)")
+    ap.add_argument("--solve-tokens", type=int, default=8000, help="max_tokens per task solution (merge)")
     args = ap.parse_args()
     global OUT
     OUT = OUT / args.bench
@@ -214,7 +214,7 @@ def main():
             print(f"{args.kind} run_{k} attempt {attempt}: valid={ok}  spent=${spent['usd']:.3f}", flush=True)
             if ok:
                 return
-            d = OUT / args.kind / f"run_{k}"                 # невалидный прогон сохраняем помеченным
+            d = OUT / args.kind / f"run_{k}"                 # keep the invalid run, marked as such
             d.rename(d.with_name(f"run_{k}_invalid_{attempt}"))
 
     with ThreadPoolExecutor(args.parallel) as pool:

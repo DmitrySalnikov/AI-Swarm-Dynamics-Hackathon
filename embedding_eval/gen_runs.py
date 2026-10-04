@@ -2,17 +2,17 @@
 # requires-python = ">=3.10"
 # dependencies = ["openai>=1.40", "tokenizers", "huggingface_hub"]
 # ///
-"""Повторные прогоны бенчмарка: копия scripts/run.py с --run-id, провайдерами и учётом бюджета.
+"""Repeated benchmark runs: a copy of scripts/run.py with --run-id, providers and budget tracking.
 
-Логика:
-- результат: runs/<модель>/run_<k>/<set>/<domain>.{json,reasoning.txt}; один файл на пару (задача, прогон);
-- готовые пары (.json, finish_reason=stop) пропускаются — запуск можно возобновлять; оборванные потоки
-  сохраняются как .failed.json/.failed.reasoning.txt и пересчитываются при следующем запуске;
-- явная temperature, seed (детерминированный из run_id и id задачи), полный usage, system_fingerprint, провайдер;
-- журнал расходов runs/<модель>/spend.jsonl (в валюте тарифа провайдера) и жёсткий лимит --budget:
-  перед каждым запросом резервируется худший случай (max_tokens), запрос не стартует, если
-  потраченное + резерв превысят лимит.
-Исходный датасет только читается (запись туда запрещена проверкой пути).
+Logic:
+- output: runs/<model>/run_<k>/<set>/<domain>.{json,reasoning.txt}; one file per (task, run) pair;
+- finished pairs (.json, finish_reason=stop) are skipped, so a launch can be resumed; interrupted streams
+  are saved as .failed.json/.failed.reasoning.txt and recomputed on the next launch;
+- explicit temperature, seed (deterministic from run_id and task id), full usage, system_fingerprint, provider;
+- spend log runs/<model>/spend.jsonl (in the provider's tariff currency) and a hard --budget limit:
+  before each request the worst case (max_tokens) is reserved; the request does not start if
+  spent + reserved would exceed the limit.
+The source dataset is read-only (writing there is forbidden by a path check).
 
   uv run gen_runs.py --provider cloudru --probe set_1/music --temperature T --budget 300
   uv run gen_runs.py --provider cloudru --models-info
@@ -30,11 +30,11 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-# датасет: в репозитории бенчмарка это корень (embedding_eval/ лежит внутри), у нас — соседняя папка
+# dataset: in the benchmark repo it is the root (embedding_eval/ lives inside), for us it is a sibling folder
 DATA = HERE.parent if (HERE.parent / "bench").is_dir() else HERE.parent / "AI-Swarm-Dynamics-Hackathon"
 
 PROVIDERS = {
-    # цены: за 1 токен, в валюте провайдера
+    # prices: per 1 token, in the provider's currency
     "together": dict(base_url="https://api.together.xyz/v1", model="deepseek-ai/DeepSeek-V4-Flash-0731",
                      key_env="TOGETHER_API_KEY", key_file=".together_key", keychain="together-api", currency="USD",
                      price_in=0.14 / 1e6, price_out=0.28 / 1e6,
@@ -43,11 +43,11 @@ PROVIDERS = {
                     key_env="CLOUDRU_API_KEY", key_file=".cloudru_key", keychain="cloudru-foundation-models", currency="RUB",
                     price_in=43.2978 / 1e6, price_out=86.5834 / 1e6,
                     price_src="cdn.cloud.ru/docs/legal/tariffs/evolution/future-version/foundation-models.pdf, "
-                              "версия 260915, п.47–48, цена с НДС 22 %"),
+                              "version 260915, items 47–48, price incl. 22 % VAT"),
 }
 
 
-# extract/grade — без изменений из scripts/run.py
+# extract/grade — unchanged from scripts/run.py
 def extract(text):
     m = re.findall(r"^\s*\**ANSWER\**\s*:\s*(.+?)\s*$", text, re.I | re.M)
     if m:
@@ -77,7 +77,7 @@ class Budget:
     def __init__(self, limit, ledger, currency):
         self.limit, self.ledger, self.currency, self.lock = limit, ledger, currency, threading.Lock()
         rows = [json.loads(l) for l in ledger.read_text().splitlines() if l.strip()] if ledger.exists() else []
-        assert all(r.get("currency", currency) == currency for r in rows), "в журнале другая валюта"
+        assert all(r.get("currency", currency) == currency for r in rows), "the ledger uses a different currency"
         self.spent = sum(r["cost"] for r in rows)
         self.reserved = 0.0
 
@@ -100,7 +100,7 @@ _TOK = None
 
 
 def count_tokens(text):
-    """Токенизатор DeepSeek-V3 (совпал с reasoning_tokens API для V4-Flash-0731 на всех 20 решениях)."""
+    """DeepSeek-V3 tokenizer (matched the API reasoning_tokens for V4-Flash-0731 on all 20 solutions)."""
     global _TOK
     try:
         from tokenizers import Tokenizer
@@ -111,7 +111,7 @@ def count_tokens(text):
 
 
 def get_key(prov):
-    """Ключ API: переменная окружения -> связка ключей macOS -> файл. Ключ никогда не печатается и не пишется в логи."""
+    """API key: environment variable -> macOS Keychain -> file. The key is never printed or written to logs."""
     key = os.environ.get(prov["key_env"])
     if not key and sys.platform == "darwin":
         import subprocess
@@ -125,7 +125,7 @@ def get_key(prov):
 
 
 def call(client, args, prov, item, run_id, stem, budget):
-    """Один потоковый запрос. Возвращает запись .json (и пишет файлы). None — если бюджет не позволил."""
+    """One streaming request. Returns the .json record (and writes files). None if the budget did not allow it."""
     worst = args.max_tokens * prov["price_out"] + 4000 * prov["price_in"]
     if not budget.reserve(worst):
         return None
@@ -167,7 +167,7 @@ def call(client, args, prov, item, run_id, stem, budget):
     response, reasoning_text = "".join(text), "".join(reasoning)
     in_tok, out_tok = usage.get("prompt_tokens"), usage.get("completion_tokens")
     usage_estimated = out_tok is None
-    if usage_estimated:  # обрыв без usage — оцениваем по тексту, чтобы бюджет не занижался
+    if usage_estimated:  # cut off without usage — estimate from text so the budget is not understated
         in_tok = count_tokens(item["prompt"])
         out_tok = count_tokens(reasoning_text) + count_tokens(response)
     cost = in_tok * prov["price_in"] + out_tok * prov["price_out"]
@@ -197,17 +197,17 @@ def call(client, args, prov, item, run_id, stem, budget):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--provider", choices=list(PROVIDERS), required=True)
-    ap.add_argument("--model", default=None, help="по умолчанию — модель из пресета провайдера")
+    ap.add_argument("--model", default=None, help="default: the model from the provider preset")
     ap.add_argument("--run-id", type=int, nargs="+")
-    ap.add_argument("--probe", metavar="TASK_ID", help="один пробный запрос (runs/<модель>/probe/)")
-    ap.add_argument("--models-info", action="store_true", help="GET /models: метаданные модели")
+    ap.add_argument("--probe", metavar="TASK_ID", help="a single probe request (runs/<model>/probe/)")
+    ap.add_argument("--models-info", action="store_true", help="GET /models: model metadata")
     ap.add_argument("--set", action="append", default=None)
-    ap.add_argument("--effort", default="high", help="reasoning_effort ('' — не передавать)")
-    ap.add_argument("--extra-body", default="", help="доп. JSON в extra_body")
+    ap.add_argument("--effort", default="high", help="reasoning_effort ('' — do not send)")
+    ap.add_argument("--extra-body", default="", help="extra JSON for extra_body")
     ap.add_argument("--temperature", type=float)
     ap.add_argument("--max-tokens", type=int, default=100000)
     ap.add_argument("--no-seed", dest="seed", action="store_false")
-    ap.add_argument("--budget", type=float, help="жёсткий лимит в валюте провайдера (USD / RUB)")
+    ap.add_argument("--budget", type=float, help="hard limit in the provider's currency (USD / RUB)")
     ap.add_argument("--workers", type=int, default=5)
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
@@ -217,7 +217,7 @@ def main():
 
     key = get_key(prov)
     if not key and not args.dry_run:
-        sys.exit(f"нет ключа: env {prov['key_env']}, Keychain service '{prov['keychain']}' или embedding_eval/{prov['key_file']}")
+        sys.exit(f"no key: env {prov['key_env']}, Keychain service '{prov['keychain']}' or embedding_eval/{prov['key_file']}")
 
     from openai import OpenAI
     client = OpenAI(api_key=key, base_url=args.base_url, timeout=3600, max_retries=0) if key else None
@@ -233,10 +233,10 @@ def main():
 
     out = HERE / "runs" / args.model.split("/")[-1].lower()
     assert not any(d.resolve() in out.resolve().parents for d in (DATA / "bench", DATA / "results")), \
-        "запись в исходный датасет (bench/, results/) запрещена"
+        "writing to the source dataset (bench/, results/) is forbidden"
     out.mkdir(parents=True, exist_ok=True)
     if args.temperature is None or args.budget is None:
-        sys.exit("нужны --temperature и --budget")
+        sys.exit("--temperature and --budget are required")
     budget = Budget(args.budget, out / "spend.jsonl", prov["currency"])
     items = {json.loads(l)["id"]: json.loads(l) for s in (args.set or ["set_1", "set_2"])
              for l in open(DATA / "bench" / f"{s}.jsonl") if l.strip()}
@@ -248,24 +248,24 @@ def main():
         stem.parent.mkdir(parents=True, exist_ok=True)
         rec = call(client, args, prov, item, "probe", stem, budget)
         if rec is None:
-            sys.exit(f"[budget] лимит {args.budget} {cur} не позволяет даже пробный запрос")
+            sys.exit(f"[budget] limit {args.budget} {cur} does not allow even a probe request")
         show = {k: rec[k] for k in ("finish_reason", "error", "seconds", "reasoning_field", "delta_extra_fields",
                                     "reasoning_tokens", "reasoning_tokens_counted", "completion_tokens", "usage",
                                     "system_fingerprint", "extracted", "correct", "cost", "currency")}
         print(json.dumps(show, ensure_ascii=False, indent=1))
         rt = Path(f"{stem}.reasoning.txt" if Path(f"{stem}.reasoning.txt").exists() else f"{stem}.failed.reasoning.txt").read_text()
-        print(f"\nрассуждение: {len(rt)} символов\n--- начало ---\n{rt[:400]}\n--- конец ---\n{rt[-300:]}")
-        print(f"\nответ:\n{rec['response'][-300:]}")
-        print(f"\nпотрачено всего: {budget.spent:.4f} {cur}")
+        print(f"\nreasoning: {len(rt)} chars\n--- start ---\n{rt[:400]}\n--- end ---\n{rt[-300:]}")
+        print(f"\nanswer:\n{rec['response'][-300:]}")
+        print(f"\ntotal spent: {budget.spent:.4f} {cur}")
         return
 
-    assert args.run_id, "нужен --run-id"
+    assert args.run_id, "--run-id is required"
     if out.name == "deepseek-v4-flash-0731":
-        assert 1 not in args.run_id, "для 0731 run 1 — это исходные results/, его не перегенерируем"
+        assert 1 not in args.run_id, "for 0731, run 1 is the original results/; it is not regenerated"
     todo = [(r, it) for r in sorted(args.run_id) for it in items.values()
             if not (out / f"run_{r}" / it["set"] / f"{it['domain']}.json").exists()]
-    print(f"{args.provider} {args.model} -> {out}\nк генерации: {len(todo)} пар; уже потрачено "
-          f"{budget.spent:.4f} из {args.budget} {cur}", flush=True)
+    print(f"{args.provider} {args.model} -> {out}\nto generate: {len(todo)} pairs; already spent "
+          f"{budget.spent:.4f} of {args.budget} {cur}", flush=True)
     if args.dry_run:
         for r, it in todo:
             print(" ", r, it["id"], "seed", seed_for(r, it["id"]))
@@ -281,8 +281,8 @@ def main():
         rec = call(client, args, prov, it, r, stem, budget)
         if rec is None:
             stop_flag.set()
-            print(f"[budget] лимит {args.budget} {cur} не позволяет начать {it['id']} run {r} "
-                  f"(потрачено {budget.spent:.4f}, в работе {budget.reserved:.4f}); останавливаюсь", flush=True)
+            print(f"[budget] limit {args.budget} {cur} does not allow starting {it['id']} run {r} "
+                  f"(spent {budget.spent:.4f}, in flight {budget.reserved:.4f}); stopping", flush=True)
             return
         print(f"{it['id']:24s} run {r} finish={rec['finish_reason']} correct={rec['correct']} "
               f"reas_tok={rec['reasoning_tokens']}/{rec['reasoning_tokens_counted']} {rec['cost']:.4f} {cur} "
@@ -291,8 +291,8 @@ def main():
     with ThreadPoolExecutor(args.workers) as pool:
         list(pool.map(job, todo))
     left = [(r, it["id"]) for r, it in todo if not (out / f"run_{r}" / it["set"] / f"{it['domain']}.json").exists()]
-    print(f"готово. потрачено {budget.spent:.4f} {cur}; не завершено {len(left)}: {left}"
-          + ("  [ОСТАНОВЛЕНО ЛИМИТОМ]" if stop_flag.is_set() else ""), flush=True)
+    print(f"done. spent {budget.spent:.4f} {cur}; not finished {len(left)}: {left}"
+          + ("  [STOPPED BY LIMIT]" if stop_flag.is_set() else ""), flush=True)
 
 
 if __name__ == "__main__":
