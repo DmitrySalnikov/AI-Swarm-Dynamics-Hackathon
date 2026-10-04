@@ -1,67 +1,67 @@
-# vectorize.py — эмбеддинги рассуждений и чатов для δ(t)
+# vectorize.py — embeddings of reasoning and chats for δ(t)
 
-Один файл, зависимости объявлены в шапке (`uv run` ставит их сам). Схема выбрана и проверена в отдельной оценке
-(репозиторий `MadExplorer/AI-Village`, `embedding_eval/REPORT.md`, `results/improve_eval.md`); параметры не менять
-без перепроверки.
+A single file; dependencies are declared in the header (`uv run` installs them itself). The scheme was chosen and
+validated in a separate evaluation (repository `MadExplorer/AI-Village`, `embedding_eval/REPORT.md`,
+`results/improve_eval.md`); do not change the parameters without re-validation.
 
-## Схема
+## Scheme
 
-1. Текст режется на окна **2048** токенов DeepSeek-V3 с шагом **1024**; последнее окно выровнено по концу.
-2. Окно → **Qwen3-Embedding-4B** через OpenRouter (2560 чисел), инструкция фиксирована.
-3. Векторы Qwen **центрируются** по всем окнам эксперимента (вычесть среднее, длина 1).
-4. **TF-IDF char 3–5** по тексту с замаскированными числами, обучается на всех окнах эксперимента.
-5. Гибрид: `sim = 0.5·cos(Qwen) + 0.5·cos(TF-IDF)`.
+1. The text is split into windows of **2048** DeepSeek-V3 tokens with a stride of **1024**; the last window is aligned to the end.
+2. Window → **Qwen3-Embedding-4B** via OpenRouter (2560 numbers), with a fixed instruction.
+3. Qwen vectors are **centered** over all windows of the experiment (subtract the mean, length 1).
+4. **TF-IDF char 3–5** on text with masked numbers, fitted on all windows of the experiment.
+5. Hybrid: `sim = 0.5·cos(Qwen) + 0.5·cos(TF-IDF)`.
 
-На `set_1`/`set_2` (тестовая половина задач) эта схема против окна 1024 без центрирования:
-d′ 3.28 → 4.03, AUC 0.972 → 0.979, однотипные задачи («близнецы») 0.615 → 0.742.
+On `set_1`/`set_2` (the test half of the tasks), this scheme vs. a 1024 window without centering:
+d′ 3.28 → 4.03, AUC 0.972 → 0.979, same-type tasks ("twins") 0.615 → 0.742.
 
-## Что эмбеддится
+## What gets embedded
 
-| Источник | Фрагмент | `log_id` в индексе |
+| Source | Fragment | `log_id` in the index |
 |---|---|---|
-| одиночные решения `**/<задача>.reasoning.txt` (`gen_runs.py`) | окна рассуждения | `solo/<run_k>/<set>/<domain>` |
-| ход агента в чате `agent_<i>.jsonl` (`chat_runs.py`) | **собственные** `reasoning` + `message` этого агента в этом ходе | `chat/<set>/<kind>/run_<k>/agent_<i>/turn_<NNN>` |
-| решение в merge `solve/agent_<i>.json` | `reasoning`, если пустой — `response` | `chat/<set>/merge/run_<k>/agent_<i>/solve` |
+| solo solutions `**/<task>.reasoning.txt` (`gen_runs.py`) | reasoning windows | `solo/<run_k>/<set>/<domain>` |
+| agent turn in a chat `agent_<i>.jsonl` (`chat_runs.py`) | this agent's **own** `reasoning` + `message` in this turn | `chat/<set>/<kind>/run_<k>/agent_<i>/turn_<NNN>` |
+| solution in merge `solve/agent_<i>.json` | `reasoning`, or `response` if it is empty | `chat/<set>/merge/run_<k>/agent_<i>/solve` |
 
-Чужие сообщения и общий текст чата не берутся: иначе у всех агентов одинаковые векторы по построению.
-Прогоны `*_invalid_*` пропускаются.
+Other agents' messages and the shared chat text are not used: otherwise all agents would have identical vectors by
+construction. `*_invalid_*` runs are skipped.
 
-## Запуск
+## Running
 
-Ключ OpenRouter — один раз в терминале (ввод скрыт, ключ попадёт в связку ключей macOS):
+OpenRouter key — once in the terminal (input is hidden, the key goes into the macOS keychain):
 ```
 security add-generic-password -U -s openrouter-api -a "$USER" -w
 ```
-или переменная `OPENROUTER_API_KEY`.
+or the `OPENROUTER_API_KEY` variable.
 
 ```
-# оценка объёма и стоимости
+# estimate volume and cost
 uv run embedding_eval/vectorize.py --logs-dir embedding_eval/runs/deepseek-v4-flash --chat-dir embedding_eval/runs/chat --dry-run
-# всё сразу: одиночные решения + чаты → одна общая TF-IDF и одно центрирование
+# everything at once: solo solutions + chats → one shared TF-IDF and one centering
 uv run embedding_eval/vectorize.py --logs-dir embedding_eval/runs/deepseek-v4-flash \
     --chat-dir embedding_eval/runs/chat --out embedding_eval/vectors --budget-usd 1
 ```
-Выход: `vectors/qwen.npy` (окна × 2560, без центрирования), `vectors/tfidf.npz`, `vectors/index.jsonl`.
-В индексе для каждого окна: `log_id`, `source` (solo / chat / solve), `idx`, `tok_start`, `tok_end`, `n_tok`,
-`rel_center`; для чатов ещё `run`, `kind`, `bench`, `agent`, `turn`, `round`; для solve — `task_id`, `solve_text`.
-Для 80 решений и 40 прогонов чатов: ≈ 4.5 млн токенов, ≈ $0.10.
+Output: `vectors/qwen.npy` (windows × 2560, not centered), `vectors/tfidf.npz`, `vectors/index.jsonl`.
+For each window the index has: `log_id`, `source` (solo / chat / solve), `idx`, `tok_start`, `tok_end`, `n_tok`,
+`rel_center`; for chats also `run`, `kind`, `bench`, `agent`, `turn`, `round`; for solve — `task_id`, `solve_text`.
+For 80 solutions and 40 chat runs: ≈ 4.5M tokens, ≈ $0.10.
 
-Из кода:
+From code:
 ```python
 import vectorize as V
-logs, extra = V.load_chat_logs("embedding_eval/runs/chat")      # или свой {log_id: текст}
-Q, meta = V.embed_logs(logs, budget_usd=1.0)                    # кэш по (лог, номер окна)
+logs, extra = V.load_chat_logs("embedding_eval/runs/chat")      # or your own {log_id: text}
+Q, meta = V.embed_logs(logs, budget_usd=1.0)                    # cache by (log, window index)
 T, _ = V.tfidf_fit_transform([m["text"] for m in meta])
-S = V.hybrid_sim(Q, T)          # центрирование Qwen внутри; передавайте ВСЕ окна эксперимента сразу
-delta = 1 - S[np.ix_(ids, ids)].mean()   # δ для набора окон ids (векторы единичной длины)
+S = V.hybrid_sim(Q, T)          # Qwen centering inside; pass ALL windows of the experiment at once
+delta = 1 - S[np.ix_(ids, ids)].mean()   # δ for the set of windows ids (unit-length vectors)
 ```
 
-## Важно
+## Important
 
-- **TF-IDF и центрирование — один раз на всех окнах эксперимента** (одиночные решения + чаты вместе).
-- **Одна модель-генератор во всём эксперименте.** Одиночные решения и чаты должны быть от одной и той же модели,
-  иначе δ(t) скачет на стыках из-за смены модели.
-- **Однотипные задачи** (одна задача с другими данными) различаются хуже разнотипных (AUC ≈ 0.74 против 0.98).
-  Не ставить в один прогон biology или music из разных наборов, а также computer_science из `set_1` и `set_3`.
-- Кэш векторов — `embedding_eval/cache/` (путь меняет `VECTORIZE_CACHE`); его и `embedding_eval/vectors/`
-  в git не коммитить. Лимит расходов жёсткий, журнал — `cache/spend.jsonl`.
+- **TF-IDF and centering — once, on all windows of the experiment** (solo solutions + chats together).
+- **One generator model for the whole experiment.** Solo solutions and chats must come from the same model,
+  otherwise δ(t) jumps at the seams because of the model switch.
+- **Same-type tasks** (one task with different data) are distinguished worse than different-type ones (AUC ≈ 0.74 vs 0.98).
+  Do not put biology or music from different sets into one run, nor computer_science from `set_1` and `set_3`.
+- The vector cache is `embedding_eval/cache/` (path is changed via `VECTORIZE_CACHE`); do not commit it or
+  `embedding_eval/vectors/` to git. The spending limit is hard; the log is `cache/spend.jsonl`.

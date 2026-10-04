@@ -2,123 +2,123 @@
 
 https://swarmchasing.com/
 
-Бенчмарк для экспериментов с роем агентов: четыре набора по 10 вопросов.
-`set_1`–`set_3` охватывают 10 разных областей: `set_1` и `set_2` трудные (длинное рассуждение,
-в среднем 10–20 тыс. токенов), `set_3` лёгкий (2–5 тыс. токенов). `set_4` целиком математический:
-10 разных разделов, 1–5 тыс. токенов. Все вопросы решаемы моделью среднего уровня, ответ короткий и проверяется автоматически.
+A benchmark for experiments with agent swarms: four sets of 10 questions each.
+`set_1`–`set_3` cover 10 different domains: `set_1` and `set_2` are hard (long reasoning,
+10–20k tokens on average), `set_3` is easy (2–5k tokens). `set_4` is entirely mathematical:
+10 different branches, 1–5k tokens. All questions are solvable by a mid-tier model; the answer is short and checked automatically.
 
-> **Не публиковать.** Часть вопросов взята из GPQA, HLE и LAB-Bench, авторы которых просят
-> не выкладывать их открытым текстом и не использовать в обучении. В таких вопросах сохранено
-> поле `canary`. Репозиторий должен оставаться приватным.
+> **Do not publish.** Some of the questions are taken from GPQA, HLE and LAB-Bench, whose authors ask
+> that they not be posted in plain text or used for training. These questions keep their
+> `canary` field. The repository must remain private.
 
-## Структура
+## Structure
 
 ```
-bench/set_{1,2,3,4}.jsonl                вопросы
-results/<модель>/<set>/<domain>.json     ответ модели, токены, вердикт
-results/<модель>/<set>/<domain>.reasoning.txt   рассуждение модели
-results/<модель>/summary.md              сводная таблица
-scripts/run.py                           прогон модели на наборах
+bench/set_{1,2,3,4}.jsonl                questions
+results/<model>/<set>/<domain>.json     model answer, tokens, verdict
+results/<model>/<set>/<domain>.reasoning.txt   model reasoning
+results/<model>/summary.md              summary table
+scripts/run.py                           run a model on the sets
 ```
 
-## Наборы
+## Sets
 
-В `set_1`–`set_3` по одному вопросу на область: `computer_science`, `mathematics`, `finance`,
+`set_1`–`set_3` have one question per domain: `computer_science`, `mathematics`, `finance`,
 `linguistics`, `physics`, `biology`, `chemistry`, `classics`, `economics`, `music`.
 
-| Область | set_1 | set_2 | set_3 (лёгкий) |
+| Domain | set_1 | set_2 | set_3 (easy) |
 |---|---|---|---|
-| computer_science | взлом Диффи–Хеллмана, p=1009 (HLE) | вывод Scheme-программы с `call/cc` (HLE) | Диффи–Хеллман, p=227 (собственный) |
-| mathematics | вероятность, 12 букв в пары (AIME 2025 #7) | четырёхугольник из центров описанных окружностей (HMMT 2025 #26) | числа из цифр 1–8, делящиеся на 22 (AIME 2025 #5) |
-| finance | пенсионный аннуитет (TheoremQA) | PE-коэффициент (TheoremQA) | NPV проекта (собственный) |
-| linguistics | формы глаголов шинка (Linguini) | сопоставление слов зуни (Linguini) | числительные выдуманного языка (собственный) |
-| physics | масса нити лампы накаливания (OlympiadBench) | олимпиадная задача #900 (OlympiadBench) | парашютист с квадратичным сопротивлением (TheoremQA) |
-| biology | GC-состав последовательности (LAB-Bench) | GC-состав последовательности (LAB-Bench) | GC-состав 150 нуклеотидов (собственный) |
-| chemistry | число стереоизомеров (GPQA Diamond) | 4-стадийный синтез, типы H (GPQA Diamond) | смесь NaHCO₃ и MgCO₃ по потере массы (собственный) |
-| classics | схема латинского гекзаметра (HLE) | схема строки Плавта (HLE) | 6 дат римского календаря (собственный) |
-| economics | благосостояние при равновесии (HLE) | поиск работы и пособие (HLE) | детерминированный эквивалент (TheoremQA) |
-| music | чистый строй, «Hänschen klein» (собственный) | чистый строй, вторая мелодия (собственный) | чистый строй, 13 нот (собственный) |
+| computer_science | breaking Diffie–Hellman, p=1009 (HLE) | output of a Scheme program with `call/cc` (HLE) | Diffie–Hellman, p=227 (original) |
+| mathematics | probability, 12 letters into pairs (AIME 2025 #7) | quadrilateral formed by circumcenters (HMMT 2025 #26) | numbers using digits 1–8 divisible by 22 (AIME 2025 #5) |
+| finance | retirement annuity (TheoremQA) | PE ratio (TheoremQA) | project NPV (original) |
+| linguistics | Guazacapán Xinka verb forms (Linguini) | matching Zuni words (Linguini) | numerals of an invented language (original) |
+| physics | mass of an incandescent lamp filament (OlympiadBench) | olympiad problem #900 (OlympiadBench) | parachutist with quadratic drag (TheoremQA) |
+| biology | GC content of a sequence (LAB-Bench) | GC content of a sequence (LAB-Bench) | GC content of 150 nucleotides (original) |
+| chemistry | number of stereoisomers (GPQA Diamond) | 4-step synthesis, H types (GPQA Diamond) | NaHCO₃ and MgCO₃ mixture from mass loss (original) |
+| classics | Latin hexameter scansion (HLE) | scansion of a line of Plautus (HLE) | 6 Roman calendar dates (original) |
+| economics | welfare at equilibrium (HLE) | job search and unemployment benefit (HLE) | certainty equivalent (TheoremQA) |
+| music | just intonation, "Hänschen klein" (original) | just intonation, second melody (original) | just intonation, 13 notes (original) |
 
-Вопросы GPQA заданы открыто, без вариантов ответа: ответ — число, угадать нельзя.
-Музыкальные вопросы составлены нами (мелодия и таблица интервалов даны в условии), эталон
-вычислен кодом. Для первой мелодии он совпал с эталоном исходного вопроса HLE 66f57e3ddc7259d8b5bb0b46.
-В `set_3` 7 из 10 вопросов собственные, по образцу задач из `set_1`/`set_2` с меньшими параметрами:
-трудные вопросы из GPQA и Linguini модель не успевала решить за 5000 токенов.
+GPQA questions are posed open-ended, without answer options: the answer is a number and cannot be guessed.
+The music questions were written by us (the melody and the interval table are given in the problem statement); the reference answer
+was computed by code. For the first melody it matched the reference answer of the original HLE question 66f57e3ddc7259d8b5bb0b46.
+In `set_3`, 7 of the 10 questions are our own, modeled on problems from `set_1`/`set_2` with smaller parameters:
+the model could not solve the hard questions from GPQA and Linguini within 5000 tokens.
 
-### set_4: математика
+### set_4: mathematics
 
-| Раздел | Задача | Источник |
+| Branch | Problem | Source |
 |---|---|---|
-| geometry | расстояние между центром описанной окружности и ортоцентром | собственный |
-| linear_algebra | определитель целочисленной матрицы 5×5 | собственный |
-| calculus | несобственный интеграл ∫₀^∞ x²e⁻ˣ sin x dx | собственный |
-| differential_equations | y″ + 2y′ + 5y = 10 cos x, найти y(π) | собственный |
-| series | двойной ряд | TheoremQA |
-| number_theory | делители 9!, оканчивающиеся на 1 | HMMT Feb 2025 #1 |
-| combinatorics | раскраска отрезков сетки 2×2 | AIME 2025 #18 |
-| probability | случайное подмножество делителей 2025 | AIME 2025 #22 |
-| algebra | произведение логарифмов | AIME 2025 #19 |
-| complex_numbers | система с модулями комплексных чисел | AIME 2025 #8 |
+| geometry | distance between the circumcenter and the orthocenter | original |
+| linear_algebra | determinant of a 5×5 integer matrix | original |
+| calculus | improper integral ∫₀^∞ x²e⁻ˣ sin x dx | original |
+| differential_equations | y″ + 2y′ + 5y = 10 cos x, find y(π) | original |
+| series | double series | TheoremQA |
+| number_theory | divisors of 9! ending in 1 | HMMT Feb 2025 #1 |
+| combinatorics | coloring the segments of a 2×2 grid | AIME 2025 #18 |
+| probability | random subset of the divisors of 2025 | AIME 2025 #22 |
+| algebra | product of logarithms | AIME 2025 #19 |
+| complex_numbers | system with moduli of complex numbers | AIME 2025 #8 |
 
-Эталоны собственных задач проверены независимо: подстановкой в уравнение, численным
-интегрированием, второй формулой.
+The reference answers of our own problems were verified independently: by substitution into the equation, by numerical
+integration, by a second formula.
 
-### Источники
+### Sources
 
-| Вопрос | Бенчмарк | ID в источнике |
+| Question | Benchmark | ID in source |
 |---|---|---|
 | `set_1/computer_science` | [HLE](https://huggingface.co/datasets/cais/hle) | `67192b9472c6fd14e759e369` |
-| `set_1/mathematics` | [AIME 2025](https://huggingface.co/datasets/MathArena/aime_2025) | задача 7 |
-| `set_1/finance` | [TheoremQA](https://huggingface.co/datasets/TIGER-Lab/TheoremQA) | вопрос «Aisha graduates college…» |
+| `set_1/mathematics` | [AIME 2025](https://huggingface.co/datasets/MathArena/aime_2025) | problem 7 |
+| `set_1/finance` | [TheoremQA](https://huggingface.co/datasets/TIGER-Lab/TheoremQA) | question "Aisha graduates college…" |
 | `set_1/linguistics` | [Linguini](https://huggingface.co/datasets/facebook/linguini) | `012023010100` |
 | `set_1/physics` | [OlympiadBench](https://huggingface.co/datasets/Hothan/OlympiadBench) | `OE_TO_physics_en_COMP`, id 908 |
 | `set_1/biology` | [LAB-Bench SeqQA](https://huggingface.co/datasets/futurehouse/lab-bench) | `97e6e1a0-f207-46d0-9201-f0081f40e19a` |
 | `set_1/chemistry` | [GPQA Diamond](https://huggingface.co/datasets/Idavidrein/gpqa) | `rectXfsCM1dj4Kv2c` |
 | `set_1/classics` | [HLE](https://huggingface.co/datasets/cais/hle) | `66fc698fd90ebe461bfd0cc4` |
 | `set_1/economics` | [HLE](https://huggingface.co/datasets/cais/hle) | `66fc23cfa7be4edbe85cf177` |
-| `set_1/music` | собственный, по мотивам HLE `66f57e3ddc7259d8b5bb0b46` | — |
+| `set_1/music` | original, based on HLE `66f57e3ddc7259d8b5bb0b46` | — |
 | `set_2/computer_science` | [HLE](https://huggingface.co/datasets/cais/hle) | `66f4aa5df382ae9214c8dc9b` |
-| `set_2/mathematics` | [HMMT February 2025](https://huggingface.co/datasets/MathArena/hmmt_feb_2025) | задача 26 |
-| `set_2/finance` | [TheoremQA](https://huggingface.co/datasets/TIGER-Lab/TheoremQA) | вопрос «Estimate the PE ratio…» |
+| `set_2/mathematics` | [HMMT February 2025](https://huggingface.co/datasets/MathArena/hmmt_feb_2025) | problem 26 |
+| `set_2/finance` | [TheoremQA](https://huggingface.co/datasets/TIGER-Lab/TheoremQA) | question "Estimate the PE ratio…" |
 | `set_2/linguistics` | [Linguini](https://huggingface.co/datasets/facebook/linguini) | `012021020100` |
 | `set_2/physics` | [OlympiadBench](https://huggingface.co/datasets/Hothan/OlympiadBench) | `OE_TO_physics_en_COMP`, id 900 |
 | `set_2/biology` | [LAB-Bench SeqQA](https://huggingface.co/datasets/futurehouse/lab-bench) | `64c5e31b-5b98-494a-92a7-1019723204d6` |
 | `set_2/chemistry` | [GPQA Diamond](https://huggingface.co/datasets/Idavidrein/gpqa) | `recJZ3QEfRKjYw9a7` |
 | `set_2/classics` | [HLE](https://huggingface.co/datasets/cais/hle) | `67015a7f6a2b21f149f3aaba` |
 | `set_2/economics` | [HLE](https://huggingface.co/datasets/cais/hle) | `6711e5e05e64a53ed09449fd` |
-| `set_2/music` | собственный | — |
-| `set_3/computer_science` | собственный | — |
-| `set_3/mathematics` | [AIME 2025](https://huggingface.co/datasets/MathArena/aime_2025) | задача 5 |
-| `set_3/finance` | собственный | — |
-| `set_3/linguistics` | собственный | — |
-| `set_3/physics` | [TheoremQA](https://huggingface.co/datasets/TIGER-Lab/TheoremQA) | вопрос «A parachutist with mass m=80 kg…» |
-| `set_3/biology` | собственный | — |
-| `set_3/chemistry` | собственный | — |
-| `set_3/classics` | собственный | — |
-| `set_3/economics` | [TheoremQA](https://huggingface.co/datasets/TIGER-Lab/TheoremQA) | вопрос «An investor has utility function…» |
-| `set_3/music` | собственный | — |
-| `set_4/geometry` | собственный | — |
-| `set_4/linear_algebra` | собственный | — |
-| `set_4/calculus` | собственный | — |
-| `set_4/differential_equations` | собственный | — |
-| `set_4/series` | [TheoremQA](https://huggingface.co/datasets/TIGER-Lab/TheoremQA) | вопрос «Sum the series …» |
-| `set_4/number_theory` | [HMMT February 2025](https://huggingface.co/datasets/MathArena/hmmt_feb_2025) | задача 1 |
-| `set_4/combinatorics` | [AIME 2025](https://huggingface.co/datasets/MathArena/aime_2025) | задача 18 |
-| `set_4/probability` | [AIME 2025](https://huggingface.co/datasets/MathArena/aime_2025) | задача 22 |
-| `set_4/algebra` | [AIME 2025](https://huggingface.co/datasets/MathArena/aime_2025) | задача 19 |
-| `set_4/complex_numbers` | [AIME 2025](https://huggingface.co/datasets/MathArena/aime_2025) | задача 8 |
+| `set_2/music` | original | — |
+| `set_3/computer_science` | original | — |
+| `set_3/mathematics` | [AIME 2025](https://huggingface.co/datasets/MathArena/aime_2025) | problem 5 |
+| `set_3/finance` | original | — |
+| `set_3/linguistics` | original | — |
+| `set_3/physics` | [TheoremQA](https://huggingface.co/datasets/TIGER-Lab/TheoremQA) | question "A parachutist with mass m=80 kg…" |
+| `set_3/biology` | original | — |
+| `set_3/chemistry` | original | — |
+| `set_3/classics` | original | — |
+| `set_3/economics` | [TheoremQA](https://huggingface.co/datasets/TIGER-Lab/TheoremQA) | question "An investor has utility function…" |
+| `set_3/music` | original | — |
+| `set_4/geometry` | original | — |
+| `set_4/linear_algebra` | original | — |
+| `set_4/calculus` | original | — |
+| `set_4/differential_equations` | original | — |
+| `set_4/series` | [TheoremQA](https://huggingface.co/datasets/TIGER-Lab/TheoremQA) | question "Sum the series …" |
+| `set_4/number_theory` | [HMMT February 2025](https://huggingface.co/datasets/MathArena/hmmt_feb_2025) | problem 1 |
+| `set_4/combinatorics` | [AIME 2025](https://huggingface.co/datasets/MathArena/aime_2025) | problem 18 |
+| `set_4/probability` | [AIME 2025](https://huggingface.co/datasets/MathArena/aime_2025) | problem 22 |
+| `set_4/algebra` | [AIME 2025](https://huggingface.co/datasets/MathArena/aime_2025) | problem 19 |
+| `set_4/complex_numbers` | [AIME 2025](https://huggingface.co/datasets/MathArena/aime_2025) | problem 8 |
 
-Linguini собран из задач Международной олимпиады по лингвистике (IOL), LAB-Bench SeqQA — из
-вопросов по работе с последовательностями ДНК, OlympiadBench — из олимпиадных задач по физике.
+Linguini is built from problems of the International Linguistics Olympiad (IOL), LAB-Bench SeqQA from
+questions on working with DNA sequences, and OlympiadBench from olympiad physics problems.
 
-### Формат вопроса
+### Question format
 
 ```json
 {
   "id": "set_1/computer_science",
   "set": "set_1",
   "domain": "computer_science",
-  "title": "Взлом Диффи–Хеллмана, p=1009",
+  "title": "Breaking Diffie–Hellman, p=1009",
   "source": {"dataset": "HLE", "id": "67192b9472c6fd14e759e369", "url": "https://huggingface.co/datasets/cais/hle"},
   "prompt": "… finish with a final line of the form `ANSWER: <your answer>`.",
   "answer": "760",
@@ -127,67 +127,67 @@ Linguini собран из задач Международной олимпиа�
 }
 ```
 
-`prompt` — готовый текст для модели; ответ ожидается последней строкой `ANSWER: …`.
-Тип проверки `check.type`:
-- `exact` — совпадение строки без учёта регистра и пробелов;
-- `list` — совпадение списка через запятую по порядку;
-- `num` — число с относительным допуском `rel_tol`.
+`prompt` is the ready-made text for the model; the answer is expected as the last line `ANSWER: …`.
+Check type `check.type`:
+- `exact` — string match ignoring case and whitespace;
+- `list` — match of a comma-separated list, in order;
+- `num` — a number with relative tolerance `rel_tol`.
 
-### Как отбирали вопросы
+### How the questions were selected
 
-Ориентир — «уровень Диффи–Хеллмана»: метод решения понятен, но требует длинной аккуратной
-работы (вычисления, перебор, применение правил), а ответ однозначен. Кандидатов прогоняли на
-целевой модели. В `set_1`/`set_2` брали вопросы, на которые она тратит порядка 5–30 тыс. токенов
-рассуждения; слишком тяжёлые (модель уходила за 50–100 тыс. токенов или не отвечала) заменяли
-более простыми. В `set_3` целились в 2–3 тыс., в `set_4` — в 1–5 тыс., при жёстком лимите 5000:
-кандидат, не уложившийся в лимит, отбрасывали, слишком лёгкий заменяли более трудным. Ошибки модели допустимы: в наборах есть нерешённые вопросы.
+The benchmark target is the "Diffie–Hellman level": the solution method is clear, but it requires long, careful
+work (calculations, enumeration, applying rules), and the answer is unambiguous. Candidates were run on the
+target model. For `set_1`/`set_2` we took questions on which it spends roughly 5–30k reasoning tokens;
+ones that were too heavy (the model went to 50–100k tokens or did not answer) were replaced with
+simpler ones. For `set_3` we aimed at 2–3k, for `set_4` at 1–5k, with a hard limit of 5000:
+a candidate that did not fit within the limit was discarded, and one that was too easy was replaced with a harder one. Model errors are acceptable: the sets contain unsolved questions.
 
-## Модель
+## Model
 
-**DeepSeek V4 Flash** (`deepseek-ai/DeepSeek-V4-Flash-0731`) через Together AI, `reasoning_effort=high`,
-один прогон на вопрос; `max_tokens=100000` для `set_1`/`set_2` и 5000 для `set_3`/`set_4`. Модель отдаёт рассуждение отдельным полем; его число
-токенов — `reasoning_tokens` из `usage`.
+**DeepSeek V4 Flash** (`deepseek-ai/DeepSeek-V4-Flash-0731`) via Together AI, `reasoning_effort=high`,
+one run per question; `max_tokens=100000` for `set_1`/`set_2` and 5000 for `set_3`/`set_4`. The model returns its reasoning in a separate field; its token
+count is `reasoning_tokens` from `usage`.
 
-Результат: **set_1 — 8/10, set_2 — 7/10, set_3 — 10/10, set_4 — 10/10**, подробности в
+Result: **set_1 — 8/10, set_2 — 7/10, set_3 — 10/10, set_4 — 10/10**, details in
 [`results/deepseek-v4-flash-0731/summary.md`](results/deepseek-v4-flash-0731/summary.md).
 
-Это одна выборка на вопрос. Чтобы надёжно оценить решаемость, нужно 3–5 прогонов.
+This is a single sample per question. Reliably estimating solvability requires 3–5 runs.
 
-## Запуск
+## Running
 
-Нужны [uv](https://docs.astral.sh/uv/) и ключ Together AI:
+You need [uv](https://docs.astral.sh/uv/) and a Together AI key:
 
 ```bash
 export TOGETHER_API_KEY=...
 uv run scripts/run.py --set set_1                       # DeepSeek V4 Flash, reasoning high
 uv run scripts/run.py --set set_2 --model Qwen/Qwen3.7-Plus
-uv run scripts/run.py --set set_3 --set set_4 --max-tokens 5000   # лёгкие наборы, как при отборе
-uv run scripts/run.py --base-url https://другой-провайдер/v1 --model ...
+uv run scripts/run.py --set set_3 --set set_4 --max-tokens 5000   # easy sets, as during selection
+uv run scripts/run.py --base-url https://other-provider/v1 --model ...
 ```
 
-Подходит любой OpenAI-совместимый API; ключ берётся из `TOGETHER_API_KEY`. Результаты пишутся
-в `results/<модель>/`, уже посчитанные вопросы пропускаются. Чтобы пересчитать вопрос, удалите
-его `.json`. Прогоны идут по 5 параллельно. Один вопрос считается от минуты до ~20 минут.
+Any OpenAI-compatible API works; the key is taken from `TOGETHER_API_KEY`. Results are written
+to `results/<model>/`; questions already computed are skipped. To recompute a question, delete
+its `.json`. Runs go 5 in parallel. A single question takes from a minute to ~20 minutes.
 
-## Чаты команды агентов
+## Agent team chats
 
-`embedding_eval/chat_runs.py` симулирует командный чат 10 агентов на 10 задачах бенча (`set_3` или
-`set_4`). Каждый ход — отдельный вызов DeepSeek-V4-Flash; рассуждение и сообщение агента пишутся
-отдельно, чтобы мерить разброс их эмбеддингов во времени.
+`embedding_eval/chat_runs.py` simulates a team chat of 10 agents on 10 benchmark problems (`set_3` or
+`set_4`). Each turn is a separate DeepSeek-V4-Flash call; the agent's reasoning and message are recorded
+separately in order to measure the spread of their embeddings over time.
 
-- **negotiation** — 2 круга: агенты распределяют задачи (порядок задач и агентов перемешан), итог `ASSIGNMENT`;
-- **merge** — агенты решают задачи по распределению из `negotiation/run_<k>`, обсуждают ответы
-  2 круга, затем Agent 1 пишет `FINAL`.
+- **negotiation** — 2 rounds: the agents distribute the problems (the order of problems and agents is shuffled), the outcome is `ASSIGNMENT`;
+- **merge** — the agents solve the problems according to the assignment from `negotiation/run_<k>`, discuss the answers
+  for 2 rounds, then Agent 1 writes `FINAL`.
 
 ```bash
 uv run embedding_eval/chat_runs.py --bench set_3 --kind negotiation --runs 10
 uv run embedding_eval/chat_runs.py --bench set_3 --kind merge --runs 10
 ```
 
-Готовые прогоны (по 10 каждого вида для `set_3` и `set_4`) лежат в
-`embedding_eval/runs/chat/<bench>/<kind>/run_<k>/`: `agent_<i>.jsonl` (ход: `turn`, `round`, `agent`,
-`reasoning`, `message`, `reasoning_tokens`, `seed`), `transcript.json`, `result.json`, у merge ещё
-`solve/agent_<i>.json` (решение задачи агентом). Невалидные попытки сохранены как `run_<k>_invalid_<n>`.
+Completed runs (10 of each kind for `set_3` and `set_4`) are in
+`embedding_eval/runs/chat/<bench>/<kind>/run_<k>/`: `agent_<i>.jsonl` (turn: `turn`, `round`, `agent`,
+`reasoning`, `message`, `reasoning_tokens`, `seed`), `transcript.json`, `result.json`, and for merge also
+`solve/agent_<i>.json` (the agent's solution to its problem). Invalid attempts are saved as `run_<k>_invalid_<n>`.
 
-Провайдер иногда обрывает длинный поток. Тогда в `.json` будет `finish_reason: null` и пустой
-ответ: удалите файл и запустите снова.
+The provider sometimes cuts off a long stream. In that case the `.json` will have `finish_reason: null` and an empty
+answer: delete the file and run again.

@@ -1,11 +1,11 @@
 # /// script
 # dependencies = ["openai>=1.40"]
 # ///
-"""Прогон наборов на модели через OpenAI-совместимый API (по умолчанию Together AI).
+"""Run the sets on a model via an OpenAI-compatible API (Together AI by default).
 
     TOGETHER_API_KEY=... uv run scripts/run.py --set set_1 [--model ...] [--effort high]
 
-Пишет results/<модель>/<set>/<domain>.json и <domain>.reasoning.txt; посчитанные вопросы пропускает.
+Writes results/<model>/<set>/<domain>.json and <domain>.reasoning.txt; skips already computed questions.
 """
 import argparse, json, os, re, time
 from concurrent.futures import ThreadPoolExecutor
@@ -20,7 +20,7 @@ def extract(text):
     m = re.findall(r"^\s*\**ANSWER\**\s*:\s*(.+?)\s*$", text, re.I | re.M)
     if m:
         return m[-1].strip("`* ")
-    i = text.rfind("\\boxed{")  # запасной вариант для моделей, не следующих формату
+    i = text.rfind("\\boxed{")  # fallback for models that do not follow the format
     return text[i + 7:text.find("}", i)] if i >= 0 else None
 
 
@@ -62,7 +62,7 @@ def run(client, args, item, out):
 
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--set", action="append", default=None, help="set_1 … set_4 (по умолчанию все)")
+ap.add_argument("--set", action="append", default=None, help="set_1 … set_4 (all by default)")
 ap.add_argument("--model", default="deepseek-ai/DeepSeek-V4-Flash-0731")
 ap.add_argument("--base-url", default="https://api.together.xyz/v1")
 ap.add_argument("--effort", default="high")
