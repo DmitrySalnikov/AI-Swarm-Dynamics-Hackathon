@@ -48,7 +48,8 @@ def run(client, args, item, out):
         for chunk in stream:
             usage = chunk.usage.model_dump() if chunk.usage else usage
             for ch in chunk.choices:
-                f.write((ch.delta.model_extra or {}).get("reasoning") or "")
+                extra = ch.delta.model_extra or {}
+                f.write(extra.get("reasoning") or extra.get("reasoning_content") or "")
                 text.append(ch.delta.content or "")
                 finish = ch.finish_reason or finish
     response = "".join(text)

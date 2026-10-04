@@ -77,7 +77,8 @@ def solve(client, task_id, seed, max_tokens):
                 for chunk in stream:
                     usage = chunk.usage or usage
                     for ch in chunk.choices:
-                        reasoning.append((ch.delta.model_extra or {}).get("reasoning") or "")
+                        extra = ch.delta.model_extra or {}                # поле зависит от провайдера и даты
+                        reasoning.append(extra.get("reasoning") or extra.get("reasoning_content") or "")
                         content.append(ch.delta.content or "")
                         finish = ch.finish_reason or finish
                 break
@@ -136,7 +137,7 @@ def run_one(client, kind, k, n, temperature, rounds, solve_tokens):
     if kind == "negotiation":
         pool = load_pool(rng)[:n]
         rng.shuffle(pool)                                    # порядок задач в списке
-        problems = "\n".join(f"[{t['id']}] ({t['domain']}) {t['statement'][:400]}" for t in pool)
+        problems = "\n".join(f"[{t['id']}] ({t['domain']}) {t['statement']}" for t in pool)
         systems = {i: NEG_SYSTEM.format(i=i, n=n, problems=problems) for i in order}
         owner = None
     else:                                                    # распределение — из согласования с тем же k
