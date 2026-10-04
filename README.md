@@ -169,5 +169,25 @@ uv run scripts/run.py --base-url https://другой-провайдер/v1 --mo
 в `results/<модель>/`, уже посчитанные вопросы пропускаются. Чтобы пересчитать вопрос, удалите
 его `.json`. Прогоны идут по 5 параллельно. Один вопрос считается от минуты до ~20 минут.
 
+## Чаты команды агентов
+
+`embedding_eval/chat_runs.py` симулирует командный чат 10 агентов на 10 задачах бенча (`set_3` или
+`set_4`). Каждый ход — отдельный вызов DeepSeek-V4-Flash; рассуждение и сообщение агента пишутся
+отдельно, чтобы мерить разброс их эмбеддингов во времени.
+
+- **negotiation** — 2 круга: агенты распределяют задачи (порядок задач и агентов перемешан), итог `ASSIGNMENT`;
+- **merge** — агенты решают задачи по распределению из `negotiation/run_<k>`, обсуждают ответы
+  2 круга, затем Agent 1 пишет `FINAL`.
+
+```bash
+uv run embedding_eval/chat_runs.py --bench set_3 --kind negotiation --runs 10
+uv run embedding_eval/chat_runs.py --bench set_3 --kind merge --runs 10
+```
+
+Готовые прогоны (по 10 каждого вида для `set_3` и `set_4`) лежат в
+`embedding_eval/runs/chat/<bench>/<kind>/run_<k>/`: `agent_<i>.jsonl` (ход: `turn`, `round`, `agent`,
+`reasoning`, `message`, `reasoning_tokens`, `seed`), `transcript.json`, `result.json`, у merge ещё
+`solve/agent_<i>.json` (решение задачи агентом). Невалидные попытки сохранены как `run_<k>_invalid_<n>`.
+
 Провайдер иногда обрывает длинный поток. Тогда в `.json` будет `finish_reason: null` и пустой
 ответ: удалите файл и запустите снова.
