@@ -3,7 +3,7 @@
 # ///
 """Run the sets on a model via an OpenAI-compatible API (Together AI by default).
 
-    TOGETHER_API_KEY=... uv run scripts/run.py --set set_1 [--model ...] [--effort high]
+    TOGETHER_API_KEY=... uv run scripts/run.py --set set_3 [--model ...] [--effort high]
 
 Writes results/<model>/<set>/<domain>.json and <domain>.reasoning.txt; skips already computed questions.
 """
@@ -62,7 +62,7 @@ def run(client, args, item, out):
 
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--set", action="append", default=None, help="set_1 … set_4 (all by default)")
+ap.add_argument("--set", action="append", default=None, help="set_3 / set_4 (both by default)")
 ap.add_argument("--model", default="deepseek-ai/DeepSeek-V4-Flash-0731")
 ap.add_argument("--base-url", default="https://api.together.xyz/v1")
 ap.add_argument("--effort", default="high")
@@ -70,7 +70,7 @@ ap.add_argument("--max-tokens", type=int, default=100000)
 args = ap.parse_args()
 
 out = ROOT / "results" / args.model.split("/")[-1].lower()
-items = [json.loads(l) for s in (args.set or ["set_1", "set_2", "set_3", "set_4"]) for l in open(ROOT / "bench" / f"{s}.jsonl")]
+items = [json.loads(l) for s in (args.set or ["set_3", "set_4"]) for l in open(ROOT / "bench" / f"{s}.jsonl")]
 items = [it for it in items if not (out / it["set"] / f"{it['domain']}.json").exists()]
 client = OpenAI(api_key=os.environ["TOGETHER_API_KEY"], base_url=args.base_url, timeout=3600, max_retries=0)
 with ThreadPoolExecutor(5) as pool:

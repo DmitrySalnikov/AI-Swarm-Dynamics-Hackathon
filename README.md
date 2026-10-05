@@ -2,13 +2,15 @@
 
 **With a hidden communication channel.** AI Swarm Dynamics Hackathon, 3–4 October 2026 (https://swarmchasing.com/).
 
-Maxim Gordeev, Dmitry Salnikov, Ilya Rogatov, Andrey Seryakov — a.u.seryakov@gmail.com
+Maxim Gordeev, Dmitry Salnikov, Ilya Rogatov, Andrey Seryakov, Ivan Lyaptsev — a.u.seryakov@gmail.com
 
 A talk with these slides will be recorded soon; the link will be placed here.
 
-> **Do not publish.** Some of the benchmark questions are taken from GPQA, HLE and LAB-Bench, whose authors ask
-> that they not be posted in plain text or used for training. These questions keep their `canary` field, and
-> the question texts also appear in model outputs throughout `embedding_eval/`. The repository must remain private.
+> **Data and licenses.** This public version contains the two question sets used in the analysis, `set_3` and
+> `set_4`. Problems from AIME 2025 and HMMT February 2025 (via [MathArena](https://huggingface.co/MathArena)) are
+> licensed CC BY-NC-SA 4.0, problems from [TheoremQA](https://huggingface.co/datasets/TIGER-Lab/TheoremQA) are MIT;
+> all other questions are original. Two harder sets used only while building the benchmark contain questions from
+> datasets that ask not to be redistributed in plain text, so they are not included.
 
 ## Motivation
 
@@ -137,13 +139,13 @@ alignment with the independent agents' windows is approximate.
 
 ## Benchmark
 
-A benchmark for experiments with groups of agents: four sets of 10 questions each.
-10–20k tokens on average), `set_3` is easy (2–5k tokens). `set_4` is entirely mathematical:
+A benchmark for experiments with groups of agents: two sets of 10 questions each, used in the analysis above.
+`set_3` covers 10 different domains (2–5k reasoning tokens per question); `set_4` is entirely mathematical:
 10 different branches, 1–5k tokens. All questions are solvable by a mid-tier model; the answer is short and checked
-automatically. The analysis above uses `set_3` and `set_4`.
+automatically.
 
 ```
-bench/set_{1,2,3,4}.jsonl                       questions
+bench/set_{3,4}.jsonl                           questions
 results/<model>/<set>/<domain>.json             model answer, tokens, verdict
 results/<model>/<set>/<domain>.reasoning.txt    model reasoning
 results/<model>/summary.md                      summary table
@@ -153,18 +155,23 @@ embedding_eval/                                 swarm experiments, embeddings an
 
 ### Sets
 
-`linguistics`, `physics`, `biology`, `chemistry`, `classics`, `economics`, `music`.
+#### set_3: ten domains
 
-|---|---|---|---|
-| mathematics | probability, 12 letters into pairs (AIME 2025 #7) | quadrilateral formed by circumcenters (HMMT 2025 #26) | numbers using digits 1–8 divisible by 22 (AIME 2025 #5) |
-| finance | retirement annuity (TheoremQA) | PE ratio (TheoremQA) | project NPV (original) |
-| linguistics | Guazacapán Xinka verb forms (Linguini) | matching Zuni words (Linguini) | numerals of an invented language (original) |
-| physics | mass of an incandescent lamp filament (OlympiadBench) | olympiad problem #900 (OlympiadBench) | parachutist with quadratic drag (TheoremQA) |
-| music | just intonation, "Hänschen klein" (original) | just intonation, second melody (original) | just intonation, 13 notes (original) |
+| Domain | Problem | Source |
+|---|---|---|
+| computer_science | Diffie–Hellman, p=227 | original |
+| mathematics | numbers using digits 1–8 divisible by 22 | AIME 2025 #5 |
+| finance | project NPV | original |
+| linguistics | numerals of an invented language | original |
+| physics | parachutist with quadratic drag | TheoremQA |
+| biology | GC content of 150 nucleotides | original |
+| chemistry | NaHCO₃ and MgCO₃ mixture from mass loss | original |
+| classics | 6 Roman calendar dates | original |
+| economics | certainty equivalent | TheoremQA |
+| music | just intonation, 13 notes | original |
 
-GPQA questions are posed open-ended, without answer options: the answer is a number and cannot be guessed.
-The music questions were written by us (the melody and the interval table are given in the problem statement); the reference answer
-the model could not solve the hard questions from GPQA and Linguini within 5000 tokens.
+Seven of the ten `set_3` questions are our own, modeled on harder benchmark problems with smaller parameters, so
+that the target model solves them within 5000 tokens. The reference answers of original problems were computed by code.
 
 #### set_4: mathematics
 
@@ -188,20 +195,9 @@ integration, by a second formula.
 
 | Question | Benchmark | ID in source |
 |---|---|---|
-| `set_3/computer_science` | original | — |
 | `set_3/mathematics` | [AIME 2025](https://huggingface.co/datasets/MathArena/aime_2025) | problem 5 |
-| `set_3/finance` | original | — |
-| `set_3/linguistics` | original | — |
 | `set_3/physics` | [TheoremQA](https://huggingface.co/datasets/TIGER-Lab/TheoremQA) | question "A parachutist with mass m=80 kg…" |
-| `set_3/biology` | original | — |
-| `set_3/chemistry` | original | — |
-| `set_3/classics` | original | — |
 | `set_3/economics` | [TheoremQA](https://huggingface.co/datasets/TIGER-Lab/TheoremQA) | question "An investor has utility function…" |
-| `set_3/music` | original | — |
-| `set_4/geometry` | original | — |
-| `set_4/linear_algebra` | original | — |
-| `set_4/calculus` | original | — |
-| `set_4/differential_equations` | original | — |
 | `set_4/series` | [TheoremQA](https://huggingface.co/datasets/TIGER-Lab/TheoremQA) | question "Sum the series …" |
 | `set_4/number_theory` | [HMMT February 2025](https://huggingface.co/datasets/MathArena/hmmt_feb_2025) | problem 1 |
 | `set_4/combinatorics` | [AIME 2025](https://huggingface.co/datasets/MathArena/aime_2025) | problem 18 |
@@ -209,19 +205,20 @@ integration, by a second formula.
 | `set_4/algebra` | [AIME 2025](https://huggingface.co/datasets/MathArena/aime_2025) | problem 19 |
 | `set_4/complex_numbers` | [AIME 2025](https://huggingface.co/datasets/MathArena/aime_2025) | problem 8 |
 
-Linguini is built from problems of the International Linguistics Olympiad (IOL), LAB-Bench SeqQA from
-questions on working with DNA sequences, and OlympiadBench from olympiad physics problems.
+All other questions are original.
 
 #### Question format
 
 ```json
 {
+  "id": "set_3/computer_science",
+  "set": "set_3",
   "domain": "computer_science",
-  "title": "Breaking Diffie–Hellman, p=1009",
+  "title": "Diffie–Hellman, p=227",
+  "source": {"dataset": "original (answer computed in code)", "id": null, "url": null},
   "prompt": "… finish with a final line of the form `ANSWER: <your answer>`.",
-  "answer": "760",
-  "check": {"type": "exact"},
-  "canary": "…"
+  "answer": "99",
+  "check": {"type": "exact"}
 }
 ```
 
@@ -235,15 +232,16 @@ Check type `check.type`:
 
 The benchmark target is the "Diffie–Hellman level": the solution method is clear, but it requires long, careful
 work (calculations, enumeration, applying rules), and the answer is unambiguous. Candidates were run on the
-ones that were too heavy (the model went to 50–100k tokens or did not answer) were replaced with
-simpler ones. For `set_3` we aimed at 2–3k, for `set_4` at 1–5k, with a hard limit of 5000:
-a candidate that did not fit within the limit was discarded, and one that was too easy was replaced with a harder one. Model errors are acceptable: the sets contain unsolved questions.
+target model with a hard limit of 5000 tokens, aiming at 2–3k for `set_3` and 1–5k for `set_4`: a candidate that
+did not fit within the limit was discarded, and one that was too easy was replaced with a harder one.
 
 ### Baseline model
 
 **DeepSeek V4 Flash** (`deepseek-ai/DeepSeek-V4-Flash-0731`) via Together AI, `reasoning_effort=high`,
+one run per question, `max_tokens=5000`. The model returns its reasoning in a separate field; its token
 count is `reasoning_tokens` from `usage`.
 
+Result: **set_3 — 10/10, set_4 — 10/10**, details in
 [`results/deepseek-v4-flash-0731/summary.md`](results/deepseek-v4-flash-0731/summary.md).
 
 This is a single sample per question. Reliably estimating solvability requires 3–5 runs.
@@ -254,7 +252,8 @@ You need [uv](https://docs.astral.sh/uv/) and a Together AI key:
 
 ```bash
 export TOGETHER_API_KEY=...
-uv run scripts/run.py --set set_3 --set set_4 --max-tokens 5000   # easy sets, as during selection
+uv run scripts/run.py --max-tokens 5000                 # DeepSeek V4 Flash, reasoning high, as during selection
+uv run scripts/run.py --set set_3 --model Qwen/Qwen3.7-Plus
 uv run scripts/run.py --base-url https://other-provider/v1 --model ...
 ```
 
@@ -284,3 +283,12 @@ Completed runs (10 of each kind for `set_3` and `set_4`) are in
 
 The provider sometimes cuts off a long stream. In that case the `.json` will have `finish_reason: null` and an empty
 answer: delete the file and run again.
+
+## License
+
+- **Code** (`scripts/`, `embedding_eval/*.py`) — [MIT](LICENSE).
+- **Data** (`bench/`, `results/`, `embedding_eval/runs/`, `embedding_eval/concat/`, `embedding_eval/dynamics/`) —
+  [CC BY-NC-SA 4.0](LICENSE-DATA). This is required by the share-alike terms of the AIME 2025 and HMMT February 2025
+  problems (© MAA / HMMT, distributed by [MathArena](https://huggingface.co/MathArena) under CC BY-NC-SA 4.0).
+  Problems from [TheoremQA](https://huggingface.co/datasets/TIGER-Lab/TheoremQA) are used under the MIT license.
+  Model outputs were generated with DeepSeek V4 Flash via Together AI.

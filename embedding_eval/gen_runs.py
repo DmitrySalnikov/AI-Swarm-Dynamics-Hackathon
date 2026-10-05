@@ -14,7 +14,7 @@ Logic:
   spent + reserved would exceed the limit.
 The source dataset is read-only (writing there is forbidden by a path check).
 
-  uv run gen_runs.py --provider cloudru --probe set_1/music --temperature T --budget 300
+  uv run gen_runs.py --provider cloudru --probe set_3/music --temperature T --budget 300
   uv run gen_runs.py --provider cloudru --models-info
   uv run gen_runs.py --provider cloudru --run-id 1 2 3 4 --temperature T --budget 300
 """
@@ -238,7 +238,7 @@ def main():
     if args.temperature is None or args.budget is None:
         sys.exit("--temperature and --budget are required")
     budget = Budget(args.budget, out / "spend.jsonl", prov["currency"])
-    items = {json.loads(l)["id"]: json.loads(l) for s in (args.set or ["set_1", "set_2"])
+    items = {json.loads(l)["id"]: json.loads(l) for s in (args.set or ["set_3", "set_4"])
              for l in open(DATA / "bench" / f"{s}.jsonl") if l.strip()}
     cur = prov["currency"]
 

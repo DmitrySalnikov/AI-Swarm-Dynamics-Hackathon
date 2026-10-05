@@ -1,5 +1,6 @@
 # DeepSeek-V4-Flash-0731, reasoning_effort=high, one run per question
 
+max_tokens 5000.
 
 ## set_3
 

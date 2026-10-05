@@ -12,6 +12,7 @@ validated in a separate evaluation (repository `MadExplorer/AI-Village`, `embedd
 4. **TF-IDF char 3–5** on text with masked numbers, fitted on all windows of the experiment.
 5. Hybrid: `sim = 0.5·cos(Qwen) + 0.5·cos(TF-IDF)`.
 
+On a held-out set of harder benchmark questions (not included in this repository), this scheme vs. a 1024 window without centering:
 d′ 3.28 → 4.03, AUC 0.972 → 0.979, same-type tasks ("twins") 0.615 → 0.742.
 
 ## What gets embedded
@@ -61,5 +62,6 @@ delta = 1 - S[np.ix_(ids, ids)].mean()   # δ for the set of windows ids (unit-l
 - **One generator model for the whole experiment.** Solo solutions and chats must come from the same model,
   otherwise δ(t) jumps at the seams because of the model switch.
 - **Same-type tasks** (one task with different data) are distinguished worse than different-type ones (AUC ≈ 0.74 vs 0.98).
+  Do not put two same-type problems (e.g. two GC-content or two just-intonation problems) into one run.
 - The vector cache is `embedding_eval/cache/` (path is changed via `VECTORIZE_CACHE`); do not commit it or
   `embedding_eval/vectors/` to git. The spending limit is hard; the log is `cache/spend.jsonl`.
