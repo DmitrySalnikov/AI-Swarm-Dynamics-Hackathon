@@ -2,30 +2,30 @@
 # requires-python = ">=3.10"
 # dependencies = ["numpy", "scipy", "scikit-learn", "tokenizers", "huggingface_hub"]
 # ///
-"""Векторизация рассуждений агентов для δ(t): окна + Qwen3-Embedding-4B (OpenRouter) + TF-IDF char (гибрид).
+"""Vectorization of agent reasoning for δ(t): windows + Qwen3-Embedding-4B (OpenRouter) + TF-IDF char (hybrid).
 
-Самодостаточный модуль: можно импортировать в пайплайн или запускать как CLI.
-Схема прошла проверку (embedding_eval/REPORT.md; выбор окна и центрирования — results/improve_eval.md):
-  • окна W = 2048 токенов с шагом 1024 (токенизатор DeepSeek-V3); последнее окно выровнено по концу текста;
-  • Qwen3-Embedding-4B по ИСХОДНОМУ тексту окна с инструкцией INSTR (как при проверке), L2-норма;
-  • TF-IDF char 3–5 (sublinear) по тексту с замаскированными числами/временем/URL; словарь и IDF обучаются один раз
-    на всех окнах эксперимента;
-  • векторы Qwen центрируются: из каждого вычитается средний вектор ВСЕХ окон эксперимента, затем L2-норма;
-  • гибрид: h = [√α·q, √(1−α)·t], α = 0.5 → h_i·h_j = 0.5·cos_q + 0.5·cos_tfidf, ‖h‖ = 1.
+Self-contained module: can be imported into a pipeline or run as a CLI.
+The scheme has been validated (embedding_eval/REPORT.md; choice of window and centering — results/improve_eval.md):
+  • windows of W = 2048 tokens, stride 1024 (DeepSeek-V3 tokenizer); the last window is aligned to the end of the text;
+  • Qwen3-Embedding-4B on the ORIGINAL window text with the INSTR instruction (as in validation), L2 norm;
+  • TF-IDF char 3–5 (sublinear) on text with masked numbers/times/URLs; the vocabulary and IDF are fitted once
+    on all windows of the experiment;
+  • Qwen vectors are centered: the mean vector of ALL windows of the experiment is subtracted from each, then L2 norm;
+  • hybrid: h = [√α·q, √(1−α)·t], α = 0.5 → h_i·h_j = 0.5·cos_q + 0.5·cos_tfidf, ‖h‖ = 1.
 
-Использование в коде:
+Usage in code:
     import vectorize as V
-    wins = V.windows(text)                               # окна одного лога
-    Q, meta = V.embed_logs({"agent3/step2": text, ...})  # плотные векторы Qwen всех окон, с кэшем
-    T, vec = V.tfidf_fit_transform([m["text"] for m in meta])   # TF-IDF по всем окнам эксперимента
-    S = V.hybrid_sim(Q, T)                               # матрица гибридных схожестей (центрирование внутри)
-CLI: одиночные решения (gen_runs.py: **/<name>.reasoning.txt) и/или чаты (chat_runs.py: agent_*.jsonl, solve/):
+    wins = V.windows(text)                               # windows of one log
+    Q, meta = V.embed_logs({"agent3/step2": text, ...})  # dense Qwen vectors of all windows, cached
+    T, vec = V.tfidf_fit_transform([m["text"] for m in meta])   # TF-IDF over all windows of the experiment
+    S = V.hybrid_sim(Q, T)                               # hybrid similarity matrix (centering inside)
+CLI: solo solutions (gen_runs.py: **/<name>.reasoning.txt) and/or chats (chat_runs.py: agent_*.jsonl, solve/):
     uv run vectorize.py --logs-dir runs/deepseek-v4-flash --chat-dir runs/chat --out vectors/ --budget-usd 1
-    uv run vectorize.py --logs-dir ... --chat-dir ... --dry-run   # только окна, токены и стоимость
-  Оба каталога за один запуск → TF-IDF и центрирование обучаются на всех окнах эксперимента сразу.
-Ключ OpenRouter: переменная OPENROUTER_API_KEY или связка ключей macOS
+    uv run vectorize.py --logs-dir ... --chat-dir ... --dry-run   # windows, tokens and cost only
+  Both directories in one run → TF-IDF and centering are fitted on all windows of the experiment at once.
+OpenRouter key: OPENROUTER_API_KEY environment variable or the macOS keychain
     security add-generic-password -U -s openrouter-api -a "$USER" -w
-Ключ никогда не печатается и не сохраняется.
+The key is never printed or stored.
 """
 from __future__ import annotations
 
@@ -43,17 +43,17 @@ from pathlib import Path
 
 import numpy as np
 
-# ---------------------------------------------------------------- параметры схемы (не менять без перепроверки)
+# ---------------------------------------------------------------- scheme parameters (do not change w/o re-validation)
 W, STEP = 2048, 1024
 OR_URL = "https://openrouter.ai/api/v1/embeddings"
 OR_MODEL = "qwen/qwen3-embedding-4b"
-PRICE_PER_TOKEN = 0.02 / 1e6          # $ за входной токен (openrouter.ai, 2026-10-04)
+PRICE_PER_TOKEN = 0.02 / 1e6          # $ per input token (openrouter.ai, 2026-10-04)
 INSTR = ("Instruct: Given a fragment of a step-by-step solution, retrieve fragments that solve the same problem"
          "\nQuery:")
 ALPHA = 0.5
 CACHE_DIR = Path(os.environ.get("VECTORIZE_CACHE", Path(__file__).resolve().parent / "cache"))
 
-# ---------------------------------------------------------------- окна
+# ---------------------------------------------------------------- windows
 _TOK = None
 
 
@@ -66,14 +66,14 @@ def _tokenizer():
 
 
 def windows(text: str, w: int = W, step: int = STEP) -> list[dict]:
-    """Окна по токенам DeepSeek-V3. Возвращает dict: idx, text, tok_start, tok_end, n_tok, rel_center, is_first, is_last."""
+    """Windows over DeepSeek-V3 tokens. Returns dicts: idx, text, tok_start, tok_end, n_tok, rel_center, is_first, is_last."""
     off = np.array(_tokenizer().encode(text, add_special_tokens=False).offsets, dtype=np.int64)
     n = len(off)
     if n == 0:
         return []
     starts = list(range(0, max(n - w, 0) + 1, step)) or [0]
     if starts[-1] + w < n:
-        starts.append(n - w)               # последнее окно выровнено по концу, хвост не теряется
+        starts.append(n - w)               # last window aligned to the end, the tail is not lost
     out = []
     for k, s in enumerate(starts):
         e = min(s + w, n)
@@ -83,7 +83,7 @@ def windows(text: str, w: int = W, step: int = STEP) -> list[dict]:
     return out
 
 
-# ---------------------------------------------------------------- маскирование (для TF-IDF)
+# ---------------------------------------------------------------- masking (for TF-IDF)
 _URL = re.compile(r"https?://\S+|www\.\S+")
 _TIME = re.compile(r"\b\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AaPp][Mm])?\b")
 _NUM = re.compile(r"(?<![A-Za-z_])[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:[eE][-+]?\d+)?|(?<![\w.])\.\d+")
@@ -101,12 +101,12 @@ def _key() -> str:
                             "-w"], capture_output=True, text=True)
         k = p.stdout.strip() if p.returncode == 0 else None
     if not k:
-        raise RuntimeError("нет ключа OpenRouter (OPENROUTER_API_KEY или Keychain 'openrouter-api')")
+        raise RuntimeError("no OpenRouter key (OPENROUTER_API_KEY or Keychain 'openrouter-api')")
     return k
 
 
 class Budget:
-    """Жёсткий лимит расходов; журнал в CACHE_DIR/spend.jsonl."""
+    """Hard spending limit; log in CACHE_DIR/spend.jsonl."""
 
     def __init__(self, limit_usd: float):
         self.limit, self.path = limit_usd, CACHE_DIR / "spend.jsonl"
@@ -115,7 +115,7 @@ class Budget:
 
     def check(self, est_tokens):
         if self.spent + est_tokens * PRICE_PER_TOKEN > self.limit:
-            raise RuntimeError(f"лимит ${self.limit}: потрачено ${self.spent:.4f}")
+            raise RuntimeError(f"limit ${self.limit}: spent ${self.spent:.4f}")
 
     def add(self, tokens, usd):
         self.spent += usd
@@ -139,14 +139,14 @@ def _post(key, payload, retries=6):
             err = f"HTTP {e.code}: {e.read()[:300]!r}"
             if e.code in (400, 401, 402, 403):
                 raise RuntimeError(err) from None
-        except Exception as e:  # noqa: BLE001 — сеть: повторяем
+        except Exception as e:  # noqa: BLE001 — network: retry
             err = repr(e)
         time.sleep(min(60, 2 ** i))
-    raise RuntimeError(f"OpenRouter: {retries} неудачных попыток: {err}")
+    raise RuntimeError(f"OpenRouter: {retries} failed attempts: {err}")
 
 
 def encode(texts: list[str], budget: Budget | None = None, batch_max=64, batch_chars=200_000, log=print) -> np.ndarray:
-    """Qwen3-Embedding-4B через OpenRouter, с инструкцией INSTR. Возвращает L2-нормированные (n, 2560)."""
+    """Qwen3-Embedding-4B via OpenRouter, with the INSTR instruction. Returns L2-normalized (n, 2560)."""
     key, inputs = _key(), [INSTR + t for t in texts]
     out, i = [None] * len(inputs), 0
     while i < len(inputs):
@@ -163,13 +163,13 @@ def encode(texts: list[str], budget: Budget | None = None, batch_max=64, batch_c
         usd = float(u["cost"]) if u.get("cost") is not None else tok * PRICE_PER_TOKEN
         if budget:
             budget.add(tok, usd)
-        log(f"[vectorize] {j}/{len(inputs)} окон, +{tok} ток., ${usd:.5f}")
+        log(f"[vectorize] {j}/{len(inputs)} windows, +{tok} tok., ${usd:.5f}")
         i = j
     X = np.asarray(out, dtype=np.float32)
     return X / np.maximum(np.linalg.norm(X, axis=1, keepdims=True), 1e-12)
 
 
-# ---------------------------------------------------------------- кэш по (лог, номер окна)
+# ---------------------------------------------------------------- cache by (log, window index)
 def _cache_path(log_id: str) -> Path:
     tag = hashlib.sha1(f"{OR_MODEL}|{INSTR}|{W}|{STEP}".encode()).hexdigest()[:8]
     safe = re.sub(r"[^A-Za-z0-9._-]+", "__", log_id)
@@ -177,8 +177,8 @@ def _cache_path(log_id: str) -> Path:
 
 
 def embed_logs(logs: dict[str, str], budget_usd: float = 1.0, log=print):
-    """logs: {log_id: текст рассуждения}. Возвращает (Q (n_окон, 2560), meta: список dict с log_id и полями окна).
-    Окно пересчитывается, только если его текст изменился (кэш по log_id + номер окна + sha1 текста)."""
+    """logs: {log_id: reasoning text}. Returns (Q (n_windows, 2560), meta: list of dicts with log_id and window fields).
+    A window is recomputed only if its text has changed (cache by log_id + window index + sha1 of the text)."""
     budget = Budget(budget_usd)
     metas, todo, cached = [], [], {}
     for lid, text in logs.items():
@@ -206,7 +206,7 @@ def embed_logs(logs: dict[str, str], budget_usd: float = 1.0, log=print):
                 p.parent.mkdir(parents=True, exist_ok=True)
                 np.savez(p, X=np.stack([cached[(lid, m["idx"])] for m in ms]), sha1=np.array([m["sha1"] for m in ms]))
 
-    # порциями по логам: если процесс оборвётся, оплаченные векторы уже на диске
+    # in chunks by log: if the process is interrupted, the paid-for vectors are already on disk
     todo_by_log = {}
     for m in todo:
         todo_by_log.setdefault(m["log_id"], []).append(m)
@@ -222,30 +222,30 @@ def embed_logs(logs: dict[str, str], budget_usd: float = 1.0, log=print):
             chunk, chunk_logs = [], []
     save([lid for lid in by_log if lid not in todo_by_log])
     Q = np.stack([cached[(m["log_id"], m["idx"])] for m in metas]) if metas else np.zeros((0, 2560), np.float32)
-    log(f"[vectorize] окон {len(metas)}, из кэша {len(metas) - len(todo)}, новых {len(todo)}; "
-        f"всего потрачено ${budget.spent:.4f}")
+    log(f"[vectorize] windows {len(metas)}, from cache {len(metas) - len(todo)}, new {len(todo)}; "
+        f"total spent ${budget.spent:.4f}")
     return Q, metas
 
 
-# ---------------------------------------------------------------- TF-IDF и гибрид
+# ---------------------------------------------------------------- TF-IDF and hybrid
 def tfidf_fit_transform(window_texts: list[str]):
-    """TF-IDF char_wb 3–5, sublinear, по маскированному тексту. Обучать ОДИН раз на всех окнах эксперимента."""
+    """TF-IDF char_wb 3–5, sublinear, on masked text. Fit ONCE on all windows of the experiment."""
     from sklearn.feature_extraction.text import TfidfVectorizer
     vec = TfidfVectorizer(analyzer="char_wb", ngram_range=(3, 5), sublinear_tf=True, dtype=np.float32)
-    T = vec.fit_transform([mask_text(t) for t in window_texts])  # строки L2-нормированы
+    T = vec.fit_transform([mask_text(t) for t in window_texts])  # rows are L2-normalized
     return T, vec
 
 
 def center(Q: np.ndarray, mu: np.ndarray | None = None) -> np.ndarray:
-    """Вычесть средний вектор (по умолчанию — среднее всех переданных окон, т. е. всего эксперимента) и L2-нормировать.
-    Передавайте сразу ВСЕ окна эксперимента или явно один и тот же mu: иначе векторы несопоставимы."""
+    """Subtract the mean vector (default: mean of all passed windows, i.e. the whole experiment) and L2-normalize.
+    Pass ALL windows of the experiment at once or explicitly the same mu: otherwise the vectors are not comparable."""
     mu = Q.mean(0) if mu is None else mu
     Z = Q - mu
     return Z / np.maximum(np.linalg.norm(Z, axis=1, keepdims=True), 1e-12)
 
 
 def smooth(Q: np.ndarray, meta: list[dict], k: int = 1) -> np.ndarray:
-    """Необязательно: среднее окон idx−k…idx+k того же лога, затем L2-норма (в схему по умолчанию не входит)."""
+    """Optional: mean of windows idx−k…idx+k of the same log, then L2 norm (not part of the default scheme)."""
     pos = {(m["log_id"], m["idx"]): i for i, m in enumerate(meta)}
     out = np.empty_like(Q)
     for i, m in enumerate(meta):
@@ -256,28 +256,29 @@ def smooth(Q: np.ndarray, meta: list[dict], k: int = 1) -> np.ndarray:
 
 
 def hybrid_sim(Q: np.ndarray, T, alpha: float = ALPHA, centered: bool = True) -> np.ndarray:
-    """Гибридная схожесть: α·cos(Qwen, центрированный) + (1−α)·cos(TF-IDF). Q — все окна эксперимента."""
+    """Hybrid similarity: α·cos(Qwen, centered) + (1−α)·cos(TF-IDF). Q is all windows of the experiment."""
     Qc = center(Q) if centered else Q
     return alpha * (Qc @ Qc.T) + (1 - alpha) * (T @ T.T).toarray()
 
 
 def hybrid_vectors(Q: np.ndarray, T, alpha: float = ALPHA, centered: bool = True):
-    """Один вектор на окно: [√α·q, √(1−α)·t] (разреженный, ‖h‖ = 1); q центрирован по всем окнам эксперимента."""
+    """One vector per window: [√α·q, √(1−α)·t] (sparse, ‖h‖ = 1); q centered over all experiment windows."""
     from scipy import sparse
     Qc = center(Q) if centered else Q
     return sparse.hstack([sparse.csr_matrix(np.sqrt(alpha) * Qc), np.sqrt(1 - alpha) * T]).tocsr()
 
 
-# ---------------------------------------------------------------- чаты (формат chat_runs.py)
+# ---------------------------------------------------------------- chats (chat_runs.py format)
 def load_chat_logs(chat_dir, fields=("reasoning", "message"), include_solve=True, include_invalid=False):
-    """Чаты из chat_runs.py → ({log_id: текст}, {log_id: метаданные}).
+    """Chats from chat_runs.py → ({log_id: text}, {log_id: metadata}).
 
-    Один фрагмент = один ход одного агента: ЕГО собственные поля `fields` из agent_<i>.jsonl
-    (по умолчанию reasoning + message). Общий текст чата и чужие сообщения не берутся, иначе у всех агентов
-    одинаковые векторы по построению. log_id = <run>/agent_<i>/turn_<NNN>. Ход длиннее окна режется на окна.
-    solve/agent_<i>.json (решение своей задачи в merge) → log_id = <run>/agent_<i>/solve; берётся reasoning,
-    а если он пустой — response (в метаданных solve_text это отмечено).
-    Прогоны *_invalid_* по умолчанию пропускаются.
+    One fragment = one turn of one agent: ITS OWN `fields` from agent_<i>.jsonl
+    (default reasoning + message). The shared chat text and other agents' messages are not used, otherwise all
+    agents would have identical vectors by construction. log_id = <run>/agent_<i>/turn_<NNN>. A turn longer than
+    a window is split into windows.
+    solve/agent_<i>.json (solution of the agent's own task in merge) → log_id = <run>/agent_<i>/solve; reasoning
+    is used, or response if reasoning is empty (this is recorded in the solve_text metadata).
+    *_invalid_* runs are skipped by default.
     """
     chat_dir = Path(chat_dir)
     logs, extra = {}, {}
@@ -326,15 +327,15 @@ def load_chat_logs(chat_dir, fields=("reasoning", "message"), include_solve=True
 # ---------------------------------------------------------------- CLI
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--logs-dir", help="каталог с *.reasoning.txt (одиночные решения, рекурсивно)")
-    ap.add_argument("--chat-dir", help="каталог чатов chat_runs.py (agent_*.jsonl, solve/agent_*.json)")
-    ap.add_argument("--chat-fields", default="reasoning,message", help="поля хода агента: reasoning,message")
-    ap.add_argument("--out", default="vectors", help="куда сохранить qwen.npy, tfidf.npz, index.jsonl")
+    ap.add_argument("--logs-dir", help="directory with *.reasoning.txt (solo solutions, recursive)")
+    ap.add_argument("--chat-dir", help="chat_runs.py chat directory (agent_*.jsonl, solve/agent_*.json)")
+    ap.add_argument("--chat-fields", default="reasoning,message", help="agent turn fields: reasoning,message")
+    ap.add_argument("--out", default="vectors", help="where to save qwen.npy, tfidf.npz, index.jsonl")
     ap.add_argument("--budget-usd", type=float, default=1.0)
-    ap.add_argument("--dry-run", action="store_true", help="только окна, токены и оценка стоимости")
+    ap.add_argument("--dry-run", action="store_true", help="windows, tokens and cost estimate only")
     a = ap.parse_args()
     if not a.logs_dir and not a.chat_dir:
-        ap.error("нужен --logs-dir и/или --chat-dir")
+        ap.error("--logs-dir and/or --chat-dir is required")
     logs, extra = {}, {}
     if a.logs_dir:
         files = sorted(p for p in Path(a.logs_dir).rglob("*.reasoning.txt") if ".failed." not in p.name)
@@ -348,15 +349,15 @@ def main():
         extra.update({"chat/" + k: v for k, v in ce.items()})
         n_resp = sum(1 for v in ce.values() if v.get("solve_text") == "response")
         if n_resp:
-            print(f"[vectorize] внимание: у {n_resp} solve-файлов пустой reasoning — взят response")
+            print(f"[vectorize] warning: {n_resp} solve files have empty reasoning — response used instead")
     if a.dry_run:
         n_win = n_tok = 0
         for t in logs.values():
             ws = windows(t)
             n_win += len(ws)
             n_tok += sum(w["tok_end"] - w["tok_start"] for w in ws)
-        print(f"логов {len(logs)}, окон {n_win}, токенов DeepSeek ≈ {n_tok}; "
-              f"оценка стоимости ≈ ${n_tok * 1.1 * PRICE_PER_TOKEN:.4f} (×1.1 на разницу токенизаторов)")
+        print(f"logs {len(logs)}, windows {n_win}, DeepSeek tokens ≈ {n_tok}; "
+              f"estimated cost ≈ ${n_tok * 1.1 * PRICE_PER_TOKEN:.4f} (×1.1 for tokenizer difference)")
         return
     Q, meta = embed_logs(logs, a.budget_usd)
     T, _ = tfidf_fit_transform([m["text"] for m in meta])
@@ -369,7 +370,7 @@ def main():
         for m in meta:
             f.write(json.dumps({**{k: v for k, v in m.items() if k != "text"}, **extra.get(m["log_id"], {})},
                                ensure_ascii=False) + "\n")
-    print(f"сохранено: {out}/qwen.npy {Q.shape}, tfidf.npz {T.shape}, index.jsonl ({len(meta)} окон)")
+    print(f"saved: {out}/qwen.npy {Q.shape}, tfidf.npz {T.shape}, index.jsonl ({len(meta)} windows)")
 
 
 if __name__ == "__main__":
