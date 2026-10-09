@@ -1,0 +1,321 @@
+We need to compute the balance after each month, following the steps: start of month balance, compute interest (balance * monthly rate), round to nearest cent (0.5 rounds up), add interest to balance, subtract regular payment $454.00, then if any extra prepayment scheduled for that month, subtract that too. The result is the start of next month balance.
+
+We have many events: extra payments at specific months, and interest rate changes at specific months. The initial balance at start of month 1 is $54048.10. The nominal annual rates given: 9% => monthly 0.75%; 7.80% => 0.65%; 8.40% => 0.70%; 7.20% => 0.60%; 6.60% => 0.55%. Some changes are at start of months: "Starting with month X" means the interest rate for that month (applied at the end of the month) is the new rate. So for month numbers, we need to apply the rate for that month.
+
+Let's enumerate all months from 1 to 108. We'll need to track balance after each month (i.e., start of next month). We'll compute sequentially.
+
+We have a list of extra payments and rate changes. Let's list them in chronological order:
+
+- Month 5: extra prepayment $725.11 after regular payment.
+- Month 12: extra $2499.00.
+- Month 23: extra $1279.74.
+- Starting month 25: rate becomes 0.65% (was 0.75% before that? Actually from month 1 to 24, rate is 0.75%? But note: the initial rate is 9% nominal, so 0.75% monthly. Then starting month 25, rate becomes 0.65%. So for months 1-24, rate = 0.75%; month 25 onward until further changes.
+- Month 26: extra $2431.00.
+- Month 35: extra $405.00.
+- Month 42: extra $276.00.
+- Starting month 43: rate becomes 0.75% again.
+- Starting month 47: rate becomes 0.70%.
+- Month 49: extra $489.00.
+- Month 57: extra $2034.00.
+- Month 62: extra $2203.00.
+- Month 64: extra $868.00.
+- Month 66: extra $2022.00.
+- Month 67: extra $1688.00.
+- Starting month 74: rate becomes 0.60%.
+- Starting month 75: rate becomes 0.55%.
+- Month 97: extra $1786.00.
+
+We need to compute balance up to month 108. After month 108, we need the balance at the end of month 108 (after steps) which is the start of month 109 balance? Actually "outstanding balance at the end of month 108 (after all steps of month 108)". So we perform steps for month 108 and the resulting balance is answer.
+
+We need to be careful about rounding: interest = balance * monthly rate, rounded to nearest cent (0.5 rounds up). Then that interest is added, then subtract regular payment, then subtract any extra. So we must do precise floating point calculations with rounding. Since amounts are in cents, we can do everything in cents to avoid floating errors. Let's work in cents (integers). Initial balance = 54048.10 = 5404810 cents? Actually 54048.10 dollars = 5404810 cents? 1 dollar = 100 cents, so 54048.10 * 100 = 5404810 cents. But careful: we have decimals, so we should represent as integer cents. All given amounts: regular payment 454.00 = 45400 cents. Extra payments: 725.11 = 72511 cents; 2499.00 = 249900 cents; 1279.74 = 127974 cents; 2431.00 = 243100 cents; 405.00 = 40500 cents; 276.00 = 27600 cents; 489.00 = 48900 cents; 2034.00 = 203400 cents; 2203.00 = 220300 cents; 868.00 = 86800 cents; 2022.00 = 202200 cents; 1688.00 = 168800 cents; 1786.00 = 178600 cents.
+
+Monthly rates: 0.75% = 0.0075; 0.65% = 0.0065; 0.70% = 0.0070; 0.60% = 0.0060; 0.55% = 0.0055. When computing interest = balance * rate, then rounding to nearest cent. So we need to multiply integer balance (cents) by rate (which is a decimal), then round to nearest cent (i.e., to integer cents). Since balance is in cents, balance * rate gives a number in cents? Actually if balance is in cents, multiplying by rate (which is a pure number) gives a number in cents? For example, balance 5404810 cents * 0.0075 = 40536.075 cents. That is the interest in cents. Then we round to nearest cent: 40536.075 rounds to 40536 cents? Since 0.075 rounds up? Actually rounding to nearest cent: half a cent rounds up. 0.075 is > 0.05? Wait, half a cent is 0.5 of a cent? Actually rounding to nearest cent means we consider the fractional part in cents. If we have interest in cents as a decimal, we round to the nearest integer cent. So 40536.075: the fractional part is 0.075, which is more than 0.05? Actually half a cent is 0.5 cent, so 0.075 is less than 0.5, but since we are rounding to nearest integer, we look at the first decimal: .0? Wait: 40536.075: the integer part is 40536, fractional .075. Since .075 is less than 0.5, we round down to 40536. But is that correct? Standard rounding to nearest cent: if the fractional part is exactly 0.5 cents, round up. So 0.075 is not 0.5, so it's just 40536. However, be careful: if the interest calculation yields something like 40536.075, that is 40536 cents and 0.075 cents, which is less than 0.5 cents, so round down. But the problem says "rounded to the nearest cent (half a cent rounds up)". So we need to treat half cent rounding. For a number like x.xx5? Actually interest is computed as balance * rate, which may produce more decimals. We'll compute exactly, then round to nearest cent, with 0.5 cent rounding up. So we need to compute interest = balance * rate, then round to the nearest integer cent, using rounding half up. So we can do: interest_cents = floor(balance * rate + 0.5). But careful: because we are dealing with decimal rates, we should do precise arithmetic. Since balance is integer, rate is a decimal like 0.0075, we can multiply by 10000 to get integer? Actually we can compute interest in cents as (balance * rate) but we need to handle rounding. Let's use rational fractions: rate = r/100, where r is the monthly percentage. For 0.75%, r=0.75? Actually monthly rate = 0.75% = 0.0075 = 75/10000 = 3/400? Let's use integer representation: interest = balance * (monthly_rate) = balance * (annual_rate/12). But annual_rate is given as nominal, but they gave monthly rate directly: 0.75% etc. So we can compute using decimal multiplication with sufficient precision. Since we are doing calculations in cents, we can multiply by rate and then round. I'll use Python-like mental arithmetic? Might be tedious to do manually for 108 months. But we can simulate step by step with careful calculations. Perhaps we can write a program in our head? But since it's a text-based reasoning, we need to compute manually or at least systematically.
+
+We can do this with a spreadsheet mentally? Given it's a long sequence, we might need to break it down. We can compute the balance using a recurrence. But we have many extra payments and rate changes. Let's attempt to compute month by month, but we need to be accurate.
+
+Better approach: compute using a high precision calculator manually? I'll do it step by step, but I need to keep track of cents. I'll use integer arithmetic: represent balance in cents. Multiply by rate as a fraction to avoid decimals. For example, rate 0.75% = 0.0075 = 75/10000 = 3/400? Actually 0.75% = 0.75/100 = 75/10000 = 3/400. But then interest = balance * 3/400 = (balance * 3)/400. Then rounding to nearest cent: we need to compute (balance * 3) / 400, then round. But integer division with rounding: we can compute floor((balance * 3 + 200) / 400)? Because half of 400 is 200. Actually to round to nearest integer, we add half the denominator and then integer division. But careful: we are rounding to nearest cent, and the result is in cents. So if we compute interest in cents as (balance * 3)/400, we need to find the integer nearest to that rational. So we can compute: interest_cents = floor((balance * 3 + 200) / 400) because adding 200 (half of 400) and integer division floors, but only if numerator positive. However, we need to consider rounding half up. For positive numbers, floor((num + denom/2)/denom) gives rounding to nearest, with half up. Since denom=400, half=200. So interest_cents = (balance * 3 + 200) // 400. That gives correct rounding. But note: we must ensure balance*3 might be large; but it's fine. Similarly, for rate 0.65% = 0.0065 = 65/10000 = 13/2000? Actually 0.65% = 0.65/100 = 65/10000 = 13/2000. So interest = balance * 13/2000. Denominator 2000, half=1000. So interest_cents = (balance * 13 + 1000) // 2000. For 0.70% = 0.0070 = 70/10000 = 7/1000. Denominator 1000, half=500. So interest_cents = (balance * 7 + 500) // 1000. For 0.60% = 0.0060 = 60/10000 = 3/500? Wait 0.60% = 0.006 = 6/1000 = 3/500. Denominator 500, half=250. So interest_cents = (balance * 3 + 250) // 500. For 0.55% = 0.0055 = 55/10000 = 11/2000. Denominator 2000, half=1000. So interest_cents = (balance * 11 + 1000) // 2000.
+
+That gives exact integer rounding. So we can do all calculations in cents using integer arithmetic. Great.
+
+Now we need to simulate each month from 1 to 108. We'll track balance B (in cents). Start B0 = 5404810 cents.
+
+For each month i from 1 to 108:
+- Determine monthly rate, compute interest I = round(B * rate) using the appropriate fraction.
+- Then B = B + I - 45400 (regular payment).
+- If there is an extra payment in month i, then subtract that extra amount (cents) as well.
+- Then B becomes new balance for next month.
+
+Note: The extra payments are scheduled "at the end of month X, after the regular payment". So they are subtracted after the regular payment, as per step 3.
+
+Also rate changes: "Starting with month X, the monthly interest rate becomes ..." means that for month X, the interest is computed using that new rate. So we need to apply the correct rate for each month. So we need a mapping of months to rates.
+
+Let's list all months with rate changes:
+- Months 1-24: rate = 0.75% (since initial rate is 9%, and first change is at month 25, so months 1-24 have 0.75%).
+- Month 25-? Next change: starting month 43 rate becomes 0.75% again. So months 25 to 42 have 0.65%? Actually starting month 25: rate = 0.65%. Then starting month 43: rate = 0.75%. So months 25-42: 0.65%. Then starting month 47: rate = 0.70%. So months 43-46: 0.75%? Wait careful: starting month 43, rate becomes 0.75%. Then starting month 47, rate becomes 0.70%. So months 43-46: 0.75%. Then months 47-? Next change: starting month 74: rate becomes 0.60%. So months 47-73: 0.70%? But note: there is also starting month 75: rate becomes 0.55%. So month 74: rate = 0.60% (since starting month 74, so month 74 uses 0.60%). Then month 75 onward: rate = 0.55% (starting month 75). But also later we have changes? That's it. So months 75-108: rate = 0.55%? But we need to check: after month 75, no further rate changes given. So months 75 to 108 use 0.55%. However, we also have extra payments later, but no more rate changes. So yes.
+
+Let's double-check timeline:
+- Starting with month 25: rate becomes 0.65%. So month 25 uses 0.65%.
+- Starting with month 43: rate becomes 0.75%. So month 43 uses 0.75%.
+- Starting with month 47: rate becomes 0.70%. So month 47 uses 0.70%.
+- Starting with month 74: rate becomes 0.60%. So month 74 uses 0.60%.
+- Starting with month 75: rate becomes 0.55%. So month 75 uses 0.55%.
+
+Thus months:
+- 1-24: 0.75%
+- 25-42: 0.65%
+- 43-46: 0.75%
+- 47-73: 0.70%
+- 74: 0.60%
+- 75-108: 0.55%
+
+Now we need to simulate month by month, with extra payments at months 5,12,23,26,35,42,49,57,62,64,66,67,97.
+
+Also note: there is an extra payment at month 42. That month is in the 0.65% period? Since month 42 is in 25-42 range, so rate 0.65%. Then month 43 rate changes to 0.75%. So extra payment at month 42 is after regular payment, but rate for month 42 is 0.65% (applied before regular payment). So consistent.
+
+Now we need to compute for 108 months. Doing this manually would be time-consuming but possible with systematic approach. We can compute in a spreadsheet mentally? I'll try to do it step by step with careful arithmetic, possibly using a programming-like mental simulation. Since I'm a human, I need to be careful with large numbers. But we can possibly compute in chunks using formulas? However, the rounding each month makes it tricky; we can't just use amortization formula because of rounding and extra payments. So we need to simulate each month. There are 108 months, but many months have no extra payments, so we could potentially compute several months in a row with a fixed rate and regular payment without extra payments? But because rounding occurs each month, we need to do each month individually to get correct rounding. However, we might be able to compute using an iterative approach, perhaps using a calculator or script mentally? I can simulate by writing down balances and doing arithmetic. Since this is a text-based reasoning, I'll simulate month by month, writing down each balance after each month. I'll do it in a systematic way, using integer cents. I'll list month, rate, interest calculation, balance after interest and payment, then extra if any. I'll keep a running balance.
+
+Let B = initial balance in cents: 5404810.
+
+I'll create a table:
+
+Month 1 (rate 0.75%): interest = round(B * 0.0075). Using fraction: B * 3/400, so I = (B*3 + 200) // 400. Compute B*3 = 5404810 * 3 = 16214430. Add 200 => 16214630. //400 = 16214630 / 400 = 40536.575? Actually integer division: 400*40536 = 16214400, remainder 230, so 40536? Wait 16214630 // 400: 400*40536 = 16214400, remainder 230, so quotient = 40536. But we need to be careful: (16214430+200)=16214630, divide by 400 gives 40536.575? Actually 16214630 / 400 = 40536.575. The integer part is 40536. So I = 40536 cents? But we need to check rounding: B*0.0075 = 5404810 * 0.0075 = 40536.075 exactly? Let's compute: 5404810 * 0.0075 = 5404810 * 75/10000 = (5404810*75)/10000 = (405360750)/10000 = 40536.075. So interest = 40536.075, which rounds to 40536 (since .075 < 0.5). So I = 40536. So our integer formula gave 40536, correct.
+
+Now B after interest: B + I = 5404810 + 40536 = 5445346. Then subtract regular payment 45400 => 5445346 - 45400 = 5399946. No extra in month 1. So new B = 5399946.
+
+Month 2: B=5399946. rate 0.75%. Compute I = (B*3+200)//400. B*3=5399946*3=16199838. +200=16200038. //400: 400*40500=16200000, remainder 38, so I=40500? Actually 16200038/400 = 40500.095, integer part 40500. So I=40500. Check: 5399946*0.0075=40499.595? Actually compute: 5399946*75/10000 = (5399946*75)/10000 = 404995950/10000 = 40499.595, rounding: .595 > 0.5? Actually .595 is > 0.5, so it should round to 40500. Yes, that's correct. So I=40500. Then B = 5399946+40500=5440446, minus 45400=5395046. No extra. B=5395046.
+
+Month 3: B=5395046. I = (5395046*3+200)//400. 5395046*3=16185138, +200=16185338, //400: 400*40463=16185200? Let's compute: 400*40463 = 16185200, remainder 138, so I=40463? Actually 16185338/400=40463.345, integer part 40463. Compute exact: 5395046*0.0075 = 40462.845? 5395046*75/10000 = 404628450/10000=40462.845, rounding: .845 > 0.5? Actually .845 > 0.5, so round up to 40463. So I=40463. Then B=5395046+40463=5435509, minus 45400=5390109. B=5390109.
+
+Month 4: B=5390109. I = (5390109*3+200)//400 = 16170327+200=16170527, //400: 400*40426=16170400? Let's compute: 400*40426 = 16170400, remainder 127, so I=40426? Actually 16170527/400=40426.3175, integer 40426. Check: 5390109*0.0075=40425.8175, rounding: .8175 > 0.5, so 40426. Yes. Then B=5390109+40426=5430535, -45400=5385135. B=5385135.
+
+Month 5: extra payment of 72511 cents. Rate 0.75%. B=5385135. Compute I = (5385135*3+200)//400 = 16155405+200=16155605, //400: 400*40389=16155600? Actually 400*40389 = 16155600, remainder 5, so I=40389? 16155605/400=40389.0125, integer 40389. Check: 5385135*0.0075=40388.5125, rounding: .5125 > 0.5? 0.5125 > 0.5, so round up to 40389. So I=40389. Then B after interest: 5385135+40389=5425524. Subtract regular payment 45400 => 5380124. Then extra payment 72511: 5380124 - 72511 = 5307613. So new B = 5307613.
+
+Month 6: B=5307613, rate 0.75%. I = (5307613*3+200)//400 = 15922839+200=15923039, //400: 400*39807=15922800, remainder 239, so I=39807? Actually 15923039/400=39807.5975, integer 39807. Check: 5307613*0.0075=39807.0975, rounding: .0975 < 0.5? Actually .0975 < 0.5 => 39807? Wait, 39807.0975 rounds to 39807? But our integer calculation gave 39807? Actually 39807.0975 fractional 0.0975 < 0.5 so round down to 39807. So I=39807. Then B=5307613+39807=5347420, -45400=5302020. No extra. B=5302020.
+
+Month 7: B=5302020. I = (5302020*3+200)//400 = 15906060+200=15906260, //400: 400*39765=15906000, remainder 260, so I=39765? Actually 15906260/400=39765.65, integer 39765. Check: 5302020*0.0075=39765.15, rounding: .15 < 0.5 => 39765. Yes. Then B=5302020+39765=5341785, -45400=5296385. B=5296385.
+
+Month 8: B=5296385. I = (5296385*3+200)//400 = 15889155+200=15889355, //400: 400*39723=15889200, remainder 155, so I=39723? 15889355/400=39723.3875, integer 39723. Check: 5296385*0.0075=39722.8875, rounding: .8875 > 0.5? Actually 0.8875 > 0.5, so round up to 39723. Yes. Then B=5296385+39723=5336108, -45400=5290708. B=5290708.
+
+Month 9: B=5290708. I = (5290708*3+200)//400 = 15872124+200=15872324, //400: 400*39680=15872000, remainder 324, so I=39680? Actually 15872324/400=39680.81, integer 39680. Check: 5290708*0.0075=39680.31, rounding: .31 < 0.5 => 39680. Yes. Then B=5290708+39680=5330388, -45400=5284988. B=5284988.
+
+Month 10: B=5284988. I = (5284988*3+200)//400 = 15854964+200=15855164, //400: 400*39637=15854800, remainder 364, so I=39637? 15855164/400=39637.91, integer 39637. Check: 5284988*0.0075=39637.41, rounding: .41 < 0.5 => 39637. Then B=5284988+39637=5324625, -45400=5279225. B=5279225.
+
+Month 11: B=5279225. I = (5279225*3+200)//400 = 15837675+200=15837875, //400: 400*39594=15837600, remainder 275, so I=39594? 15837875/400=39594.6875, integer 39594. Check: 5279225*0.0075=39594.1875, rounding: .1875 < 0.5 => 39594. Then B=5279225+39594=5318819, -45400=5273419. B=5273419.
+
+Month 12: extra payment 249900 cents. B=5273419. I = (5273419*3+200)//400 = 15820257+200=15820457, //400: 400*39551=15820400, remainder 57, so I=39551? 15820457/400=39551.1425, integer 39551. Check: 5273419*0.0075=39550.6425, rounding: .6425 > 0.5? Actually 0.6425 > 0.5, so round up to 39551. Yes. Then B after interest: 5273419+39551=5312970. Subtract regular: 5312970-45400=5267570. Then extra 249900: 5267570-249900=5017670. So new B = 5017670.
+
+Month 13: B=5017670, rate 0.75%. I = (5017670*3+200)//400 = 15053010+200=15053210, //400: 400*37633=15053200, remainder 10, so I=37633? 15053210/400=37633.025, integer 37633. Check: 5017670*0.0075=37632.525, rounding: .525 > 0.5? 0.525 > 0.5, so round up to 37633. So I=37633. Then B=5017670+37633=5055303, -45400=5009903. B=5009903.
+
+Month 14: B=5009903. I = (5009903*3+200)//400 = 15029709+200=15029909, //400: 400*37574=15029600, remainder 309, so I=37574? 15029909/400=37574.7725, integer 37574. Check: 5009903*0.0075=37574.2725, rounding: .2725 < 0.5 => 37574. Then B=5009903+37574=5047477, -45400=5002077. B=5002077.
+
+Month 15: B=5002077. I = (5002077*3+200)//400 = 15006231+200=15006431, //400: 400*37516=15006400, remainder 31, so I=37516? 15006431/400=37516.0775, integer 37516. Check: 5002077*0.0075=37515.5775, rounding: .5775 > 0.5? 0.5775 > 0.5 so round up to 37516. Yes. Then B=5002077+37516=5039593, -45400=4994193. B=4994193.
+
+Month 16: B=4994193. I = (4994193*3+200)//400 = 14982579+200=14982779, //400: 400*37456=14982400, remainder 379, so I=37456? 14982779/400=37456.9475, integer 37456. Check: 4994193*0.0075=37456.4475, rounding: .4475 < 0.5 => 37456. Then B=4994193+37456=5031649, -45400=4986249. B=4986249.
+
+Month 17: B=4986249. I = (4986249*3+200)//400 = 14958747+200=14958947, //400: 400*37397=14958800, remainder 147, so I=37397? 14958947/400=37397.3675, integer 37397. Check: 4986249*0.0075=37396.8675, rounding: .8675 > 0.5 => 37397. Then B=4986249+37397=5023646, -45400=4978246. B=4978246.
+
+Month 18: B=4978246. I = (4978246*3+200)//400 = 14934738+200=14934938, //400: 400*37337=14934800, remainder 138, so I=37337? 14934938/400=37337.345, integer 37337. Check: 4978246*0.0075=37336.845, rounding: .845 > 0.5 => 37337. Then B=4978246+37337=5015583, -45400=4970183. B=4970183.
+
+Month 19: B=4970183. I = (4970183*3+200)//400 = 14910549+200=14910749, //400: 400*37276=14910400, remainder 349, so I=37276? 14910749/400=37276.8725, integer 37276. Check: 4970183*0.0075=37276.3725, rounding: .3725 < 0.5 => 37276. Then B=4970183+37276=5007459, -45400=4962059. B=4962059.
+
+Month 20: B=4962059. I = (4962059*3+200)//400 = 14886177+200=14886377, //400: 400*37215=14886000, remainder 377, so I=37215? 14886377/400=37215.9425, integer 37215. Check: 4962059*0.0075=37215.4425, rounding: .4425 < 0.5 => 37215. Then B=4962059+37215=4999274, -45400=4953874. B=4953874.
+
+Month 21: B=4953874. I = (4953874*3+200)//400 = 14861622+200=14861822, //400: 400*37154=14861600, remainder 222, so I=37154? 14861822/400=37154.555, integer 37154. Check: 4953874*0.0075=37154.055, rounding: .055 < 0.5 => 37154. Then B=4953874+37154=4991028, -45400=4945628. B=4945628.
+
+Month 22: B=4945628. I = (4945628*3+200)//400 = 14836884+200=14837084, //400: 400*37092=14836800, remainder 284, so I=37092? 14837084/400=37092.71, integer 37092. Check: 4945628*0.0075=37092.21, rounding: .21 < 0.5 => 37092. Then B=4945628+37092=4982720, -45400=4937320. B=4937320.
+
+Month 23: extra payment 127974 cents. B=4937320. I = (4937320*3+200)//400 = 14811960+200=14812160, //400: 400*37030=14812000, remainder 160, so I=37030? 14812160/400=37030.4, integer 37030. Check: 4937320*0.0075=37029.9, rounding: .9 > 0.5? Actually 37029.9: fractional .9 > 0.5, so round up to 37030. Yes. Then B after interest: 4937320+37030=4974350. Subtract regular: 4974350-45400=4928950. Then extra: 4928950-127974=4800976. So new B = 4800976.
+
+Month 24: B=4800976, rate 0.75% (last month of this rate). I = (4800976*3+200)//400 = 14402928+200=14403128, //400: 400*36007=14402800, remainder 328, so I=36007? 14403128/400=36007.82, integer 36007. Check: 4800976*0.0075=36007.32, rounding: .32 < 0.5 => 36007. Then B=4800976+36007=4836983, -45400=4791583. B=4791583.
+
+Now month 25: rate changes to 0.65% = 0.0065 = 13/2000. So interest formula: I = (B * 13 + 1000) // 2000. B=4791583. Compute B*13 = 4791583 * 13 = 4791583*10=47915830, +4791583*3=14374749, total = 62290579? Let's compute accurately: 4791583 * 13 = 4791583 * (10+3) = 47915830 + 14374749 = 62290579. Add 1000 => 62291579. Divide by 2000: 2000*31145 = 62290000? 2000*31145 = 62,290,000? Actually 2000*31145 = 62,290,000. Our number is 62,291,579? Let's compute precisely: 62291579 / 2000 = 31145.7895. So integer part 31145. So I = 31145? But we need to check rounding: B*0.0065 = 4791583 * 0.0065 = 4791583 * 65/10000 = (4791583*65)/10000 = 311452895/10000 = 31145.2895? Actually compute: 4791583*65 = 4791583*60=287494980, +4791583*5=23957915, total = 311452895. Divided by 10000 = 31145.2895. So interest = 31145.2895, rounding to nearest cent: .2895 < 0.5 => 31145. So I=31145. Our integer formula gave 31145? 62291579//2000 = floor(31145.7895) = 31145. Yes. So I=31145.
+
+Then B = 4791583 + 31145 = 4822728. Subtract regular 45400 => 4777328. No extra in month 25. So B=4777328.
+
+Month 26: extra payment 243100 cents. Rate 0.65%. B=4777328. Compute I = (B*13+1000)//2000. B*13=4777328*13 = 4777328*10=47773280, +4777328*3=14331984, total = 62105264. Add 1000 => 62106264. /2000 = 31053.132? Actually 2000*31053 = 62,106,000? Wait compute: 62106264/2000 = 31053.132. So integer part 31053. So I=31053? Check actual: 4777328*0.0065 = 4777328*65/10000 = (4777328*65)/10000 = (310526320)/10000? Let's compute: 4777328*65 = 4777328*60=286639680, +4777328*5=23886640, total = 310526320. /10000 = 31052.6320. So interest = 31052.632, rounding: .632 > 0.5 => round up to 31053. So I=31053. Good. Then B after interest: 4777328+31053=4808381. Subtract regular: 4808381-45400=4762981. Subtract extra 243100: 4762981-243100=4519881. So new B=4519881.
+
+Month 27: B=4519881, rate 0.65%. I = (4519881*13+1000)//2000. 4519881*13 = 45198810 + 13559643 = 58758453. Add 1000 => 58759453. /2000 = 29379.7265? 2000*29379 = 58,758,000; remainder 59453? Actually 58759453/2000 = 29379.7265, integer 29379. Check: 4519881*0.0065 = 29379.2265? Compute: 4519881*65/10000 = (293792265)/10000 = 29379.2265, rounding .2265 < 0.5 => 29379. So I=29379. Then B=4519881+29379=4549260, -45400=4503860. B=4503860.
+
+Month 28: B=4503860. I = (4503860*13+1000)//2000 = 58550180+1000=58551180? Actually 4503860*13 = 45038600+13511580=58550180. +1000=58551180. /2000 = 29275.59 => integer 29275. Check: 4503860*0.0065 = 29275.09? 4503860*65/10000 = 292750900/10000=29275.09, rounding .09 < 0.5 => 29275. So I=29275. Then B=4503860+29275=4533135, -45400=4487735. B=4487735.
+
+Month 29: B=4487735. I = (4487735*13+1000)//2000 = 58340555+1000=58341555? Actually 4487735*13 = 44877350+13463205=58340555. +1000=58341555. /2000 = 29170.7775 => integer 29170? Check: 4487735*0.0065 = 29170.2775? 4487735*65/10000 = 291702775/10000 = 29170.2775, rounding .2775 < 0.5 => 29170. So I=29170. Then B=4487735+29170=4516905, -45400=4471505. B=4471505.
+
+Month 30: B=4471505. I = (4471505*13+1000)//2000 = 58129565+1000=58130565? Actually 4471505*13=44715050+13414515=58129565. +1000=58130565. /2000=29065.2825 => integer 29065. Check: 4471505*0.0065 = 29064.7825? Compute: 4471505*65/10000 = 290647825/10000=29064.7825, rounding .7825 > 0.5? 0.7825 > 0.5 => round up to 29065. So I=29065. Then B=4471505+29065=4500570, -45400=4455170. B=4455170.
+
+Month 31: B=4455170. I = (4455170*13+1000)//2000 = 57917210+1000=57918210? 4455170*13=44551700+13365510=57917210. +1000=57918210. /2000=28959.105 => integer 28959. Check: 4455170*0.0065 = 28958.605? 4455170*65/10000 = 289586050/10000=28958.605, rounding .605 > 0.5? 0.605 > 0.5 => 28959. So I=28959. Then B=4455170+28959=4484129, -45400=4438729. B=4438729.
+
+Month 32: B=4438729. I = (4438729*13+1000)//2000 = 57703477+1000=57704477? Actually 4438729*13=44387290+13316187=57703477. +1000=57704477. /2000=28852.2385 => integer 28852? Check: 4438729*0.0065 = 28851.7385? 4438729*65/10000 = 288517385/10000=28851.7385, rounding .7385 > 0.5 => 28852. So I=28852. Then B=4438729+28852=4467581, -45400=4422181. B=4422181.
+
+Month 33: B=4422181. I = (4422181*13+1000)//2000 = 57488353+1000=57489353? Actually 4422181*13 = 44221810+13266543=57488353. +1000=57489353. /2000=28744.6765 => integer 28744? Check: 4422181*0.0065 = 28744.1765? 4422181*65/10000 = 287441765/10000=28744.1765, rounding .1765 < 0.5 => 28744. So I=28744. Then B=4422181+28744=4450925, -45400=4405525. B=4405525.
+
+Month 34: B=4405525. I = (4405525*13+1000)//2000 = 57271825+1000=57272825? 4405525*13=44055250+13216575=57271825. +1000=57272825. /2000=28636.4125 => integer 28636. Check: 4405525*0.0065 = 28635.9125? 4405525*65/10000 = 286359125/10000=28635.9125, rounding .9125 > 0.5 => 28636. So I=28636. Then B=4405525+28636=4434161, -45400=4388761. B=4388761.
+
+Month 35: extra payment 40500 cents. B=4388761. I = (4388761*13+1000)//2000 = 57053893+1000=57054893? 4388761*13=43887610+13166283=57053893. +1000=57054893. /2000=28527.4465 => integer 28527? Check: 4388761*0.0065 = 28526.9465? 4388761*65/10000 = 285269465/10000=28526.9465, rounding .9465 > 0.5 => 28527. So I=28527. Then B after interest: 4388761+28527=4417288. Subtract regular: 4417288-45400=4371888. Subtract extra 40500: 4371888-40500=4331388. So B=4331388.
+
+Month 36: B=4331388, rate 0.65%. I = (4331388*13+1000)//2000 = 56308044+1000=56309044? 4331388*13=43313880+12994164=56308044. +1000=56309044. /2000=28154.522 => integer 28154. Check: 4331388*0.0065 = 28154.022? 4331388*65/10000 = 281540220/10000=28154.022, rounding .022 < 0.5 => 28154. So I=28154. Then B=4331388+28154=4359542, -45400=4314142. B=4314142.
+
+Month 37: B=4314142. I = (4314142*13+1000)//2000 = 56083846+1000=56084846? 4314142*13=43141420+12942426=56083846. +1000=56084846. /2000=28042.423 => integer 28042. Check: 4314142*0.0065 = 28041.923? 4314142*65/10000 = 280419230/10000=28041.923, rounding .923 > 0.5 => 28042. So I=28042. Then B=4314142+28042=4342184, -45400=4296784. B=4296784.
+
+Month 38: B=4296784. I = (4296784*13+1000)//2000 = 55858192+1000=55859192? 4296784*13=42967840+12890352=55858192. +1000=55859192. /2000=27929.596 => integer 27929? Actually 2000*27929 = 55,858,000; remainder 1,59192? Let's compute: 55859192/2000 = 27929.596, integer 27929. Check: 4296784*0.0065 = 27929.096? 4296784*65/10000 = 279290960/10000=27929.096, rounding .096 < 0.5 => 27929. So I=27929. Then B=4296784+27929=4324713, -45400=4279313. B=4279313.
+
+Month 39: B=4279313. I = (4279313*13+1000)//2000 = 55631069+1000=55632069? 4279313*13=42793130+12837939=55631069. +1000=55632069. /2000=27816.0345 => integer 27816. Check: 4279313*0.0065 = 27815.5345? 4279313*65/10000 = 278155345/10000=27815.5345, rounding .5345 > 0.5? 0.5345 > 0.5 => 27816. So I=27816. Then B=4279313+27816=4307129, -45400=4261729. B=4261729.
+
+Month 40: B=4261729. I = (4261729*13+1000)//2000 = 55402477+1000=55403477? 4261729*13=42617290+12785187=55402477. +1000=55403477. /2000=27701.7385 => integer 27701? Actually 2000*27701 = 55,402,000; remainder 1,43477? Let's compute: 55403477/2000 = 27701.7385, integer 27701. Check: 4261729*0.0065 = 27701.2385? 4261729*65/10000 = 277012385/10000=27701.2385, rounding .2385 < 0.5 => 27701. So I=27701. Then B=4261729+27701=4289430, -45400=4244030. B=4244030.
+
+Month 41: B=4244030. I = (4244030*13+1000)//2000 = 55172390+1000=55173390? 4244030*13=42440300+12732090=55172390. +1000=55173390. /2000=27586.695 => integer 27586? Actually 2000*27586 = 55,172,000; remainder 1,3390? Let's compute: 55173390/2000 = 27586.695, integer 27586. Check: 4244030*0.0065 = 27586.195? 4244030*65/10000 = 275861950/10000=27586.195, rounding .195 < 0.5 => 27586. So I=27586. Then B=4244030+27586=4271616, -45400=4226216. B=4226216.
+
+Month 42: extra payment 27600 cents. B=4226216. I = (4226216*13+1000)//2000 = 54940808+1000=54941808? 4226216*13=42262160+12678648=54940808. +1000=54941808. /2000=27470.904 => integer 27470? Actually 2000*27470 = 54,940,000; remainder 1,808? Let's compute: 54941808/2000 = 27470.904, integer 27470. Check: 4226216*0.0065 = 27470.404? 4226216*65/10000 = 274704040/10000=27470.404, rounding .404 < 0.5 => 27470. So I=27470. Then B after interest: 4226216+27470=4253686. Subtract regular: 4253686-45400=4208286. Subtract extra 27600: 4208286-27600=4180686. So B=4180686.
+
+Now month 43: rate changes to 0.75% again. So we revert to fraction 3/400. B=4180686. Compute I = (B*3+200)//400 = (4180686*3=12542058) +200=12542258. //400: 400*31355=12542000? Actually 400*31355 = 12,542,000? Let's compute: 31355*400=12,542,000. Our number 12,542,258. Subtract: 12,542,258 - 12,542,000 = 258. So quotient = 31355? Actually 12,542,258 / 400 = 31355.645, integer part 31355. So I=31355. Check: 4180686*0.0075 = 31355.145, rounding .145 < 0.5 => 31355. So I=31355. Then B=4180686+31355=4212041, -45400=4166641. No extra. B=4166641.
+
+Month 44: B=4166641, rate 0.75%. I = (4166641*3+200)//400 = 12499923+200=12500123. //400: 400*31250=12,500,000, remainder 123, so I=31250? Actually 12500123/400 = 31250.3075, integer 31250. Check: 4166641*0.0075 = 31249.8075, rounding .8075 > 0.5 => 31250. So I=31250. Then B=4166641+31250=4197891, -45400=4152491. B=4152491.
+
+Month 45: B=4152491. I = (4152491*3+200)//400 = 12457473+200=12457673. /400 = 31144.1825, integer 31144. Check: 4152491*0.0075 = 31143.6825, rounding .6825 > 0.5 => 31144. So I=31144. Then B=4152491+31144=4183635, -45400=4138235. B=4138235.
+
+Month 46: B=4138235. I = (4138235*3+200)//400 = 12414705+200=12414905. /400 = 31037.2625, integer 31037. Check: 4138235*0.0075 = 31036.7625, rounding .7625 > 0.5 => 31037. So I=31037. Then B=4138235+31037=4169272, -45400=4123872. B=4123872.
+
+Now month 47: rate changes to 0.70% = 0.0070 = 7/1000. So interest formula: I = (B*7 + 500) // 1000. B=4123872. Compute B*7 = 28867104. Add 500 => 28867604. //1000 = 28867.604? Actually 28867604/1000 = 28867.604, integer 28867? Wait, 1000*28867 = 28,867,000, remainder 604, so I=28867? But we need to check rounding: B*0.007 = 4123872 * 0.007 = 28867.104? Actually 4123872 * 7/1000 = 28867104/1000 = 28867.104, rounding: .104 < 0.5 => 28867. So I=28867. Our integer formula gave floor((28867104+500)/1000) = floor(28867604/1000)=28867. Yes. So I=28867. Then B = 4123872 + 28867 = 4152739, -45400 = 4107339. No extra in month 47. B=4107339.
+
+Month 48: B=4107339, rate 0.70%. I = (4107339*7+500)//1000 = 28751373+500=28751873, /1000 = 28751.873, integer 28751. Check: 4107339*0.007 = 28751.373? 4107339*7/1000 = 28751373/1000=28751.373, rounding .373 < 0.5 => 28751. So I=28751. Then B=4107339+28751=4136090, -45400=4090690. B=4090690.
+
+Month 49: extra payment 48900 cents. B=4090690. I = (4090690*7+500)//1000 = 28634830+500=28635330, /1000 = 28635.33, integer 28635. Check: 4090690*0.007 = 28634.83? 4090690*7/1000 = 28634830/1000=28634.83, rounding .83 > 0.5? 0.83 > 0.5 => 28635. So I=28635. Then B after interest: 4090690+28635=4119325. Subtract regular: 4119325-45400=4073925. Subtract extra 48900: 4073925-48900=4025025. So B=4025025.
+
+Month 50: B=4025025, rate 0.70%. I = (4025025*7+500)//1000 = 28175175+500=28175675, /1000 = 28175.675, integer 28175. Check: 4025025*0.007 = 28175.175? 4025025*7/1000 = 28175175/1000=28175.175, rounding .175 < 0.5 => 28175. So I=28175. Then B=4025025+28175=4053200, -45400=4007800. B=4007800.
+
+Month 51: B=4007800. I = (4007800*7+500)//1000 = 28054600+500=28055100, /1000=28055.1, integer 28055. Check: 4007800*0.007 = 28054.6? Actually 4007800*7/1000 = 28054600/1000=28054.6, rounding .6 > 0.5 => 28055. So I=28055. Then B=4007800+28055=4035855, -45400=3990455. B=3990455.
+
+Month 52: B=3990455. I = (3990455*7+500)//1000 = 27933185+500=27933685, /1000=27933.685, integer 27933. Check: 3990455*0.007 = 27933.185? 3990455*7/1000 = 27933185/1000=27933.185, rounding .185 < 0.5 => 27933. So I=27933. Then B=3990455+27933=4018388, -45400=3972988. B=3972988.
+
+Month 53: B=3972988. I = (3972988*7+500)//1000 = 27810916+500=27811416, /1000=27811.416, integer 27811. Check: 3972988*0.007 = 27810.916? 3972988*7/1000 = 27810916/1000=27810.916, rounding .916 > 0.5 => 27811. So I=27811. Then B=3972988+27811=4000799, -45400=3955399. B=3955399.
+
+Month 54: B=3955399. I = (3955399*7+500)//1000 = 27687793+500=27688293, /1000=27688.293, integer 27688. Check: 3955399*0.007 = 27687.793? 3955399*7/1000 = 27687793/1000=27687.793, rounding .793 > 0.5 => 27688. So I=27688. Then B=3955399+27688=3983087, -45400=3937687. B=3937687.
+
+Month 55: B=3937687. I = (3937687*7+500)//1000 = 27563809+500=27564309, /1000=27564.309, integer 27564. Check: 3937687*0.007 = 27563.809? 3937687*7/1000 = 27563809/1000=27563.809, rounding .809 > 0.5 => 27564. So I=27564. Then B=3937687+27564=3965251, -45400=3919851. B=3919851.
+
+Month 56: B=3919851. I = (3919851*7+500)//1000 = 27438957+500=27439457, /1000=27439.457, integer 27439. Check: 3919851*0.007 = 27438.957? 3919851*7/1000 = 27438957/1000=27438.957, rounding .957 > 0.5 => 27439. So I=27439. Then B=3919851+27439=3947290, -45400=3901890. B=3901890.
+
+Month 57: extra payment 203400 cents. B=3901890. I = (3901890*7+500)//1000 = 27313230+500=27313730, /1000=27313.73, integer 27313. Check: 3901890*0.007 = 27313.23? 3901890*7/1000 = 27313230/1000=27313.23, rounding .23 < 0.5 => 27313. So I=27313. Then B after interest: 3901890+27313=3929203. Subtract regular: 3929203-45400=3883803. Subtract extra 203400: 3883803-203400=3680403. So B=3680403.
+
+Month 58: B=3680403, rate 0.70%. I = (3680403*7+500)//1000 = 25762821+500=25763321, /1000=25763.321, integer 25763. Check: 3680403*0.007 = 25762.821? 3680403*7/1000 = 25762821/1000=25762.821, rounding .821 > 0.5 => 25763. So I=25763. Then B=3680403+25763=3706166, -45400=3660766. B=3660766.
+
+Month 59: B=3660766. I = (3660766*7+500)//1000 = 25625362+500=25625862, /1000=25625.862, integer 25625. Check: 3660766*0.007 = 25625.362? 3660766*7/1000 = 25625362/1000=25625.362, rounding .362 < 0.5 => 25625. So I=25625. Then B=3660766+25625=3686391, -45400=3640991. B=3640991.
+
+Month 60: B=3640991. I = (3640991*7+500)//1000 = 25486937+500=25487437, /1000=25487.437, integer 25487. Check: 3640991*0.007 = 25486.937? 3640991*7/1000 = 25486937/1000=25486.937, rounding .937 > 0.5 => 25487. So I=25487. Then B=3640991+25487=3666478, -45400=3621078. B=3621078.
+
+Month 61: B=3621078. I = (3621078*7+500)//1000 = 25347546+500=25348046, /1000=25348.046, integer 25348. Check: 3621078*0.007 = 25347.546? 3621078*7/1000 = 25347546/1000=25347.546, rounding .546 > 0.5 => 25348. So I=25348. Then B=3621078+25348=3646426, -45400=3601026. B=3601026.
+
+Month 62: extra payment 220300 cents. B=3601026. I = (3601026*7+500)//1000 = 25207182+500=25207682, /1000=25207.682, integer 25207. Check: 3601026*0.007 = 25207.182? 3601026*7/1000 = 25207182/1000=25207.182, rounding .182 < 0.5 => 25207. So I=25207. Then B after interest: 3601026+25207=3626233. Subtract regular: 3626233-45400=3580833. Subtract extra 220300: 3580833-220300=3360533. So B=3360533.
+
+Month 63: B=3360533, rate 0.70%. I = (3360533*7+500)//1000 = 23523731+500=23524231, /1000=23524.231, integer 23524. Check: 3360533*0.007 = 23523.731? 3360533*7/1000 = 23523731/1000=23523.731, rounding .731 > 0.5 => 23524. So I=23524. Then B=3360533+23524=3384057, -45400=3338657. B=3338657.
+
+Month 64: extra payment 86800 cents. B=3338657. I = (3338657*7+500)//1000 = 23370599+500=23371099, /1000=23371.099, integer 23371. Check: 3338657*0.007 = 23370.599? 3338657*7/1000 = 23370599/1000=23370.599, rounding .599 > 0.5 => 23371. So I=23371. Then B after interest: 3338657+23371=3362028. Subtract regular: 3362028-45400=3316628. Subtract extra 86800: 3316628-86800=3229828. So B=3229828.
+
+Month 65: B=3229828, rate 0.70%. I = (3229828*7+500)//1000 = 22608796+500=22609296, /1000=22609.296, integer 22609. Check: 3229828*0.007 = 22608.796? 3229828*7/1000 = 22608796/1000=22608.796, rounding .796 > 0.5 => 22609. So I=22609. Then B=3229828+22609=3252437, -45400=3207037. B=3207037.
+
+Month 66: extra payment 202200 cents. B=3207037. I = (3207037*7+500)//1000 = 22449259+500=22449759, /1000=22449.759, integer 22449. Check: 3207037*0.007 = 22449.259? 3207037*7/1000 = 22449259/1000=22449.259, rounding .259 < 0.5 => 22449. So I=22449. Then B after interest: 3207037+22449=3229486. Subtract regular: 3229486-45400=3184086. Subtract extra 202200: 3184086-202200=2981886. So B=2981886.
+
+Month 67: extra payment 168800 cents. B=2981886. I = (2981886*7+500)//1000 = 20873202+500=20873702, /1000=20873.702, integer 20873. Check: 2981886*0.007 = 20873.202? 2981886*7/1000 = 20873202/1000=20873.202, rounding .202 < 0.5 => 20873. So I=20873. Then B after interest: 2981886+20873=3002759. Subtract regular: 3002759-45400=2957359. Subtract extra 168800: 2957359-168800=2788559. So B=2788559.
+
+Month 68: B=2788559, rate 0.70%. I = (2788559*7+500)//1000 = 19519913+500=19520413, /1000=19520.413, integer 19520. Check: 2788559*0.007 = 19519.913? 2788559*7/1000 = 19519913/1000=19519.913, rounding .913 > 0.5 => 19520. So I=19520. Then B=2788559+19520=2808079, -45400=2762679. B=2762679.
+
+Month 69: B=2762679. I = (2762679*7+500)//1000 = 19338753+500=19339253, /1000=19339.253, integer 19339. Check: 2762679*0.007 = 19338.753? 2762679*7/1000 = 19338753/1000=19338.753, rounding .753 > 0.5 => 19339. So I=19339. Then B=2762679+19339=2782018, -45400=2736618. B=2736618.
+
+Month 70: B=2736618. I = (2736618*7+500)//1000 = 19156326+500=19156826, /1000=19156.826, integer 19156. Check: 2736618*0.007 = 19156.326? 2736618*7/1000 = 19156326/1000=19156.326, rounding .326 < 0.5 => 19156. So I=19156. Then B=2736618+19156=2755774, -45400=2710374. B=2710374.
+
+Month 71: B=2710374. I = (2710374*7+500)//1000 = 18972618+500=18973118, /1000=18973.118, integer 18973. Check: 2710374*0.007 = 18972.618? 2710374*7/1000 = 18972618/1000=18972.618, rounding .618 > 0.5 => 18973. So I=18973. Then B=2710374+18973=2729347, -45400=2683947. B=2683947.
+
+Month 72: B=2683947. I = (2683947*7+500)//1000 = 18787629+500=18788129, /1000=18788.129, integer 18788. Check: 2683947*0.007 = 18787.629? 2683947*7/1000 = 18787629/1000=18787.629, rounding .629 > 0.5 => 18788. So I=18788. Then B=2683947+18788=2702735, -45400=2657335. B=2657335.
+
+Month 73: B=2657335, rate 0.70% (last month of this rate, since month 74 changes). I = (2657335*7+500)//1000 = 18601345+500=18601845, /1000=18601.845, integer 18601. Check: 2657335*0.007 = 18601.345? 2657335*7/1000 = 18601345/1000=18601.345, rounding .345 < 0.5 => 18601. So I=18601. Then B=2657335+18601=2675936, -45400=2630536. B=2630536.
+
+Month 74: rate changes to 0.60% = 0.0060 = 3/500. So interest formula: I = (B * 3 + 250) // 500. B=2630536. Compute B*3 = 7891608. Add 250 => 7891858. //500 = 500*15783 = 7,891,500? Actually 500*15783 = 7,891,500. Our number 7,891,858, remainder 358, so quotient = 15783? 7891858/500 = 15783.716, integer 15783. So I=15783. Check: 2630536*0.006 = 15783.216? 2630536*6/1000 = 15783216/1000 = 15783.216, rounding .216 < 0.5 => 15783. So I=15783. Then B = 2630536+15783=2646319, -45400=2600919. No extra in month 74. B=2600919.
+
+Month 75: rate changes to 0.55% = 0.0055 = 11/2000. So interest formula: I = (B * 11 + 1000) // 2000. B=2600919. B*11 = 2600919 * 11 = 26009190 + 2600919? Actually 2600919*10=26009190, plus 2600919 = 28610109. Add 1000 => 28611109. //2000 = 2000*14305 = 28,610,000? Let's compute: 2000*14305 = 28,610,000. Our number 28,611,109, remainder 1,109, so quotient = 14305? Actually 28,611,109/2000 = 14305.5545, integer 14305. So I=14305? Check: 2600919*0.0055 = 2600919*55/10000 = (2600919*55)/10000. 2600919*50=130045950, +2600919*5=13004595, total = 143050545. /10000 = 14305.0545, rounding .0545 < 0.5 => 14305. So I=14305. Then B=2600919+14305=2615224, -45400=2569824. B=2569824.
+
+Month 76: B=2569824, rate 0.55%. I = (2569824*11+1000)//2000 = 28268064+1000=28269064? Actually 2569824*11 = 25698240+2569824=28268064. +1000=28269064. /2000 = 14134.532, integer 14134. Check: 2569824*0.0055 = 14134.032? 2569824*55/10000 = (141340320)/10000 = 14134.032, rounding .032 < 0.5 => 14134. So I=14134. Then B=2569824+14134=2583958, -45400=2538558. B=2538558.
+
+Month 77: B=2538558. I = (2538558*11+1000)//2000 = 27924138+1000=27925138, /2000=13962.569, integer 13962. Check: 2538558*0.0055 = 13962.069? 2538558*55/10000 = 139620690/10000=13962.069, rounding .069 < 0.5 => 13962. So I=13962. Then B=2538558+13962=2552520, -45400=2507120. B=2507120.
+
+Month 78: B=2507120. I = (2507120*11+1000)//2000 = 27578320+1000=27579320, /2000=13789.66, integer 13789? Actually 27579320/2000 = 13789.66, integer 13789. Check: 2507120*0.0055 = 13789.16? 2507120*55/10000 = 137891600/10000=13789.16, rounding .16 < 0.5 => 13789. So I=13789. Then B=2507120+13789=2520909, -45400=2475509. B=2475509.
+
+Month 79: B=2475509. I = (2475509*11+1000)//2000 = 27230599+1000=27231599, /2000=13615.7995, integer 13615. Check: 2475509*0.0055 = 13615.2995? 2475509*55/10000 = 136152995/10000=13615.2995, rounding .2995 < 0.5 => 13615. So I=13615. Then B=2475509+13615=2489124, -45400=2443724. B=2443724.
+
+Month 80: B=2443724. I = (2443724*11+1000)//2000 = 26880964+1000=26881964, /2000=13440.982, integer 13440? Actually 26881964/2000 = 13440.982, integer 13440. Check: 2443724*0.0055 = 13440.482? 2443724*55/10000 = 134404820/10000=13440.482, rounding .482 < 0.5 => 13440. So I=13440. Then B=2443724+13440=2457164, -45400=2411764. B=2411764.
+
+Month 81: B=2411764. I = (2411764*11+1000)//2000 = 26529404+1000=26530404, /2000=13265.202, integer 13265. Check: 2411764*0.0055 = 13264.702? 2411764*55/10000 = 132647020/10000=13264.702, rounding .702 > 0.5 => 13265. So I=13265. Then B=2411764+13265=2425029, -45400=2379629. B=2379629.
+
+Month 82: B=2379629. I = (2379629*11+1000)//2000 = 26175919+1000=26176919, /2000=13088.4595, integer 13088. Check: 2379629*0.0055 = 13087.9595? 2379629*55/10000 = 130879595/10000=13087.9595, rounding .9595 > 0.5 => 13088. So I=13088. Then B=2379629+13088=2392717, -45400=2347317. B=2347317.
+
+Month 83: B=2347317. I = (2347317*11+1000)//2000 = 25820487+1000=25821487, /2000=12910.7435, integer 12910. Check: 2347317*0.0055 = 12910.2435? 2347317*55/10000 = 129102435/10000=12910.2435, rounding .2435 < 0.5 => 12910. So I=12910. Then B=2347317+12910=2360227, -45400=2314827. B=2314827.
+
+Month 84: B=2314827. I = (2314827*11+1000)//2000 = 25463097+1000=25464097, /2000=12732.0485, integer 12732. Check: 2314827*0.0055 = 12731.5485? 2314827*55/10000 = 127315485/10000=12731.5485, rounding .5485 > 0.5 => 12732. So I=12732. Then B=2314827+12732=2327559, -45400=2282159. B=2282159.
+
+Month 85: B=2282159. I = (2282159*11+1000)//2000 = 25103749+1000=25104749, /2000=12552.3745, integer 12552. Check: 2282159*0.0055 = 12551.8745? 2282159*55/10000 = 125518745/10000=12551.8745, rounding .8745 > 0.5 => 12552. So I=12552. Then B=2282159+12552=2294711, -45400=2249311. B=2249311.
+
+Month 86: B=2249311. I = (2249311*11+1000)//2000 = 24742421+1000=24743421, /2000=12371.7105, integer 12371. Check: 2249311*0.0055 = 12371.2105? 2249311*55/10000 = 123712105/10000=12371.2105, rounding .2105 < 0.5 => 12371. So I=12371. Then B=2249311+12371=2261682, -45400=2216282. B=2216282.
+
+Month 87: B=2216282. I = (2216282*11+1000)//2000 = 24379102+1000=24380102, /2000=12190.051, integer 12190. Check: 2216282*0.0055 = 12189.551? 2216282*55/10000 = 121895510/10000=12189.551, rounding .551 > 0.5 => 12190. So I=12190. Then B=2216282+12190=2228472, -45400=2183072. B=2183072.
+
+Month 88: B=2183072. I = (2183072*11+1000)//2000 = 24013792+1000=24014792, /2000=12007.396, integer 12007. Check: 2183072*0.0055 = 12006.896? 2183072*55/10000 = 120068960/10000=12006.896, rounding .896 > 0.5 => 12007. So I=12007. Then B=2183072+12007=2195079, -45400=2149679. B=2149679.
+
+Month 89: B=2149679. I = (2149679*11+1000)//2000 = 23646469+1000=23647469, /2000=11823.7345, integer 11823. Check: 2149679*0.0055 = 11823.2345? 2149679*55/10000 = 118232345/10000=11823.2345, rounding .2345 < 0.5 => 11823. So I=11823. Then B=2149679+11823=2161502, -45400=2116102. B=2116102.
+
+Month 90: B=2116102. I = (2116102*11+1000)//2000 = 23277122+1000=23278122, /2000=11639.061, integer 11639. Check: 2116102*0.0055 = 11638.561? 2116102*55/10000 = 116385610/10000=11638.561, rounding .561 > 0.5 => 11639. So I=11639. Then B=2116102+11639=2127741, -45400=2082341. B=2082341.
+
+Month 91: B=2082341. I = (2082341*11+1000)//2000 = 22905751+1000=22906751, /2000=11453.3755, integer 11453. Check: 2082341*0.0055 = 11452.8755? 2082341*55/10000 = 114528755/10000=11452.8755, rounding .8755 > 0.5 => 11453. So I=11453. Then B=2082341+11453=2093794, -45400=2048394. B=2048394.
+
+Month 92: B=2048394. I = (2048394*11+1000)//2000 = 22532334+1000=22533334, /2000=11266.667, integer 11266? Actually 22533334/2000 = 11266.667, integer 11266. Check: 2048394*0.0055 = 11266.167? 2048394*55/10000 = 112661670/10000=11266.167, rounding .167 < 0.5 => 11266. So I=11266. Then B=2048394+11266=2059660, -45400=2014260. B=2014260.
+
+Month 93: B=2014260. I = (2014260*11+1000)//2000 = 22156860+1000=22157860, /2000=11078.93, integer 11078. Check: 2014260*0.0055 = 11078.43? 2014260*55/10000 = 110784300/10000=11078.43, rounding .43 < 0.5 => 11078. So I=11078. Then B=2014260+11078=2025338, -45400=1979938. B=1979938.
+
+Month 94: B=1979938. I = (1979938*11+1000)//2000 = 21779318+1000=21780318, /2000=10890.159, integer 10890. Check: 1979938*0.0055 = 10889.659? 1979938*55/10000 = 108896590/10000=10889.659, rounding .659 > 0.5 => 10890. So I=10890. Then B=1979938+10890=1990828, -45400=1945428. B=1945428.
+
+Month 95: B=1945428. I = (1945428*11+1000)//2000 = 21399708+1000=21400708, /2000=10700.354, integer 10700. Check: 1945428*0.0055 = 10699.854? 1945428*55/10000 = 106998540/10000=10699.854, rounding .854 > 0.5 => 10700. So I=10700. Then B=1945428+10700=1956128, -45400=1910728. B=1910728.
+
+Month 96: B=1910728. I = (1910728*11+1000)//2000 = 21018008+1000=21019008, /2000=10509.504, integer 10509. Check: 1910728*0.0055 = 10509.004? 1910728*55/10000 = 105090040/10000=10509.004, rounding .004 < 0.5 => 10509. So I=10509. Then B=1910728+10509=1921237, -45400=1875837. B=1875837.
+
+Month 97: extra payment 178600 cents. B=1875837. I = (1875837*11+1000)//2000 = 20634207+1000=20635207, /2000=10317.6035, integer 10317? Actually 20635207/2000 = 10317.6035, integer 10317. Check: 1875837*0.0055 = 10317.1035? 1875837*55/10000 = 103171035/10000=10317.1035, rounding .1035 < 0.5 => 10317. So I=10317. Then B after interest: 1875837+10317=1886154. Subtract regular: 1886154-45400=1840754. Subtract extra 178600: 1840754-178600=1662154. So B=1662154.
+
+Now months 98 to 108: no more extra payments, and rate remains at 0.55% (since last change was at month 75 to 0.55%, no further changes). So we need to simulate months 98 through 108 inclusive, with no extra payments, same rate. That's 11 months (98,99,100,101,102,103,104,105,106,107,108). We'll compute step by step.
+
+Month 98: B=1662154, rate 0.55%. I = (B*11+1000)//2000. B*11 = 1662154*11 = 16621540+1662154=18283694. +1000=18284694. /2000 = 9142.347? Actually 18284694/2000 = 9142.347, integer 9142. Check: 1662154*0.0055 = 9141.847? 1662154*55/10000 = (91418470)/10000 = 9141.847, rounding .847 > 0.5 => 9142. So I=9142. Then B=1662154+9142=1671296, -45400=1625896. B=1625896.
+
+Month 99: B=1625896. I = (1625896*11+1000)//2000 = 17884856+1000=17885856, /2000=8942.928, integer 8942. Check: 1625896*0.0055 = 8942.428? 1625896*55/10000 = 89424280/10000=8942.428, rounding .428 < 0.5 => 8942. So I=8942. Then B=1625896+8942=1634838, -45400=1589438. B=1589438.
+
+Month 100: B=1589438. I = (1589438*11+1000)//2000 = 17483818+1000=17484818, /2000=8742.409, integer 8742. Check: 1589438*0.0055 = 8741.909? 1589438*55/10000 = 87419090/10000=8741.909, rounding .909 > 0.5 => 8742. So I=8742. Then B=1589438+8742=1598180, -45400=1552780. B=1552780.
+
+Month 101: B=1552780. I = (1552780*11+1000)//2000 = 17080580+1000=17081580, /2000=8540.79, integer 8540. Check: 1552780*0.0055 = 8540.29? 1552780*55/10000 = 85402900/10000=8540.29, rounding .29 < 0.5 => 8540. So I=8540. Then B=1552780+8540=1561320, -45400=1515920. B=1515920.
+
+Month 102: B=1515920. I = (1515920*11+1000)//2000 = 16675120+1000=16676120, /2000=8338.06, integer 8338. Check: 1515920*0.0055 = 8337.56? 1515920*55/10000 = 83375600/10000=8337.56, rounding .56 > 0.5? Actually .56 > 0.5, so round up to 8338. So I=8338. Then B=1515920+8338=1524258, -45400=1478858. B=1478858.
+
+Month 103: B=1478858. I = (1478858*11+1000)//2000 = 16267438+1000=16268438, /2000=8134.219, integer 8134. Check: 1478858*0.0055 = 8133.719? 1478858*55/10000 = 81337190/10000=8133.719, rounding .719 > 0.5 => 8134. So I=8134. Then B=1478858+8134=1486992, -45400=1441592. B=1441592.
+
+Month 104: B=1441592. I = (1441592*11+1000)//2000 = 15857512+1000=15858512, /2000=7929.256, integer 7929. Check: 1441592*0.0055 = 7928.756? 1441592*55/10000 = 79287560/10000=7928.756, rounding .756 > 0.5 => 7929. So I=7929. Then B=1441592+7929=1449521, -45400=1404121. B=1404121.
+
+Month 105: B=1404121. I = (1404121*11+1000)//2000 = 15445331+1000=15446331, /2000=7723.1655, integer 7723. Check: 1404121*0.0055 = 7722.6655? 1404121*55/10000 = 77226655/10000=7722.6655, rounding .6655 > 0.5 => 7723. So I=7723. Then B=1404121+7723=1411844, -45400=1366444. B=1366444.
+
+Month 106: B=1366444. I = (1366444*11+1000)//2000 = 15030884+1000=15031884, /2000=7515.942, integer 7515. Check: 1366444*0.0055 = 7515.442? 1366444*55/10000 = 75154420/10000=7515.442, rounding .442 < 0.5 => 7515. So I=7515. Then B=1366444+7515=1373959, -45400=1328559. B=1328559.
+
+Month 107: B=1328559. I = (1328559*11+1000)//2000 = 14614149+1000=14615149, /2000=7307.5745, integer 7307. Check: 1328559*0.0055 = 7307.0745? 1328559*55/10000 = 73070745/10000=7307.0745, rounding .0745 < 0.5 => 7307. So I=7307. Then B=1328559+7307=1335866, -45400=1290466. B=1290466.
+
+Month 108: B=1290466. I = (1290466*11+1000)//2000 = 14195126+1000=14196126, /2000=7098.063, integer 7098. Check: 1290466*0.0055 = 7097.563? 1290466*55/10000 = 70975630/10000=7097.563, rounding .563 > 0.5 => 7098. So I=7098. Then B=1290466+7098=1297564, -45400=1252164. No extra. So final balance after month 108 = 1252164 cents.
+
+Convert to dollars: 1252164 cents = $12521.64. So answer should be 12521.64.
+
+Double-check: We need to ensure rounding was correct throughout. Let's do a quick sanity check: The initial balance was $54048.10, many extra payments total sum? Sum of extra payments: 725.11+2499.00+1279.74+2431.00+405.00+276.00+489.00+2034.00+2203.00+868.00+2022.00+1688.00+1786.00 = let's sum: 725.11+2499=3224.11; +1279.74=4503.85; +2431=6934.85; +405=7339.85; +276=7615.85; +489=8104.85; +2034=10138.85; +2203=12341.85; +868=13209.85; +2022=15231.85; +1688=16919.85; +1786=18705.85. So total extra payments $18,705.85. Regular payments: 108 * $454 = $49,032. So total payments = $49,032 + $18,705.85 = $67,737.85. But interest also accumulates. The initial balance $54,048.10, after subtracting total payments $67,737.85, we get a negative $13,689.75, but there is interest added, so final balance should be positive? Actually we paid more than the principal, but interest adds. The final balance is $12,521.64, which means total interest over the period is roughly $12,521.64 + $67,737.85 - $54,048.10 = $26,211.39? Something like that. That seems plausible.
+
+Thus answer: 12521.64.
+
+We should verify some calculations, especially the rounding at critical points. Since we did integer arithmetic with rounding, it should be accurate. But we should double-check a couple of months to ensure no arithmetic errors.
+
+Let's spot-check month 97: B=1875837, interest = (1875837*11+1000)//2000 = (20634207+1000)=20635207, /2000 = 10317.6035, floor 10317, correct. Then B after interest = 1886154, after payment = 1840754, after extra = 1662154. That seems plausible.
+
+Month 98: B=1662154, interest: 1662154*11=18283694, +1000=18284694, /2000=9142.347, floor 9142, addition 1671296, minus 45400 = 1625896. Good.
+
+Month 108: B=1290466, interest: 1290466*11=14195126, +1000=14196126, /2000=7098.063, floor 7098, B after interest=1297564, minus 45400=1252164. So final 1252164 cents = $12521.64.
+
+Thus answer is 12521.64.
+
+We need output exactly as "ANSWER: 12521.64". Ensure two decimals.
+
+So final.

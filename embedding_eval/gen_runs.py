@@ -27,6 +27,7 @@ import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from fractions import Fraction
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -47,25 +48,49 @@ PROVIDERS = {
 }
 
 
-# extract/grade — unchanged from scripts/run.py
-def extract(text):
+# extract — as in scripts/run.py; fallback=True (ladder runs) also accepts a bare last line when there is
+# neither an ANSWER line nor \boxed (the model sometimes replies with just the answer)
+def extract(text, fallback=False):
     m = re.findall(r"^\s*\**ANSWER\**\s*:\s*(.+?)\s*$", text, re.I | re.M)
     if m:
         return m[-1].strip("`* ")
     i = text.rfind("\\boxed{")
-    return text[i + 7:text.find("}", i)] if i >= 0 else None
+    if i >= 0:
+        return text[i + 7:text.find("}", i)]
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
+    return lines[-1].strip("`* ") if fallback and lines else None
+
+
+def parse_num(s, thousands=True):
+    """First number in s (after the last '=', so 'x_1 = 3/2' gives 3/2) as an exact Fraction; accepts a/b,
+    \\frac{a}{b}, unicode minus. None if there is none."""
+    s = s.rsplit("=", 1)[-1].replace("−", "-").replace("$", "").replace("\\!", "")
+    s = re.sub(r"(-?)\\[dt]?frac\{\s*(-?\d+)\s*\}\{\s*(\d+)\s*\}", r"\1\2/\3", s).replace("--", "")
+    digits = r"\d[\d,]*" if thousands else r"\d+"
+    m = re.search(rf"-?{digits}\.?\d*(?:[eE][-+]?\d+)?(?:\s*/\s*\d+)?", s)
+    if not m:
+        return None
+    try:
+        return Fraction(re.sub(r"[\s,]", "", m[0]))
+    except (ValueError, ZeroDivisionError):
+        return None
 
 
 def grade(item, got):
+    """Old check types behave as in scripts/run.py; added: fractions in "num", optional rel_tol/abs_tol for "list"
+    and abs_tol for "num" (a value passes if it is within either tolerance)."""
     if got is None:
         return False
     norm = lambda s: re.sub(r"\s+", "", s).lower().strip("$.")
-    kind, ref = item["check"]["type"], item["answer"]
+    kind, ref, tol, atol = item["check"]["type"], item["answer"], item["check"].get("rel_tol"), item["check"].get("abs_tol")
+    close = lambda g, r: g is not None and abs(g - r) <= max(Fraction(tol or 0) * abs(r), Fraction(atol or 0))
     if kind == "list":
-        return [norm(x) for x in got.strip("[]").split(",")] == [norm(x) for x in ref.split(",")]
+        g, r = got.strip("[]() ").split(","), ref.split(",")
+        if tol is None and atol is None:
+            return [norm(x) for x in g] == [norm(x) for x in r]
+        return len(g) == len(r) and all(close(parse_num(a, False), parse_num(b, False)) for a, b in zip(g, r))
     if kind == "num":
-        m = re.search(r"-?\d[\d,]*\.?\d*(?:[eE]-?\d+)?", got.replace("$", ""))
-        return bool(m) and abs(float(m[0].replace(",", "")) - float(ref)) <= item["check"]["rel_tol"] * abs(float(ref))
+        return close(parse_num(got), parse_num(ref))
     return norm(got) == norm(ref)
 
 
@@ -126,7 +151,7 @@ def get_key(prov):
 
 def call(client, args, prov, item, run_id, stem, budget):
     """One streaming request. Returns the .json record (and writes files). None if the budget did not allow it."""
-    worst = args.max_tokens * prov["price_out"] + 4000 * prov["price_in"]
+    worst = args.max_tokens * prov["price_out"] + max(4000, 2 * len(item["prompt"])) * prov["price_in"]
     if not budget.reserve(worst):
         return None
     seed = seed_for(run_id, item["id"])
@@ -179,7 +204,9 @@ def call(client, args, prov, item, run_id, stem, budget):
            "reasoning_field": reasoning_field, "delta_extra_fields": sorted(delta_fields),
            "reasoning_tokens": rtok_api, "reasoning_tokens_counted": count_tokens(reasoning_text),
            "completion_tokens": usage.get("completion_tokens"), "cost": round(cost, 6), "currency": prov["currency"],
-           "error": err, "extracted": extract(response), "response": response}
+           "error": err, "answer": item["answer"], "gen": item.get("gen"), "answer_fallback": args.answer_fallback,
+           "extracted": extract(response, args.answer_fallback),
+           "response": response}
     rec["correct"] = grade(item, rec["extracted"])
     budget.settle(worst, {"id": item["id"], "run_id": run_id, "in": in_tok, "out": out_tok, "cost": cost,
                           "currency": prov["currency"], "estimated": usage_estimated, "ok": finish == "stop", "t": time.time()})
@@ -202,6 +229,11 @@ def main():
     ap.add_argument("--probe", metavar="TASK_ID", help="a single probe request (runs/<model>/probe/)")
     ap.add_argument("--models-info", action="store_true", help="GET /models: model metadata")
     ap.add_argument("--set", action="append", default=None)
+    ap.add_argument("--items", action="append", default=None, help="task jsonl file(s) instead of bench/<set>.jsonl")
+    ap.add_argument("--out", help="output folder (default runs/<model>)")
+    ap.add_argument("--ledger", help="spend log (default <out>/spend.jsonl)")
+    ap.add_argument("--read-timeout", type=float, default=300, help="seconds without stream data before failing")
+    ap.add_argument("--answer-fallback", action="store_true", help="no ANSWER line and no \\boxed: take the last line")
     ap.add_argument("--effort", default="high", help="reasoning_effort ('' — do not send)")
     ap.add_argument("--extra-body", default="", help="extra JSON for extra_body")
     ap.add_argument("--temperature", type=float)
@@ -220,7 +252,10 @@ def main():
         sys.exit(f"no key: env {prov['key_env']}, Keychain service '{prov['keychain']}' or embedding_eval/{prov['key_file']}")
 
     from openai import OpenAI
-    client = OpenAI(api_key=key, base_url=args.base_url, timeout=3600, max_retries=0) if key else None
+    import httpx
+    # read timeout: a stream that sends nothing for this long (network drop) fails and is redone on the next launch
+    client = OpenAI(api_key=key, base_url=args.base_url, timeout=httpx.Timeout(3600, read=args.read_timeout),
+                    max_retries=0) if key else None
 
     if args.models_info:
         import urllib.request
@@ -231,15 +266,15 @@ def main():
         print(json.dumps(hit or items, ensure_ascii=False, indent=1)[:6000])
         return
 
-    out = HERE / "runs" / args.model.split("/")[-1].lower()
+    out = Path(args.out).resolve() if args.out else HERE / "runs" / args.model.split("/")[-1].lower()
     assert not any(d.resolve() in out.resolve().parents for d in (DATA / "bench", DATA / "results")), \
         "writing to the source dataset (bench/, results/) is forbidden"
     out.mkdir(parents=True, exist_ok=True)
     if args.temperature is None or args.budget is None:
         sys.exit("--temperature and --budget are required")
-    budget = Budget(args.budget, out / "spend.jsonl", prov["currency"])
-    items = {json.loads(l)["id"]: json.loads(l) for s in (args.set or ["set_3", "set_4"])
-             for l in open(DATA / "bench" / f"{s}.jsonl") if l.strip()}
+    budget = Budget(args.budget, Path(args.ledger) if args.ledger else out / "spend.jsonl", prov["currency"])
+    files = args.items or [DATA / "bench" / f"{s}.jsonl" for s in (args.set or ["set_3", "set_4"])]
+    items = {json.loads(l)["id"]: json.loads(l) for f in files for l in open(f) if l.strip()}
     cur = prov["currency"]
 
     if args.probe:

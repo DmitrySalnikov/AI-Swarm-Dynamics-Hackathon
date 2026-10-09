@@ -1,0 +1,371 @@
+We are given a melody of 49 notes, starting on G4 tuned to 392 Hz. For each subsequent note, we apply the just-intonation ratio based on the interval in semitones between the current note and the next note. The ratio is multiplied if going up in pitch (i.e., the next note is higher), divided if going down, and kept the same if repeated (0 semitones ratio 1/1). The intervals are measured in semitones as per standard chromatic scale: within an octave, C-D, D-E, F-G, G-A, A-B are 2 semitones, and E-F, B-C are 1 semitone. Octave number increases from B to C. So we need to compute the frequency of the last note, starting from G4=392 Hz, by applying successive ratio multiplications or divisions depending on the direction of each interval.
+
+We are given the sequence of notes: G4 F4 D4 G4 C5 C4 G4 B4 D5 G4 E4 C4 G4 A4 D5 E5 G5 F5 E5 B4 A4 E4 E5 B4 A4 E4 C4 B3 F4 A4 F4 C5 A4 D5 G4 D4 D5 E5 F5 G5 F5 G5 E5 B4 A4 C5 D5 G4 B4
+
+We need to compute the exact frequency of the last note, which is B4.
+
+Important: The intervals are measured in semitones, and we need to determine the direction (up or down) based on the note names and octave numbers. The ratio to apply is based on the absolute number of semitones difference, regardless of direction? But the problem says: "multiply by the ratio when the melody goes up, divide when it goes down". So if the next note is higher than the current, we multiply the current frequency by the ratio corresponding to the interval (in semitones). If lower, we divide by that ratio (i.e., multiply by the reciprocal). For a repeated note, multiply by 1.
+
+Thus we need to compute the product of all ratios (or reciprocals) from the first note to the last, starting at 392 Hz.
+
+We have 49 notes; there will be 48 intervals. But it's easier to compute the cumulative factor from start to end.
+
+We need to parse the notes. The notes are given as e.g., G4, F4, D4, etc. The octave number is given: C4 is middle C. So we need to know the pitch classes and octaves to determine the semitone intervals.
+
+We can treat each note as a combination of pitch class (C, C#, D, D#, E, F, F#, G, G#, A, A#, B) and octave number. Since the melody only uses natural notes? Let's list all notes in sequence:
+
+1: G4
+2: F4
+3: D4
+4: G4
+5: C5
+6: C4
+7: G4
+8: B4
+9: D5
+10: G4
+11: E4
+12: C4
+13: G4
+14: A4
+15: D5
+16: E5
+17: G5
+18: F5
+19: E5
+20: B4
+21: A4
+22: E4
+23: E5
+24: B4
+25: A4
+26: E4
+27: C4
+28: B3
+29: F4
+30: A4
+31: F4
+32: C5
+33: A4
+34: D5
+35: G4
+36: D4
+37: D5
+38: E5
+39: F5
+40: G5
+41: F5
+42: G5
+43: E5
+44: B4
+45: A4
+46: C5
+47: D5
+48: G4
+49: B4
+
+So last note is B4.
+
+We need to compute intervals between consecutive notes. For each pair (note_i, note_{i+1}), we need to determine the number of semitones difference, and whether it's up or down.
+
+First, we need a mapping from note name to semitone offset within an octave relative to C. Typically, we can assign numbers: C=0, C#=1, D=2, D#=3, E=4, F=5, F#=6, G=7, G#=8, A=9, A#=10, B=11. Then the octave number indicates which octave: C4 is middle C, so its MIDI note number is 60? But we don't need absolute pitches, just relative intervals. So we can compute the "pitch class number" and octave, then compute a "chromatic index" = octave * 12 + semitone number. Then the difference in semitones is index2 - index1. Positive means up, negative means down. The absolute value of the difference gives the interval in semitones (mod 12? Actually if the difference is more than 12, it might cross octaves, but the given ratios are only for intervals within an octave? The problem says "Intervals are measured in semitones (C4 = middle C; within an octave C–D, D–E, F–G, G–A, A–B are 2 semitones and E–F, B–C are 1 semitone; the octave number increases from B to C). Use exactly these ratios: ..." It lists ratios for 0 to 12 semitones. For intervals larger than an octave, we can break them into octave plus remainder? Actually if the interval is say 14 semitones, that's an octave plus 2 semitones. The ratio for 2 semitones is 9/8, and for an octave it's 2/1. So the combined ratio would be (9/8)*(2/1)=9/4. But the problem says "multiply by the ratio when the melody goes up, divide when it goes down". It doesn't explicitly say that we should use the ratio for the exact number of semitones difference, even if >12. The table includes 12 semitones: 2/1. So we can directly use the absolute difference in semitones, which may be more than 12, by using the ratio for that number? But the table only goes up to 12. So we need to interpret intervals larger than an octave as the corresponding ratio for the interval modulo octave? Actually, in just intonation, intervals are often expressed within an octave, and larger intervals are compounded by multiplying octaves. But the problem gives ratios for exactly 0-12 semitones. It says "Use exactly these ratios:" and lists 0 through 12. So it implies that if the interval is, say, 14 semitones, we would use the ratio for 2 semitones (since 14 = 12+2) multiplied by the ratio for 12? But we need to be careful: The problem says "Every next note is tuned relative to the note immediately before it, using the just-intonation ratio of the interval between them: multiply by the ratio when the melody goes up, divide when it goes down." So the interval between them is measured in semitones. If the interval is larger than 12 semitones, it might be that the ratio is the product of the ratio for the octave(s) and the remaining interval. But since the table includes 12 semitones as 2/1, we can treat intervals greater than 12 by decomposing into multiples of 12 and a remainder. However, it's simpler: the "interval in semitones" is just the difference in semitones. We can compute the exact number of semitones difference. Then we need to map that to a ratio. But the table only gives ratios for 0-12 semitones. For intervals beyond, we can consider that the ratio for n semitones (n>12) is (2^(floor(n/12))) * (ratio for n mod 12). But is that consistent with just intonation? The ratios given are specific just intervals: for 1 semitone 16/15, 2:9/8, 3:6/5, 4:5/4, 5:4/3, 6:45/32, 7:3/2, 8:8/5, 9:5/3, 10:16/9, 11:15/8, 12:2/1. For any interval, you can combine these by adding semitones: e.g., an octave + a fifth (12+7=19 semitones) would be 2/1 * 3/2 = 3/1. So the ratio for n semitones is the product of the ratios for each octave and the remainder. Since the ratios are for intervals within an octave, this is standard. So we can treat the absolute semitone difference d = |interval|. Then the ratio = (2)^{floor(d/12)} * (ratio for d mod 12). But careful: The ratio for d mod 12 is given; if d mod 12 = 0, then ratio = 2^{d/12}. However, we also need to consider that the interval may be larger than 12, and we might have to multiply by 2 multiple times. That's fine.
+
+But we can also compute using the chromatic indices directly and apply the ratio accordingly. However, there's a nuance: The ratios are just-intonation ratios, not equal temperament. So the product of ratios for two intervals may not be exactly the same as the ratio for the sum interval if we use these specific ratios? Actually, in just intonation, the ratio for a compound interval is the product of the ratios for the constituent intervals, because the ratios are multiplicative. So if we have an interval of 14 semitones, it's an octave (12 semitones) plus a major second (2 semitones). The ratio for an octave is 2/1, and for a major second is 9/8. So the ratio for 14 semitones is (2/1)*(9/8)=9/4. That is consistent because in just intonation, stacking intervals yields the product. So indeed we can compute the total ratio as the product of ratios for each semitone step? But we are given the ratio for each interval directly, so we can compute the ratio for the exact number of semitones by using the given table and multiplying by powers of 2 for octaves. So we need to compute the absolute semitone difference d (nonnegative integer). Then the ratio to apply (if going up) is (2^{floor(d/12)}) * r_{d mod 12}, where r_0 = 1, r_1=16/15, ..., r_12=2/1. For d mod 12 = 0, r_0 = 1, so the ratio is 2^{d/12}. For d=12, that gives 2^1 * 1 = 2, which matches. For d=24, that gives 2^2 * 1 = 4, etc.
+
+Alternatively, we can compute the cumulative change by considering each note's "just frequency" relative to a starting point, but we must be careful because the tuning of each note is relative to the previous one, not absolute. Since we are multiplying ratios, we can compute the total factor from start to end as the product of ratios (or reciprocals) for each interval. That factor will be rational. Then multiply by 392 Hz.
+
+Thus we need to compute the product of 48 factors, each either r_d or 1/r_d depending on direction.
+
+We should compute the sequence of intervals precisely.
+
+Let's list the notes with their chromatic indices. We'll assign numbers: Let C = 0, C#=1, D=2, D#=3, E=4, F=5, F#=6, G=7, G#=8, A=9, A#=10, B=11. Then the octave number: for note Xn, the index = n * 12 + semitone. But careful: Middle C is C4, so C4 = 4*12 + 0 = 48. Actually standard MIDI: C4 = 60, but that's off by 12. But we can define arbitrary offset. Since we only care about differences, we can use any consistent offset. Let's set C0=0? But it's easier: Let note index = octave*12 + semitone value, with C4 = 4*12 + 0 = 48, then G4 = 4*12 + 7 = 55, etc. That gives numbers that are comparable. The interval in semitones = index2 - index1.
+
+We'll compute indices for each note:
+
+- G4: octave 4, semitone G=7 => 4*12+7 = 48+7=55.
+- F4: octave 4, semitone F=5 => 48+5=53.
+- D4: octave 4, semitone D=2 => 48+2=50.
+- G4: 55 (again)
+- C5: octave 5, C=0 => 5*12+0=60.
+- C4: octave 4, C=0 => 48.
+- G4: 55.
+- B4: octave 4, B=11 => 48+11=59.
+- D5: octave 5, D=2 => 60+2=62? Wait 5*12=60, +2=62.
+- G4: 55.
+- E4: octave 4, E=4 => 52.
+- C4: 48.
+- G4: 55.
+- A4: octave 4, A=9 => 57.
+- D5: 62.
+- E5: octave 5, E=4 => 60+4=64.
+- G5: octave 5, G=7 => 60+7=67.
+- F5: octave 5, F=5 => 60+5=65.
+- E5: 64.
+- B4: 59.
+- A4: 57.
+- E4: 52.
+- E5: 64.
+- B4: 59.
+- A4: 57.
+- E4: 52.
+- C4: 48.
+- B3: octave 3, B=11 => 3*12+11=36+11=47.
+- F4: 53.
+- A4: 57.
+- F4: 53.
+- C5: 60.
+- A4: 57.
+- D5: 62.
+- G4: 55.
+- D4: 50.
+- D5: 62.
+- E5: 64.
+- F5: 65.
+- G5: 67.
+- F5: 65.
+- G5: 67.
+- E5: 64.
+- B4: 59.
+- A4: 57.
+- C5: 60.
+- D5: 62.
+- G4: 55.
+- B4: 59.
+
+Double-check: There are 49 notes, we have 49 indices. Let's list them in order with numbers:
+
+1: 55 (G4)
+2: 53 (F4)
+3: 50 (D4)
+4: 55 (G4)
+5: 60 (C5)
+6: 48 (C4)
+7: 55 (G4)
+8: 59 (B4)
+9: 62 (D5)
+10: 55 (G4)
+11: 52 (E4)
+12: 48 (C4)
+13: 55 (G4)
+14: 57 (A4)
+15: 62 (D5)
+16: 64 (E5)
+17: 67 (G5)
+18: 65 (F5)
+19: 64 (E5)
+20: 59 (B4)
+21: 57 (A4)
+22: 52 (E4)
+23: 64 (E5)
+24: 59 (B4)
+25: 57 (A4)
+26: 52 (E4)
+27: 48 (C4)
+28: 47 (B3)
+29: 53 (F4)
+30: 57 (A4)
+31: 53 (F4)
+32: 60 (C5)
+33: 57 (A4)
+34: 62 (D5)
+35: 55 (G4)
+36: 50 (D4)
+37: 62 (D5)
+38: 64 (E5)
+39: 65 (F5)
+40: 67 (G5)
+41: 65 (F5)
+42: 67 (G5)
+43: 64 (E5)
+44: 59 (B4)
+45: 57 (A4)
+46: 60 (C5)
+47: 62 (D5)
+48: 55 (G4)
+49: 59 (B4)
+
+Now compute differences: for i=1 to 48, diff = index_{i+1} - index_i. Then absolute value d = |diff|. If diff > 0, we multiply by ratio for d; if diff < 0, we divide by ratio for d (i.e., multiply by reciprocal). If diff = 0, multiply by 1.
+
+Let's compute each diff:
+
+1: 53-55 = -2 (down 2 semitones)
+2: 50-53 = -3 (down 3)
+3: 55-50 = +5 (up 5)
+4: 60-55 = +5 (up 5)
+5: 48-60 = -12 (down 12)
+6: 55-48 = +7 (up 7)
+7: 59-55 = +4 (up 4)
+8: 62-59 = +3 (up 3)
+9: 55-62 = -7 (down 7)
+10: 52-55 = -3 (down 3)
+11: 48-52 = -4 (down 4)
+12: 55-48 = +7 (up 7)
+13: 57-55 = +2 (up 2)
+14: 62-57 = +5 (up 5)
+15: 64-62 = +2 (up 2)
+16: 67-64 = +3 (up 3)
+17: 65-67 = -2 (down 2)
+18: 64-65 = -1 (down 1)
+19: 59-64 = -5 (down 5)
+20: 57-59 = -2 (down 2)
+21: 52-57 = -5 (down 5)
+22: 64-52 = +12 (up 12)
+23: 59-64 = -5 (down 5)
+24: 57-59 = -2 (down 2)
+25: 52-57 = -5 (down 5)
+26: 48-52 = -4 (down 4)
+27: 47-48 = -1 (down 1)
+28: 53-47 = +6 (up 6)
+29: 57-53 = +4 (up 4)
+30: 53-57 = -4 (down 4)
+31: 60-53 = +7 (up 7)
+32: 57-60 = -3 (down 3)
+33: 62-57 = +5 (up 5)
+34: 55-62 = -7 (down 7)
+35: 50-55 = -5 (down 5)
+36: 62-50 = +12 (up 12)
+37: 64-62 = +2 (up 2)
+38: 65-64 = +1 (up 1)
+39: 67-65 = +2 (up 2)
+40: 65-67 = -2 (down 2)
+41: 67-65 = +2 (up 2)
+42: 64-67 = -3 (down 3)
+43: 59-64 = -5 (down 5)
+44: 57-59 = -2 (down 2)
+45: 60-57 = +3 (up 3)
+46: 62-60 = +2 (up 2)
+47: 55-62 = -7 (down 7)
+48: 59-55 = +4 (up 4)
+
+Now we have 48 intervals. We need to compute the overall factor as product of ratios (or reciprocals). Since we are multiplying many rational numbers, we can combine them by adding exponents in numerator and denominator.
+
+Let’s denote the ratio for d semitones as r(d). From table:
+r(0)=1
+r(1)=16/15
+r(2)=9/8
+r(3)=6/5
+r(4)=5/4
+r(5)=4/3
+r(6)=45/32
+r(7)=3/2
+r(8)=8/5
+r(9)=5/3
+r(10)=16/9
+r(11)=15/8
+r(12)=2/1
+
+For intervals larger than 12? In our diffs, we have some intervals of 12 (diff = +12 or -12). Also we have none larger than 12? Let's check: diff 12 appears: #22: +12, #36: +12. Also diff -12 at #5: -12. That's it. So we have d=12, which is 2/1. For d=12, r=2/1. For d=0? none.
+
+Now we need to compute the cumulative factor F = product over intervals of (r(d) if diff>0 else 1/r(d)). Alternatively, we can compute the net change in index from start to end: start index = 55, end index = 59. That's a difference of +4 semitones. But careful: The cumulative factor is not simply r(4) because the tuning is not based on equal temperament; it's based on just intonation ratios. So the overall factor is the product of all the ratios, which should correspond to the ratio of the final frequency to the initial frequency. This product should equal the just intonation ratio for the net interval if the path were a straight line? Actually, it depends on the specific ratios used; because just intonation ratios for different intervals may not be consistent across different paths (e.g., a major third up then a minor third down may not give the same as a minor second up, etc.). But the problem defines the tuning process precisely: each note is tuned relative to the immediately previous note using the given ratios. So the final frequency is determined by the sequence, not just the net interval. So we must compute the product directly.
+
+Thus we need to compute F = ∏ (r(d_i)^{sign_i}), where sign_i = +1 if diff>0, -1 if diff<0.
+
+We can compute by multiplying all the fractions and simplifying.
+
+Let's list each interval with its d and direction:
+
+1: d=2, down -> multiply by 1/r(2) = 1/(9/8) = 8/9
+2: d=3, down -> 1/r(3) = 1/(6/5) = 5/6
+3: d=5, up -> r(5) = 4/3
+4: d=5, up -> 4/3
+5: d=12, down -> 1/r(12) = 1/2
+6: d=7, up -> r(7) = 3/2
+7: d=4, up -> r(4) = 5/4
+8: d=3, up -> r(3) = 6/5
+9: d=7, down -> 1/r(7) = 2/3
+10: d=3, down -> 5/6
+11: d=4, down -> 1/r(4) = 4/5
+12: d=7, up -> 3/2
+13: d=2, up -> 9/8
+14: d=5, up -> 4/3
+15: d=2, up -> 9/8
+16: d=3, up -> 6/5
+17: d=2, down -> 8/9
+18: d=1, down -> 1/r(1) = 15/16
+19: d=5, down -> 1/r(5) = 3/4
+20: d=2, down -> 8/9
+21: d=5, down -> 3/4
+22: d=12, up -> r(12) = 2/1 = 2
+23: d=5, down -> 3/4
+24: d=2, down -> 8/9
+25: d=5, down -> 3/4
+26: d=4, down -> 4/5
+27: d=1, down -> 15/16
+28: d=6, up -> r(6) = 45/32
+29: d=4, up -> 5/4
+30: d=4, down -> 4/5
+31: d=7, up -> 3/2
+32: d=3, down -> 5/6
+33: d=5, up -> 4/3
+34: d=7, down -> 2/3
+35: d=5, down -> 3/4
+36: d=12, up -> 2
+37: d=2, up -> 9/8
+38: d=1, up -> 16/15
+39: d=2, up -> 9/8
+40: d=2, down -> 8/9
+41: d=2, up -> 9/8
+42: d=3, down -> 5/6
+43: d=5, down -> 3/4
+44: d=2, down -> 8/9
+45: d=3, up -> 6/5
+46: d=2, up -> 9/8
+47: d=7, down -> 2/3
+48: d=4, up -> 5/4
+
+We now have 48 factors. We need to multiply them all together, then multiply by 392 Hz to get final frequency. The final answer should be a reduced fraction a/b (or integer). So we need to compute the product as a rational number in lowest terms.
+
+We can group all numerators and denominators.
+
+Let's list each factor as a fraction:
+
+1: 8/9
+2: 5/6
+3: 4/3
+4: 4/3
+5: 1/2
+6: 3/2
+7: 5/4
+8: 6/5
+9: 2/3
+10: 5/6
+11: 4/5
+12: 3/2
+13: 9/8
+14: 4/3
+15: 9/8
+16: 6/5
+17: 8/9
+18: 15/16
+19: 3/4
+20: 8/9
+21: 3/4
+22: 2/1
+23: 3/4
+24: 8/9
+25: 3/4
+26: 4/5
+27: 15/16
+28: 45/32
+29: 5/4
+30: 4/5
+31: 3/2
+32: 5/6
+33: 4/3
+34: 2/3
+35: 3/4
+36: 2/1
+37: 9/8
+38: 16/15
+39: 9/8
+40: 8/9
+41: 9/8
+42: 5/6
+43: 3/4
+44: 8/9
+45: 6/5
+46: 9/8
+47: 2/3
+48: 5/4
+
+Now we multiply all these fractions. To simplify, we can keep track of prime factors. The numerators and denominators consist of primes

@@ -1,0 +1,618 @@
+We are asked to compute the Smith normal form (SNF) of the given 6x6 integer matrix A. The SNF is a diagonal matrix diag(d1, d2, ..., dn) with d_i non-negative integers, d_i | d_{i+1} for each i, and zeros if any come last. The d_i are invariant factors. We need to list d1,...,d6 as comma-separated list.
+
+We need to compute SNF over integers. Let me write down the matrix A:
+
+A = 
+[1, -3, -2, 1, 1, -2]
+[3, 0, 0, -3, 5, 3]
+[-8, 7, 4, 3, -12, -2]
+[1, -1, 1, 0, 1, 2]
+[4, 1, 0, -4, 8, 5]
+[-3, 4, 3, 0, -5, 1]
+
+We need to perform elementary row and column operations (integer unimodular transformations) to reduce to diagonal form. Since the matrix is 6x6, the rank might be less than 6, so some d_i could be zero. Let's compute rank and SNF.
+
+We can attempt to compute SNF by systematic elimination. Usually we start by bringing smallest positive element to top-left (by swapping rows/columns) and then use it to eliminate other entries in first row and column. But careful: operations must be reversible over integers (i.e., integer matrices with determinant ±1). So we can do:
+
+- Swap rows or columns.
+- Add an integer multiple of one row to another.
+- Multiply a row or column by -1 (since determinant ±1).
+
+We aim to get a diagonal matrix with divisibility condition.
+
+We can do this by algorithmic approach: compute gcd of all entries, then reduce. But manual computation might be lengthy. Could also compute determinantal divisors, i.e., the k-th invariant factor is the gcd of all k×k minors divided by previous invariant factor. That might be easier if we can compute determinants of submatrices? But for 6x6, computing all minors is heavy. However, we can compute Smith form via row/column operations systematically, perhaps using computer algebra in mind? But we are human. Let's try to perform operations step by step, being careful.
+
+I'll denote the matrix as A. We'll perform operations to get first row and first column with only pivot.
+
+Step 1: Look at top-left element a11 = 1. That's nice: it's 1. So we can use it to clear the first row and first column.
+
+First, we can use column operations to eliminate other entries in first row: columns 2 to 6. For each column j, we can subtract a1j times column1 from column j. Since a11=1, we can do: cj <- cj - a1j * c1. That will make row1 become [1,0,0,0,0,0]. Let's do that.
+
+Original A:
+
+Row1: [1, -3, -2, 1, 1, -2]
+Row2: [3, 0, 0, -3, 5, 3]
+Row3: [-8, 7, 4, 3, -12, -2]
+Row4: [1, -1, 1, 0, 1, 2]
+Row5: [4, 1, 0, -4, 8, 5]
+Row6: [-3, 4, 3, 0, -5, 1]
+
+Now apply column operations: For j=2: c2 = c2 - (-3)*c1? Actually a12 = -3, so we want c2 - (-3)*c1? Wait: we want new c2 = c2 - a12 * c1? Since we want to zero out a12. If we do c2 <- c2 - a12 * c1, where a12 = -3, then new a12 = -3 - (-3)*1? Actually after operation, the entry at (1,2) becomes a12 - a12*a11? Let's think: operation: column j -> column j - a1j * column1. Since column1 has 1 at row1, the new entry (1,j) becomes a1j - a1j*1 = 0. So yes. So do:
+
+c2 = c2 - (-3)*c1 = c2 + 3*c1. Because a12 = -3: c2 = c2 - (-3)*c1 = c2+3c1.
+c3 = c3 - (-2)*c1 = c3+2c1.
+c4 = c4 - 1*c1 = c4 - c1.
+c5 = c5 - 1*c1 = c5 - c1.
+c6 = c6 - (-2)*c1 = c6+2c1.
+
+Apply these operations.
+
+First, we need to apply to whole matrix, i.e., update all rows accordingly.
+
+Let me compute new columns:
+
+c1 remains unchanged: [1,3,-8,1,4,-3]^T? Actually column1: entries: row1:1, row2:3, row3:-8, row4:1, row5:4, row6:-3.
+
+Now compute c2 = original c2 + 3*c1:
+
+original c2: [-3,0,7,-1,1,4]? Wait: row1:-3, row2:0, row3:7, row4:-1, row5:1, row6:4. Actually check matrix: row1 col2 = -3; row2 col2 = 0; row3 col2 = 7; row4 col2 = -1; row5 col2 = 1; row6 col2 = 4. Yes.
+
+Add 3*c1: c1: [1,3,-8,1,4,-3] times 3 gives [3,9,-24,3,12,-9]. So new c2 = [-3+3=0, 0+9=9, 7-24=-17, -1+3=2, 1+12=13, 4-9=-5]. So c2 = [0,9,-17,2,13,-5]^T.
+
+c3 = original c3 + 2*c1: original c3: row1:-2, row2:0, row3:4, row4:1, row5:0, row6:3. 2*c1 = [2,6,-16,2,8,-6]. So new c3: [-2+2=0, 0+6=6, 4-16=-12, 1+2=3, 0+8=8, 3-6=-3]. So c3 = [0,6,-12,3,8,-3]^T.
+
+c4 = original c4 - c1: original c4: row1:1, row2:-3, row3:3, row4:0, row5:-4, row6:0. Subtract c1: [1-1=0, -3-3=-6, 3-(-8)=3+8=11? Wait careful: row3: 3 - (-8) = 3+8=11; row4: 0 - 1 = -1; row5: -4 -4 = -8; row6: 0 - (-3)=3]. So c4 = [0, -6, 11, -1, -8, 3]^T.
+
+c5 = original c5 - c1: original c5: row1:1, row2:5, row3:-12, row4:1, row5:8, row6:-5. Subtract c1: [1-1=0, 5-3=2, -12-(-8)=-12+8=-4, 1-1=0, 8-4=4, -5-(-3)=-5+3=-2]. So c5 = [0,2,-4,0,4,-2]^T.
+
+c6 = original c6 + 2*c1: original c6: row1:-2, row2:3, row3:-2, row4:2, row5:5, row6:1. Add 2*c1: [2,6,-16,2,8,-6] gives: [-2+2=0, 3+6=9, -2-16=-18, 2+2=4, 5+8=13, 1-6=-5]. So c6 = [0,9,-18,4,13,-5]^T.
+
+Now the matrix after these column operations (leaving row1 as [1,0,0,0,0,0]):
+
+Row1: [1,0,0,0,0,0]
+Row2: [3,9,6,-6,2,9]
+Row3: [-8,-17,-12,11,-4,-18]
+Row4: [1,2,3,-1,0,4]
+Row5: [4,13,8,-8,4,13]
+Row6: [-3,-5,-3,3,-2,-5]
+
+Now we can also use row operations to clear first column below pivot. Since we have a11=1, we can do row operations: for each row i>1, do ri <- ri - ai1 * r1. That will zero out the first column entries.
+
+So do: r2 = r2 - 3*r1; r3 = r3 - (-8)*r1? Actually ai1: r2 first entry is 3, so subtract 3*r1; r3 first entry -8, so subtract (-8)*r1? Better: new r3 = r3 - (-8)*r1 = r3+8r1; but careful: we want to zero out a31 = -8, so we do r3 <- r3 - (-8)*r1 = r3+8r1. Actually we can do r3 = r3 + 8*r1 since a31 = -8. Similarly r4: a41=1, so r4 <- r4 - 1*r1; r5: a51=4, r5 <- r5 - 4*r1; r6: a61=-3, r6 <- r6 - (-3)*r1 = r6+3*r1.
+
+Let's apply these. r1 is [1,0,0,0,0,0]. So adding multiples of r1 only affects first column? Actually r1 has zeros elsewhere, so adding multiples of r1 will only change the first column entries. Indeed r1 has zeros in columns 2-6, so adding to other rows will affect only the first column and leave other columns unchanged? Wait: r1 is [1,0,0,0,0,0], so when we add k*r1 to another row, we add k to the first column entry of that row, and nothing else. Since we want to zero out the first column entries, we choose k = -ai1. So after these row ops, first column becomes [1,0,0,0,0,0]^T. And other columns unchanged. So new matrix:
+
+Row1: [1,0,0,0,0,0]
+Row2: [3-3*1=0, 9,6,-6,2,9] (unchanged other columns)
+Row3: [-8+8*1=0, -17,-12,11,-4,-18] (since we added 8*r1, so first entry becomes -8+8=0)
+Row4: [1-1*1=0, 2,3,-1,0,4]
+Row5: [4-4*1=0, 13,8,-8,4,13]
+Row6: [-3+3*1=0, -5,-3,3,-2,-5]
+
+So matrix becomes:
+
+[1, 0, 0, 0, 0, 0]
+[0, 9, 6, -6, 2, 9]
+[0, -17, -12, 11, -4, -18]
+[0, 2, 3, -1, 0, 4]
+[0, 13, 8, -8, 4, 13]
+[0, -5, -3, 3, -2, -5]
+
+Now we have a 5x5 submatrix (rows2-6, cols2-6) to reduce. Let's denote B = that 5x5 matrix:
+
+B = 
+[9, 6, -6, 2, 9]
+[-17, -12, 11, -4, -18]
+[2, 3, -1, 0, 4]
+[13, 8, -8, 4, 13]
+[-5, -3, 3, -2, -5]
+
+We need to compute its Smith normal form. Then the SNF of A will be diag(1, d2, d3, d4, d5, d6) where d2,...,d6 are the invariant factors of B, but note that SNF of A will have d1=1, then the rest are the SNF of B (since the top-left 1 already divides everything). However careful: The SNF of A overall requires that d1 divides d2, etc. Since d1=1 divides anything, fine. So we need to compute SNF of B.
+
+Now B is 5x5. Possibly its rank might be less than 5; we'll see. Let's proceed.
+
+We need to get invariant factors of B: d2, d3, d4, d5, d6 (where d6 might be zero if rank<5). Since total rank of A could be up to 6. But due to 1 already, rank is at least 1. Let's compute.
+
+We can perform similar operations on B. We'll try to get the top-left element of B to be a smallest positive integer, perhaps by row/column swaps. The current top-left is 9. The matrix entries: let's list all entries:
+
+B = 
+(1,1)=9; (1,2)=6; (1,3)=-6; (1,4)=2; (1,5)=9
+(2,1)=-17; (2,2)=-12; (2,3)=11; (2,4)=-4; (2,5)=-18
+(3,1)=2; (3,2)=3; (3,3)=-1; (3,4)=0; (3,5)=4
+(4,1)=13; (4,2)=8; (4,3)=-8; (4,4)=4; (4,5)=13
+(5,1)=-5; (5,2)=-3; (5,3)=3; (5,4)=-2; (5,5)=-5
+
+We can try to reduce the gcd of first row and first column. The gcd of all entries of B? Possibly we can use the fact that 1 appears? There is -1 at (3,3). Also 2 appears. Could try to bring a 1 or -1 to pivot. For example, entry (3,3) = -1. That's convenient. But we need to get it to top-left maybe via row and column swaps. Since we are free to permute rows and columns (within the submatrix, i.e., rows2-6, cols2-6), we can swap rows and columns to bring that -1 to the (1,1) of B. Then we can use it to clear first row and column of B. Let's do that.
+
+Define rows of B as original rows 2-6; we can reorder them. Similarly columns as columns 2-6. So we can swap row3 (original row4? Actually careful: B rows: row2 of A is first row of B, row3 of A is second row of B, row4 of A is third row of B, row5 is fourth, row6 is fifth. Let's index B rows as r1, r2, r3, r4, r5 corresponding to A rows 2,3,4,5,6. Similarly columns c1, c2, c3, c4, c5 correspond to A columns 2,3,4,5,6. So B(3,3) = row3 col3 = from above: row3 (A row4) col3 (A col4?) Wait careful: B's rows indexing: row1: A row2; row2: A row3; row3: A row4; row4: A row5; row5: A row6. B's columns: col1: A col2; col2: A col3; col3: A col4; col4: A col5; col5: A col6. So B(3,3) = A row4, col4? Actually col3 is A col4? Let's track: A columns: col2, col3, col4, col5, col6. So col3 corresponds to A col4. And row3 is A row4. So B(3,3) is A(4,4) originally? A(4,4) = 0 from original matrix? Actually original A row4 col4 = 0. Wait something inconsistent: we previously computed B after operations, and B(3,3) = -1. Let's recompute B from the matrix after column ops and row ops we did. We had after row ops:
+
+Row2 (A row2): [0,9,6,-6,2,9] -> so B row1 = [9,6,-6,2,9]
+Row3 (A row3): [0,-17,-12,11,-4,-18] -> B row2 = [-17,-12,11,-4,-18]
+Row4 (A row4): [0,2,3,-1,0,4] -> B row3 = [2,3,-1,0,4]
+Row5 (A row5): [0,13,8,-8,4,13] -> B row4 = [13,8,-8,4,13]
+Row6 (A row6): [0,-5,-3,3,-2,-5] -> B row5 = [-5,-3,3,-2,-5]
+
+So B row3 col3 is the entry in row4 (original A row4) and col4 (A col5? Wait careful: columns: col2 is A col2, col3 is A col3, col4 is A col4, col5 is A col5, col6 is A col6. So B columns: col1 = A col2, col2 = A col3, col3 = A col4, col4 = A col5, col5 = A col6. So B(3,3) = A row4, col4? Because row4 of A (original row4) and col4 is A col4? But A col4 is the fourth column of A, which originally had entries? In original A, row4 col4 = 0. However after our column operations, we changed columns. So B(3,3) is not the original A(4,4); it's after we transformed columns. Our earlier column ops changed all columns. So B(3,3) = -1 as computed. So indeed we have a -1 at (row3, col3) of B. That is good. We can swap rows and columns to put that -1 in top-left of B.
+
+So let's swap row3 of B with row1 of B. But careful: B's rows correspond to A rows 2-6. We can permute them. Also we can swap columns. Since we want a pivot of 1 (or -1) at top-left. Let's bring the -1 to position (1,1). So we can swap row1 and row3 of B. Also swap column1 and column3? Possibly we need to get the -1 to (1,1). Since the -1 is at (3,3), swapping rows 1 and 3 will put it at (1,3). Then swapping columns 1 and 3 will put it at (1,1). Let's do that.
+
+Alternatively, we could just swap rows and columns to directly bring it to (1,1). Let's do sequentially.
+
+First, swap row1 and row3 of B. So new B rows order: row3 becomes new row1, row2 stays row2? Actually after swapping row1 and row3: new B:
+
+New row1 = old row3: [2,3,-1,0,4]
+New row2 = old row2: [-17,-12,11,-4,-18]? Wait careful: original B rows: r1=[9,6,-6,2,9]; r2=[-17,-12,11,-4,-18]; r3=[2,3,-1,0,4]; r4=[13,8,-8,4,13]; r5=[-5,-3,3,-2,-5]. Swap r1 and r3:
+
+New r1 = [2,3,-1,0,4]
+New r2 = [-17,-12,11,-4,-18]
+New r3 = [9,6,-6,2,9]
+New r4 = [13,8,-8,4,13]
+New r5 = [-5,-3,3,-2,-5]
+
+Now the -1 is at (1,3). Now swap column1 and column3 of B. Columns: col1, col2, col3, col4, col5. After swapping col1 and col3, the entry at (1,1) becomes the old (1,3) which is -1. So do that.
+
+Swap col1 and col3. The matrix becomes:
+
+New col1 = old col3, new col3 = old col1.
+
+So for each row, we interchange entries in columns 1 and 3.
+
+Compute new B after row swap and column swap:
+
+Row1 (old r1): [2,3,-1,0,4] -> after col swap: col1 becomes old col3 = -1; col3 becomes old col1 = 2; other columns unchanged. So row1 becomes: [-1, 3, 2, 0, 4]? Actually careful: row1 originally: [col1=2, col2=3, col3=-1, col4=0, col5=4]. After swap col1<->col3: new col1 = old col3 = -1; new col2 = old col2 = 3; new col3 = old col1 = 2; new col4=0; new col5=4. So row1 = [-1, 3, 2, 0, 4].
+
+Row2 (old r2): [-17,-12,11,-4,-18] -> after col swap: col1=old col3=11; col2=-12; col3=old col1=-17; col4=-4; col5=-18. So row2 = [11, -12, -17, -4, -18].
+
+Row3 (old r3): [9,6,-6,2,9] -> after col swap: col1=old col3=-6; col2=6; col3=old col1=9; col4=2; col5=9. So row3 = [-6, 6, 9, 2, 9].
+
+Row4 (old r4): [13,8,-8,4,13] -> after col swap: col1=old col3=-8; col2=8; col3=old col1=13; col4=4; col5=13. So row4 = [-8, 8, 13, 4, 13].
+
+Row5 (old r5): [-5,-3,3,-2,-5] -> after col swap: col1=old col3=3; col2=-3; col3=old col1=-5; col4=-2; col5=-5. So row5 = [3, -3, -5, -2, -5].
+
+Now we have B':
+
+Row1: [-1, 3, 2, 0, 4]
+Row2: [11, -12, -17, -4, -18]
+Row3: [-6, 6, 9, 2, 9]
+Row4: [-8, 8, 13, 4, 13]
+Row5: [3, -3, -5, -2, -5]
+
+Now top-left is -1. We can multiply first row by -1 to get 1 (since we can multiply a row by -1, which is unimodular). So do r1 = -r1: new row1 = [1, -3, -2, 0, -4]. (Because -1*[-1,3,2,0,4] = [1,-3,-2,0,-4]) Good.
+
+Now use this pivot 1 to clear first row and first column of B'.
+
+First, clear first row (except pivot) using column operations: for j=2,...,5, do cj <- cj - a1j * c1, where a1j are from new row1: a12 = -3, a13 = -2, a14=0, a15=-4. Since pivot is 1, these operations will make row1 become [1,0,0,0,0].
+
+Perform column ops on B' (the whole 5x5). But careful: these column ops affect all rows. We need to apply them to the entire submatrix (rows1-5, cols1-5). At this point, the top-left 1 is in position (1,1) of B', which corresponds to some row/col in the original matrix? But it's okay; we are working on B. We'll do column operations on B only.
+
+Let's denote current B matrix (5x5) as:
+
+Row1: [1, -3, -2, 0, -4]
+Row2: [11, -12, -17, -4, -18]
+Row3: [-6, 6, 9, 2, 9]
+Row4: [-8, 8, 13, 4, 13]
+Row5: [3, -3, -5, -2, -5]
+
+Now do column operations:
+
+For col2: c2 <- c2 - a12*c1 = c2 - (-3)*c1? Wait a12 = -3, so we want c2 - (-3)*c1 = c2+3c1. Actually to zero out a12, we do c2 = c2 - a12*c1. Since a12=-3, c2 = c2 - (-3)*c1 = c2+3c1.
+For col3: c3 <- c3 - a13*c1 = c3 - (-2)*c1 = c3+2c1.
+For col4: a14=0, so c4 unchanged.
+For col5: c5 <- c5 - a15*c1 = c5 - (-4)*c1 = c5+4c1.
+
+So compute new columns.
+
+Let’s compute c1, then modified columns.
+
+c1 = column1: [1,11,-6,-8,3]^T? Actually row1:1, row2:11, row3:-6, row4:-8, row5:3.
+
+Now compute new c2 = old c2 + 3*c1.
+
+Old c2: [-3, -12, 6, 8, -3]^T? Actually row1:-3, row2:-12, row3:6, row4:8, row5:-3. Add 3*c1: [3,33,-18,-24,9]. So new c2: [-3+3=0, -12+33=21, 6-18=-12, 8-24=-16, -3+9=6]. So c2 = [0,21,-12,-16,6]^T.
+
+New c3 = old c3 + 2*c1. Old c3: [-2, -17, 9, 13, -5]^T. Add 2*c1: [2,22,-12,-16,6]. So new c3: [-2+2=0, -17+22=5, 9-12=-3, 13-16=-3, -5+6=1]. So c3 = [0,5,-3,-3,1]^T.
+
+c4 unchanged: old c4: [0, -4, 2, 4, -2]^T? Actually row1:0, row2:-4, row3:2, row4:4, row5:-2. So c4 = [0,-4,2,4,-2]^T.
+
+New c5 = old c5 + 4*c1. Old c5: [-4, -18, 9, 13, -5]^T? Wait row1:-4, row2:-18, row3:9, row4:13, row5:-5. Add 4*c1: [4,44,-24,-32,12]. So new c5: [-4+4=0, -18+44=26, 9-24=-15, 13-32=-19, -5+12=7]. So c5 = [0,26,-15,-19,7]^T.
+
+Now after these column ops, row1 becomes [1,0,0,0,0]. The matrix B becomes:
+
+Row1: [1,0,0,0,0]
+Row2: [11,21,5,-4,26]
+Row3: [-6,-12,-3,2,-15]
+Row4: [-8,-16,-3,4,-19]
+Row5: [3,6,1,-2,7]
+
+Now we clear first column below pivot using row operations: for rows 2-5, do ri <- ri - ai1 * r1, where ai1 are the first column entries: row2:11, row3:-6, row4:-8, row5:3. Since r1 is [1,0,0,0,0], subtracting multiple will zero out first column and leave other columns unchanged? Actually r1 has zeros except first column, so subtracting ai1*r1 from row i will subtract ai1 from the first column entry, making it zero, and leave other columns unchanged because r1's other entries are zero. So we can do:
+
+r2 = r2 - 11*r1 => new r2 = [11-11*1=0, 21-0=21, 5-0=5, -4-0=-4, 26-0=26]
+r3 = r3 - (-6)*r1 = r3+6*r1 => new r3 = [-6+6*1=0, -12+0=-12, -3+0=-3, 2+0=2, -15+0=-15]
+r4 = r4 - (-8)*r1 = r4+8*r1 => new r4 = [-8+8=0, -16+0=-16, -3+0=-3, 4+0=4, -19+0=-19]
+r5 = r5 - 3*r1 => new r5 = [3-3=0, 6-0=6, 1-0=1, -2-0=-2, 7-0=7]
+
+So now B becomes:
+
+Row1: [1,0,0,0,0]
+Row2: [0,21,5,-4,26]
+Row3: [0,-12,-3,2,-15]
+Row4: [0,-16,-3,4,-19]
+Row5: [0,6,1,-2,7]
+
+Now we have a 4x5? Actually we have a 5x5 but first row and column are done. So the remaining submatrix is rows2-5, cols2-5 (4x4). Let's denote C = that 4x4 submatrix:
+
+C = 
+[21, 5, -4, 26]
+[-12, -3, 2, -15]
+[-16, -3, 4, -19]
+[6, 1, -2, 7]
+
+We need to compute SNF of C. Then the invariant factors d2,... will be the diagonal entries of SNF of C, perhaps with d1=1 already. However note that the SNF of A is diag(1, d2, d3, d4, d5, d6) where d2,...,d6 are the invariant factors of B (including possibly zeros). Since we have a 1 as first invariant factor, the others come from the SNF of B. And B's SNF will have first invariant factor = 1? Wait B originally had some entries, but we have reduced it to a 5x5 with a 1 in top-left and then a 4x4 submatrix. The SNF of B will be diag(1, e2, e3, e4, e5) where e2-e5 are the SNF of C? Not exactly: Since we have performed unimodular operations on B (row and column swaps, and then used the pivot 1 to clear first row/col), the resulting matrix is equivalent to B, so the SNF of B is diag(1, SNF(C)). Because the operations we did (including row and column swaps) are unimodular, and we have a block diagonal form with 1 and C. However careful: The operations we performed after bringing the 1 to top-left included column operations that changed the entire matrix, and row operations that cleared first column. Those operations are unimodular and produce a matrix that is equivalent to B. The resulting matrix has the form:
+
+[1  0]
+[0  C'] where C' is some matrix that is equivalent to C? Actually we performed column operations that modified columns 2-5. After that, we had row1 = [1,0,0,0,0] and first column zero below. Then we did row ops to clear first column; those row ops didn't affect columns 2-5 because row1 had zeros there; they only affected first column. So the resulting matrix is exactly block diagonal: 1 and some matrix C'. But is C' equal to C? The C' we got is exactly the submatrix rows2-5, cols2-5 after those ops. And those ops on rows2-5 and cols2-5 were restricted to row operations that only added multiples of row1 to other rows, which does not affect the submatrix because row1 has zeros in those columns; and column operations that added multiples of column1 to other columns, which do affect the submatrix? Actually column operations we did: for j=2..5, we did cj <- cj - a1j*c1. Those operations change the columns 2-5, but they also affect rows2-5? Yes, they modify the entries in columns 2-5 for all rows, including rows2-5. So the resulting C' is not the original C (which was the submatrix before column ops). But we have performed unimodular transformations on the entire B, so the resulting block matrix is equivalent to B. And its Smith normal form is diag(1, SNF(C')). Since C' is equivalent to the submatrix we get after those column ops, and we can further reduce C' to its SNF. But note that we could also consider that we could continue reducing C' similarly. So effectively, we now have a 4x4 matrix C' to reduce. Let's write C' clearly from above:
+
+C' = 
+Row2: [21,5,-4,26]
+Row3: [-12,-3,2,-15]
+Row4: [-16,-3,4,-19]
+Row5: [6,1,-2,7]
+
+We need to compute SNF of this 4x4 matrix. The SNF of B will be diag(1, d2, d3, d4, d5) where d2,...,d5 are the invariant factors of C' (maybe with an extra zero if rank less than 4). Then d6 will be 0 if the original A had rank <6? But we have 6x6 matrix; after we get SNF of B, we have 1 from top-left and then d2..d5 from C', and then what about d6? Wait, B is 5x5, so its SNF gives 5 invariant factors. The original A is 6x6, with first invariant factor 1, and then the other 5 invariants come from B. So the list for A should be: d1=1, d2 = first invariant of B (which will be some integer, possibly 1 again if C' has a 1), d3 = second invariant of B, d4 = third, d5 = fourth, d6 = fifth invariant of B. Since B is 5x5, we will get five numbers (some possibly zero). So we need to compute SNF of C' (4x4) and then combine with the 1 we already have from B? Actually careful: The SNF of B includes its own first invariant factor, which might be 1 (since we already have a 1 in the top-left of B after reduction). But when we reduced B, we obtained a 1 at (1,1) by swapping and then we cleared row/col. That means we have factorized B as equivalent to diag(1, C')? However, the SNF of B is diag(1, d2', d3', d4', d5') where d2'..d5' are the invariant factors of C'? Not exactly: The SNF of a matrix that is block-diagonal with blocks 1 and C' is diag(1, SNF(C')). That is because the invariant factors of a direct sum are the concatenation of the invariant factors of the blocks, sorted by divisibility. Since 1 divides everything, the SNF of diag(1, C') is diag(1, s1, s2, s3, s4) where s1..s4 are the invariant factors of C'. So yes, the SNF of B = diag(1, SNF(C')). So the invariant factors for A will be: d1=1 (from A's first pivot), d2=1 (from B's first pivot), and then d3,d4,d5,d6 are the four invariant factors of C'. Possibly some of those may be zero if C' is singular. Since A is 6x6, rank may be less than 6, meaning some d_i will be zero. So we need to compute SNF of C' (4x4). Let's denote C = C' for simplicity.
+
+So C = 
+[21, 5, -4, 26]
+[-12, -3, 2, -15]
+[-16, -3, 4, -19]
+[6, 1, -2, 7]
+
+We need to compute its Smith normal form: find diagonal matrix diag(e1, e2, e3, e4) with e_i >=0, e1|e2|e3|e4, zeros last. Since it's 4x4, rank <=4. Possibly rank is 3? We'll see.
+
+We can proceed similarly: look for a small entry, perhaps 1 or -1. Check entries: Row4 col2? Actually row4: [6,1,-2,7] has a 1 at column2. That's good. We can bring that 1 to top-left by swapping rows and columns. Let's do that.
+
+We have rows: R1, R2, R3, R4 (from original B rows 2-5). We'll reorder them. The 1 is at (row4, col2) (if we index C rows as 1..4). So we can swap row4 with row1, and swap column2 with column1 (or just bring the 1 to (1,1)). Let's do:
+
+First, swap rows: bring row4 to row1. So new row1 = [6,1,-2,7] (original row4). Then we have remaining rows: original row1, row2, row3. But let's do systematic.
+
+Let’s write C with row labels:
+
+R1: [21, 5, -4, 26]
+R2: [-12, -3, 2, -15]
+R3: [-16, -3, 4, -19]
+R4: [6, 1, -2, 7]
+
+Goal: get 1 at (1,1). We can swap R4 with R1, so new ordering: R4 becomes row1, R1 becomes row4, etc. Also we can swap columns to bring the column containing the 1 to column1. In current R4, the 1 is in column2 (since R4 = [6,1,-2,7], so col2=1). So we can swap column2 and column1. Let's do both.
+
+After swapping rows: new matrix with rows order: row1 = old R4 = [6,1,-2,7]; row2 = old R1 = [21,5,-4,26]; row3 = old R2 = [-12,-3,2,-15]; row4 = old R3 = [-16,-3,4,-19].
+
+Now swap columns: swap col1 and col2. Columns: originally col1, col2, col3, col4. After swapping, new col1 = old col2, new col2 = old col1, col3 and col4 unchanged. So apply to each row:
+
+Row1: old [6,1,-2,7] -> new [1,6,-2,7] (since col1 becomes old col2=1, col2 becomes old col1=6)
+Row2: old [21,5,-4,26] -> new [5,21,-4,26]
+Row3: old [-12,-3,2,-15] -> new [-3,-12,2,-15]
+Row4: old [-16,-3,4,-19] -> new [-3,-16,4,-19]
+
+So now C becomes:
+
+Row1: [1, 6, -2, 7]
+Row2: [5, 21, -4, 26]
+Row3: [-3, -12, 2, -15]
+Row4: [-3, -16, 4, -19]
+
+Great, we have 1 at (1,1). Use it to clear first row and column.
+
+First, clear first row (except pivot) using column operations. For j=2,3,4: cj <- cj - a1j * c1, where a12=6, a13=-2, a14=7. Since pivot=1, do:
+
+c2 = c2 - 6*c1
+c3 = c3 - (-2)*c1 = c3 + 2*c1
+c4 = c4 - 7*c1
+
+Apply to the whole matrix.
+
+First, c1 = [1,5,-3,-3]^T (row1:1, row2:5, row3:-3, row4:-3).
+
+Now compute new c2 = old c2 - 6*c1. Old c2: [6,21,-12,-16]^T. Subtract 6*c1: [6,30,-18,-18] gives: [0, -9, 6, 2]? Wait compute: 6-6=0; 21-30=-9; -12 - (-18)= -12+18=6; -16 - (-18)= -16+18=2. So c2 = [0, -9, 6, 2]^T.
+
+New c3 = old c3 + 2*c1. Old c3: [-2, -4, 2, 4]^T. Add 2*c1: [2,10,-6,-6] gives: [0,6,-4,-2]? Check: -2+2=0; -4+10=6; 2-6=-4; 4-6=-2. So c3 = [0,6,-4,-2]^T.
+
+New c4 = old c4 - 7*c1. Old c4: [7,26,-15,-19]^T. Subtract 7*c1: [7,35,-21,-21] gives: [0, -9, 6, 2]? Compute: 7-7=0; 26-35=-9; -15 - (-21)= -15+21=6; -19 - (-21)= -19+21=2. So c4 = [0, -9, 6, 2]^T.
+
+Now after these column ops, row1 becomes [1,0,0,0]. The matrix becomes:
+
+Row1: [1,0,0,0]
+Row2: [5, -9, 6, -9]
+Row3: [-3, 6, -4, 6]
+Row4: [-3, 2, -2, 2]
+
+Now clear first column below pivot using row operations: For i=2,3,4: ri <- ri - ai1 * r1, where ai1 are: row2:5, row3:-3, row4:-3. Since r1 is [1,0,0,0], subtracting ai1*r1 only affects first column.
+
+So:
+r2 = r2 - 5*r1 => new r2: [5-5=0, -9-0=-9, 6-0=6, -9-0=-9]
+r3 = r3 - (-3)*r1 = r3+3*r1 => new r3: [-3+3=0, 6+0=6, -4+0=-4, 6+0=6]
+r4 = r4 - (-3)*r1 = r4+3*r1 => new r4: [-3+3=0, 2+0=2, -2+0=-2, 2+0=2]
+
+So we get:
+
+Row1: [1,0,0,0]
+Row2: [0, -9, 6, -9]
+Row3: [0, 6, -4, 6]
+Row4: [0, 2, -2, 2]
+
+Now we have a 3x4? Actually rows2-4, cols2-4 form a 3x3 submatrix? Wait we have 4 rows total, but after clearing first column, we have rows2-4 (3 rows) and columns2-4 (3 columns). But there is also column4? Actually columns are 2,3,4. So we have a 3x3 submatrix D = rows2-4, cols2-4:
+
+D = 
+Row2: [-9, 6, -9]
+Row3: [6, -4, 6]
+Row4: [2, -2, 2]
+
+So D is 3x3. We need to compute SNF of this 3x3 matrix. Then the SNF of C will be diag(1, SNF(D)). Since we already have a 1 from C's reduction. Then SNF of B = diag(1, 1, SNF(D)). Then SNF of A = diag(1,1, SNF(D) entries). So d1=1, d2=1, and then d3,d4,d5,d6? Wait careful: C is 4x4, we reduced it to a block with 1 and a 3x3 D. So the SNF of C will be diag(1, e1, e2, e3) where e1,e2,e3 are invariant factors of D. Then B's SNF = diag(1, 1, e1, e2, e3) (since B had a 1 from its own reduction, plus the 1 from C). So A's SNF = diag(1, 1, 1, e1, e2, e3)? Wait careful: A originally gave d1=1 from first reduction. Then B gave d2=1 from its first pivot, then C gave another 1 from its pivot, so total we have three 1's? Let's count:
+
+A (6x6) -> after first reduction we got d1=1 and a 5x5 B.
+B reduced to diag(1, C') -> so that gives d2=1 from B's first pivot, and then C' (4x4) further gives its SNF.
+C' reduced to diag(1, D) -> so that gives d3=1 from C's first pivot, and then D (3x3) gives its SNF.
+Thus total invariant factors for A would be: d1=1, d2=1, d3=1, and then the three invariant factors from D. So total 6 numbers: three 1's and then three more (maybe some zeros). But we must confirm that we haven't lost any rank: D is 3x3, its SNF may have rank up to 3, so we could get up to three non-zero invariant factors. So total rank could be up to 6. However, we need to compute D's SNF. Let's compute D.
+
+D = 
+[ -9,  6, -9 ]
+[  6, -4,  6 ]
+[  2, -2,  2 ]
+
+Let's simplify. We can multiply rows or columns by -1 if needed. Also we might look for common factors.
+
+Observation: All entries in D seem to have a common factor? Row1: -9,6,-9 => divisible by 3? Actually -9 divisible by 3, 6 divisible by 3, -9 divisible by 3. Row2: 6,-4,6: 6 divisible by 2? Not all by 3: -4 not divisible by 3. So overall gcd of all entries? Compute gcd of all entries: gcd(-9,6,-9,6,-4,6,2,-2,2) = gcd(9,6,9,6,4,6,2,2,2) = gcd(9,6)=3? Actually gcd(9,6)=3, then gcd(3,4)=1. So overall gcd =1. So there will be a 1 among invariant factors of D, likely the first. But we already have three 1s from previous reductions? Wait we have d1=1, d2=1, d3=1 from A? Actually we obtained three 1's so far: one from A's first pivot, one from B's first pivot, one from C's first pivot. So that suggests that the Smith normal form of A already has three 1's at the beginning. But D might have a 1 as its first invariant factor, which would give a fourth 1. However note that the invariant factors must be non-decreasing divisors: 1,1,1,1,... That's fine. But we need to compute D's SNF to get the remaining three invariant factors. But if D's gcd is 1, then its first invariant factor is 1. So that would give a 1, making total four 1's? Then D would have three invariant factors: say e1=1, e2, e3. So A's SNF would be diag(1,1,1,1, e2, e3)? But that's 6 entries: three from earlier plus three from D = 6. Actually we already had d1,d2,d3 from the previous 1's, and then we add e1,e2,e3 from D, giving total six: d1=1, d2=1, d3=1, d4=e1, d5=e2, d6=e3. But note that e1 is the first invariant factor of D, and if D's gcd is 1, then e1=1, so d4=1, giving four 1's. That would mean the SNF has four 1's followed by e2 and e3. But we need to compute D's SNF thoroughly.
+
+Let's compute D explicitly and reduce it to diagonal form.
+
+D = 
+[ -9,  6, -9 ]
+[  6, -4,  6 ]
+[  2, -2,  2 ]
+
+We can simplify by factoring common factors? Notice that each row has a common factor? Row1: all divisible by 3? -9,6,-9 => factor 3: 3*[-3,2,-3]. Row2: 6,-4,6 => factor 2: 2*[3,-2,3]. Row3: 2,-2,2 => factor 2: 2*[1,-1,1]. So we can factor out these numbers using row operations? But factoring out is not allowed as an elementary operation; we can multiply rows or columns by -1 but not by constants other than ±1 because that would not be unimodular (determinant would change). However we can use the fact that we can add multiples of rows to others, etc. But we can also reduce using gcd computations.
+
+Let's work with the matrix as is. We can multiply rows by -1 to make leading entries positive if desired. Let's multiply row1 by -1: r1 -> -r1 gives [9, -6, 9]. That's allowed. So new D:
+
+r1: [9, -6, 9]
+r2: [6, -4, 6]
+r3: [2, -2, 2]
+
+Now we can attempt to get a small pivot. The smallest absolute value is 2 in row3 col1. We can swap rows to bring that to top-left. Swap row1 and row3: 
+
+New rows: r1: [2, -2, 2]; r2: [6, -4, 6]; r3: [9, -6, 9]
+
+Now we have pivot 2 at (1,1). We can use it to eliminate entries in first column below. But 2 does not necessarily divide all entries in first column? First column: r1=2, r2=6, r3=9. 2 divides 6 but not 9 (9 mod 2 =1). So we may need to reduce the pivot using gcd operations. Standard approach: we can use row operations to reduce the pivot to gcd of first column entries. For example, we can compute gcd(2,9)=1, so we can get a 1. Let's do that.
+
+We have matrix:
+[2, -2, 2]
+[6, -4, 6]
+[9, -6, 9]
+
+We can perform row operations to get 1 at (1,1). Since gcd(2,9)=1, we can combine rows 1 and 3 to produce a row with 1. For instance, we can do: r3 = r3 - 4*r1? 9 - 4*2 = 1. But that operation: r3 <- r3 - 4*r1. That's allowed. Let's do that. Also we might need to adjust other entries.
+
+Do: r3 = r3 - 4*r1. Compute: r1 = [2,-2,2]; 4*r1 = [8,-8,8]; r3 = [9,-6,9] - [8,-8,8] = [1,2,1]. So new r3 = [1,2,1].
+
+Now matrix becomes:
+r1: [2, -2, 2]
+r2: [6, -4, 6]
+r3: [1, 2, 1]
+
+Now we might swap rows to bring the 1 to top-left. Swap r1 and r3: 
+r1: [1,2,1]
+r2: [6,-4,6]
+r3: [2,-2,2]
+
+Now pivot =1 at (1,1). Use it to clear first row and column.
+
+First, clear first row using column operations: for j=2,3, do cj <- cj - a1j * c1. a12=2, a13=1. So:
+c2 = c2 - 2*c1
+c3 = c3 - 1*c1
+
+Apply to whole matrix. c1 = column1: [1,6,2]^T.
+
+Compute new c2: old c2 = [2, -4, -2]^T? Wait careful: matrix before column ops:
+Row1: [1,2,1]
+Row2: [6,-4,6]
+Row3: [2,-2,2]
+So c2: row1=2, row2=-4, row3=-2. c3: row1=1, row2=6, row3=2.
+
+Now c2 = c2 - 2*c1 = [2-2*1=0, -4-2*6=-4-12=-16, -2-2*2=-2-4=-6]. So new c2 = [0,-16,-6]^T.
+c3 = c3 - 1*c1 = [1-1=0, 6-6=0, 2-2=0]. So new c3 = [0,0,0]^T. Great! So after column ops, row1 becomes [1,0,0].
+
+Matrix becomes:
+Row1: [1,0,0]
+Row2: [6, -16, 0]
+Row3: [2, -6, 0]
+
+Now clear first column below pivot using row operations: r2 = r2 - 6*r1 => r2 = [6-6=0, -16-0=-16, 0-0=0]; r3 = r3 - 2*r1 => r3 = [2-2=0, -6-0=-6, 0-0=0]. So we get:
+
+Row1: [1,0,0]
+Row2: [0, -16, 0]
+Row3: [0, -6, 0]
+
+So D reduces to:
+[1, 0, 0]
+[0, -16, 0]
+[0, -6, 0]
+
+Now we have a 3x3 matrix with a 1 in top-left, and then a 2x2 submatrix in rows2-3, cols2-3? Actually rows2-3, cols2-3: [[-16,0],[-6,0]]. But note the third column is all zeros. So effectively we have a 2x2 block in the top-left of the remaining? Actually the matrix is:
+
+[1, 0, 0]
+[0, -16, 0]
+[0, -6, 0]
+
+The invariant factors of this matrix are: first 1, then we need to compute the SNF of the 2x2 submatrix below right: [[-16,0],[-6,0]]? But note there is a zero column; the third column is zero, so the matrix is not square? Actually it's 3x3 with third column zero. The SNF of this matrix will have a zero at the end because the rank is at most 2 (since third column is zero). Indeed, the matrix has rank 2 (since rows2 and3 are not multiples? Actually they are [-16,0] and [-6,0] which are linearly dependent? They are both multiples? [-16,0] and [-6,0] are multiples? Only if there exists scalar k such that -16 = k*(-6) => k=8/3 not integer; but over integers they are not multiples because you can't multiply -6 by an integer to get -16. However they are linearly dependent over reals? Actually both have second coordinate 0, so they are just vectors in 1D (first coordinate only), so they are linearly dependent because any two vectors in 1D are dependent. Indeed, they are both in the subspace spanned by (1,0). So the rank is 1 from those two rows? Actually they are both non-zero and have only first component non-zero, so they are multiples (8/3 times) but not integer multiples, but linear dependence over reals is enough to say the rank is 1? Over integers, we consider the matrix's rank as the size of the largest non-zero minor. But the matrix after first column cleared, we have rows2 and3 with non-zero entries only in column2. So the submatrix formed by rows2-3, cols2-3: the 2x2 submatrix is [[-16,0],[-6,0]] which has determinant 0. So the rank of the original 3x3 matrix is at most 2? Actually we have 1 in top-left, and then the remaining 2x2 has zero determinant, so total rank is 1 (from first row) + maybe 1 from the non-zero column? Let's compute the rank of D: We have rows2-3, cols2 only have non-zero entries, and they are not multiples? But they are both non-zero, but the rank of the whole matrix is the number of linearly independent rows/columns. Since the third column is zero, all rows have zeros in third column; the second column has entries -16 and -6; the first column has zeros in rows2-3. So the matrix is:
+
+col1: [1,0,0]
+col2: [0,-16,-6]
+col3: [0,0,0]
+
+Thus the matrix has two non-zero columns: col1 and col2. And they are linearly independent? col1 and col2 are clearly independent because col1 has a 1 in row1 and zeros elsewhere, col2 has zeros in row1 and non-zero in rows2-3. So rank = 2. So the SNF will have two non-zero invariant factors and one zero. Indeed, the invariant factors will be d1=1, d2 = some positive integer (the gcd of the 2x2 minors?), and d3=0. So D's SNF is diag(1, g, 0) where g is the gcd of the entries of the 2x2 submatrix? Let's compute the SNF of the 2x2 block? Actually we have the matrix:
+
+[1  0  0]
+[0 -16  0]
+[0 -6   0]
+
+But we can further simplify: we can perform column operations to eliminate the zero column? Actually we already have zeros in third column. We can treat the submatrix formed by rows2-3 and columns2-3 (but column3 is zero, so we might just ignore it). To get SNF, we need to diagonalize. The current matrix is already almost diagonal except the (2,2) and (3,2) entries. We can use row operations to eliminate the (3,2) entry using row2, and then column operations to ensure divisibility. Since we have a 1 in top-left, we can focus on the 2x2 block in rows2,3 and cols2,3? But col3 is zero, so we can permute columns to bring the non-zero column to the left. Actually we can swap columns: we have columns: col1, col2, col3. col3 is zero, so we can swap col2 and col3 to bring zero to the end. Then the matrix becomes:
+
+[1, 0, 0]
+[0, 0, -16]
+[0, 0, -6]
+
+But then we need to reduce the 2x2 block in rows2-3, cols2-3? Actually after swapping col2 and col3, we have:
+
+col1: [1,0,0]
+col2: [0,0,0]? Wait careful: initially matrix:
+Row1: [1,0,0]
+Row2: [0,-16,0]
+Row3: [0,-6,0]
+Swap col2 and col3: new col2 = old col3 = [0,0,0]; new col3 = old col2 = [0,-16,-6]. So matrix becomes:
+[1,0,0]
+[0,0,-16]
+[0,0,-6]
+Now we have zeros in second column. Then we can swap rows to bring the non-zero block to upper left? We have rows2 and3 with non-zero entries only in col3. So we can also swap columns to bring col3 to col2, etc. But we want diagonal form. Let's just treat the 2x2 submatrix of rows2-3 and columns2-3 after appropriate permutations. Since we have a zero column, we can bring that column to the end. We'll aim to get diagonal entries: d1=1, d2 = gcd of the entries of the 2x2 block? Actually we need to compute the Smith normal form of the 3x3 matrix with rank 2. The invariant factors are: first is 1, second is the gcd of all 2x2 minors (which is the determinant of the 2x2 submatrix after removing row1 and col1? But because we have a 1, we can compute the next invariant factor as the gcd of all 2x2 minors of the original D? But we already have a reduced form.
+
+Let's continue reduction. After swapping col2 and col3, we have:
+
+[1, 0, 0]
+[0, 0, -16]
+[0, 0, -6]
+
+Now we can also swap rows2 and3? Might not matter. To diagonalize the lower right 2x2 block, we need to reduce the 2x2 matrix [[0, -16],[0, -6]]? But note that the (2,2) entry is 0. We can swap columns2 and3 to bring the non-zero column to column2. Actually we already swapped so that col2 is zeros, col3 has non-zero. So we need to swap column2 and column3 again? Let's do: swap col2 and col3 again (or swap col2 with col3 to bring the non-zero column to col2). Since col2 is all zeros, swapping will put zeros in col3 and non-zero in col2. So after swapping col2 and col3, we get:
+
+[1, 0, 0]
+[0, -16, 0]
+[0, -6, 0]  back to original. That didn't help.
+
+Better: we can do column operations to eliminate the -6 using the -16. For instance, we can use column operations between column2 and column3? But column2 is zero? Actually after swapping we had col2 zero, col3 non-zero. This is not helpful. Let's go back to the matrix before swapping columns: we had:
+
+[1, 0, 0]
+[0, -16, 0]
+[0, -6, 0]
+
+We can treat the 2x2 submatrix formed by rows2-3 and columns2 (since column3 is zero). Actually the non-zero part is a 2x1 matrix: column2 has entries -16 and -6. To get a diagonal form, we need to reduce this to a single non-zero entry (the second invariant factor) and then have zero elsewhere. Since we have a 2x1, we can perform row operations to compute the gcd of -16 and -6. The gcd is 2. So we can combine rows to get one row with the gcd and the other row zero. Then we can place the gcd as the (2,2) entry, and then have zeros elsewhere. Let's do that.
+
+We have rows2 and3:
+r2 = [0, -16, 0]
+r3 = [0, -6, 0]
+
+We can perform row operations to replace r2 and r3 by rows that give the gcd. Compute gcd(16,6)=2. So we can get a row with 2. Standard method: use extended Euclidean algorithm to find integers u,v such that u*16 + v*6 = 2. But careful with signs. Since entries are negative, we can multiply rows by -1 to make positive. Let's multiply r2 by -1: r2 = [0,16,0]; r3 by -1: r3 = [0,6,0]. Then we want to get [0,2,0] and [0,0,0]. We can do:
+
+Let r2 = [0,16,0], r3 = [0,6,0]. We can do: r2 = r2 - 2*r3 => gives [0,16-12=4,0] = [0,4,0]. Then r3 = r3 - 1*r2? Not yet. Let's do systematic: We can reduce using Euclidean algorithm:
+
+We have r2 (16) and r3 (6). Replace r2 = r2 - 2*r3 => [0,4,0]. Then r3 = r3 - 1*r2? Actually to get gcd: 6 = 1*4 + 2, so r3 = r3 - 1*r2 => [0,6-4=2,0]. Then r2 = r2 - 2*r3 => [0,4-2*2=0,0]. So we get r2 = [0,0,0], r3 = [0,2,0]. Then we can swap rows to put the non-zero row at row2. So after these operations, we have:
+
+r1: [1,0,0]
+r2: [0,2,0] (after swapping)
+r3: [0,0,0]
+
+But note we also have column3 zero, so we have zeros in column3. So the matrix becomes:
+
+[1, 0, 0]
+[0, 2, 0]
+[0, 0, 0]
+
+This is already diagonal with d1=1, d2=2, d3=0. So D's Smith normal form is diag(1,2,0). But we need to confirm that the operations we did are unimodular. We performed row operations: multiplied rows by -1 (allowed), added integer multiples, etc. So yes.
+
+Thus D's invariant factors are: 1, 2, 0.
+
+Now recall: C (4x4) had SNF = diag(1, SNF(D)) = diag(1, 1, 2, 0). Because C reduced to diag(1, D'), where D' is D's SNF? Actually we had C after reduction: we had C reduced to diag(1, D) after clearing first row/col? Wait we reduced C to a block diag(1, D) after using the 1 pivot. So the SNF of C is diag(1, s1, s2, s3) where s1,s2,s3 are the invariant factors of D. Since D's SNF is diag(1,2,0), then C's SNF = diag(1,1,2,0). However note that the order: we have 4 invariant factors; the first is 1 from the reduction, then the next three are 1,2,0. So overall, C's invariant factors are: 1, 1, 2, 0. But wait we need to ensure divisibility: 1 divides 1, 1 divides 2, 2 divides 0? Yes, 0 divides 0? Actually the condition: d_i divides d_{i+1} for all i, and zeros come last. So 1|1, 1|2, 2|0 is true because any positive integer divides 0? Usually 0 is considered divisible by any integer? In Smith normal form, zeros are placed at the end, and we have d_i divides d_{i+1}. For zeros, we have that any integer divides 0, and 0 divides 0? Typically the condition is that d_i divides d_{i+1} for i < rank, and after that zeros. So it's fine.
+
+Now B (5x5) had SNF = diag(1, SNF(C)) = diag(1, 1, 1, 2, 0). Because B had a 1 from its reduction, then C's SNF gives four numbers: 1,1,2,0. So B's invariant factors: 1,1,1,2,0.
+
+Then A (6x6) had SNF = diag(1, SNF(B)) = diag(1, 1,1,1,2,0). That would be: d1=1, d2=1, d3=1, d4=1, d5=2, d6=0.
+
+But wait, we had earlier also a 1 from A's first reduction? Yes, we have d1=1 from A. Then B gave d2=1, C gave d3=1, D gave d4=1, d5=2, d6=0. That totals six: [1,1,1,1,2,0]. However we should double-check the count: A is 6x6, we had 1 from A, then B is 5x5 gave 1 from its own pivot, then C is 4x4 gave 1 from its pivot, then D is 3x3 gave 1 and 2 and 0. So total: A:1, B:1, C:1, D:1,2,0 => 6 numbers: 1,1,1,1,2,0. But is that correct? Let's verify that we didn't accidentally duplicate a 1. For instance, when we reduced B, we started with a 5x5 matrix and after operations we got a block diag(1, C). But that 1 came from the pivot we created in B; it's the first invariant factor of B. Then C's first invariant factor came from its own pivot. So those are distinct. So yes, we have four 1's before the 2. So the SNF of A would have four 1's, then a 2, then a 0. That seems plausible. But we should verify that the rank is 5 (since one zero). Let's compute rank of original A? Possibly rank 5. It might be that A has full rank? Let's quickly check determinant? Might be zero. We can compute determinant later. But SNF gives rank as number of non-zero diagonal entries. So rank = 5 if d6=0. So we expect det(A)=0. That's possible.
+
+We should also check if any further reduction could combine the 2 with something else? Might be that the 2 should divide the next but zero is fine. So list: 1,1,1,1,2,0.
+
+But we must ensure that the invariant factors are in non-decreasing order, which they are: 1|1, 1|1,1|1,1|2,2|0. Yes.
+
+Now we need to output the invariant factors as comma-separated list: d1, d2, d3, d4, d5, d6. So answer: 1,1,1,1,2,0.
+
+But we should verify by computing the determinantal divisors maybe as a sanity check. Let's compute the gcd of all 1x1 entries: that's gcd of all entries of A. Compute gcd of all entries? Original A entries: 1, -3, -2, 1,1,-2,3,0,0,-3,5,3,-8,7,4,3,-12,-2,1,-1,1,0,1,2,4,1,0,-4,8,5,-3,4,3,0,-5,1. The gcd of all these numbers: there are 1's, so gcd=1. So d1=1, good.
+
+Next, gcd of all 2x2 minors (i.e., the second determinantal divisor) should be d1*d2 = d2 (since d1=1). So we need to compute gcd of all 2x2 minors. We can check if there is a 2x2 minor with determinant 2? That would give d2=1 or 2? Actually d2 = gcd of all 2x2 minors. Since we have d2=1 according to our result, that means there should be a 2x2 minor equal to 1 (or more generally gcd=1). Is there a 2x2 minor with determinant ±1? Possibly. For example, top-left 2x2: det([[1,-3],[3,0]]) = 1*0 - (-3)*3 = 9, not 1. But maybe other minors give 1. For instance, rows1,2 and cols1,4: [[1,1],[3,-3]] -> det = 1*(-3)-1*3 = -6. Not 1. Rows1,4 and cols1,2: [[1,-3],[1,-1]] -> det = 1*(-1)-(-3)*1 = -1+3=2. That's 2. So there is a minor with value 2. But also there could be one with 1. Let's look for a minor with 1. For example, rows1,3 and cols1,2: [[1,-3],[-8,7]] -> det = 1*7 - (-3)*(-8)=7 -24 = -17. Not 1. Rows1,2 and cols2,3: [[-3,-2],[0,0]] gives 0. Rows1,5 and cols1,2: [[1,-3],[4,1]] -> det = 1*1 - (-3)*4 =1+12=13. Not 1. Rows2,4 and cols1,2: [[3,0],[1,-1]] -> det = 3*(-1)-0*1 = -3. Not 1. Rows3,4 and cols1,2: [[-8,7],[1,-1]] -> det = (-8)*(-1)-7*1=8-7=1. Yes! That minor is 1. So gcd of all 2x2 minors is 1. So d2=1, matches.
+
+Now third invariant factor d3 should be gcd of all 3x3 minors divided by (d1*d2)=1. So we need gcd of all 3x3 minors. We suspect d3=1 from our result. Let's check if there is a 3x3 minor equal to 1? Possibly. For example, rows1,2,3 and cols1,2,4 maybe? Need to find. We can trust our reduction but let's verify quickly. Our SNF says d3=1, so gcd of 3x3 minors should be 1. Indeed, we can find a 3x3 minor with determinant 1? Possibly from the submatrix we used earlier: rows3,4,5? Not sure. Since we have 1's in SNF, it's plausible.
+
+Now fourth invariant factor d4 should be gcd of all 4x4 minors divided by (d1 d2 d3) = d4? Actually the k-th invariant factor is the gcd of all k×k minors divided by the product of previous invariant factors. So d4 = gcd(4×4 minors) / (d1 d2 d3). Since d1 d2 d3 = 1, d4 = gcd of all 4×4 minors. We claim d4=1. That means there is a 4×4 minor equal to 1. Is that plausible? Possibly. We can check using our reduction: we had a 4x4 submatrix that reduced to diag(1,1,2,0). But that doesn't directly give a 4x4 minor =1, but it suggests that the gcd of all 4x4 minors is 1? Actually if the SNF has d4=1, then the gcd of all 4x4 minors is 1. Since we have 1's in SNF, it's fine.
+
+Now d5 = gcd of all 5x5 minors / (d1 d2 d3 d4) = d5. Since d1..d4 = 1, d5 = gcd of all 5×5 minors. Our result says d5=2. So the gcd of all 5×5 minors should be 2. That means there is a 5×5 minor equal to ±2, and all 5×5 minors are multiples of 2. So the determinant of any 5×5 submatrix is divisible by 2, and there is one that is exactly 2 (up to sign). Also note that the full 6x6 matrix has determinant 0 (since rank 5). So the invariant factor d6=0. So we can test: compute the determinant of the 5x5 submatrix obtained by deleting, say, the last row and last column? But we need to check if gcd of all 5x5 minors is 2. We can quickly compute the determinant of the 5x5 matrix we had earlier (B) after reduction? Actually B was the 5x5 submatrix after removing first row and first column? Let's see: Our original A after reduction gave a 5x5 submatrix B. The SNF of B we computed as diag(1,1,1,2,0). That means the product of non-zero invariant factors of B is 1*1*1*2 = 2, and the rank is 4? Wait B is 5x5, but its SNF has one zero, so rank(B)=4, and the product of its non-zero invariant factors is 2. That product equals the greatest common divisor of all 5x5 minors? Actually for a square matrix, the determinant (if full rank) is the product of invariant factors. For a non-square or singular matrix, the product of non-zero invariant factors equals the gcd of all maximal minors (i.e., minors of size equal to rank). Since B is 5x5 with rank 4, the maximal minors are 4x4 minors (since rank=4). Actually careful: For an m×n matrix of rank r, the product of the non-zero invariant factors is the gcd of all r×r minors. For B, which is 5x5 with rank 4, the product of its non-zero invariant factors (1,1,1,2) = 2 should be the gcd of all 4×4 minors of B. That matches our claim that d5 = gcd of all 5×5 minors of A? Wait A is 6x6; its maximal minors are 5x5? Actually rank of A is 5, so the product of its non-zero invariant factors (excluding zeros) is d1...d5 = 1*1*1*1*2 = 2, which should equal the gcd of all 5×5 minors of A. So that makes sense. So our result is consistent.
+
+Thus answer: 1,1,1,1,2,0.
+
+But we must ensure we didn't miss a factor: Could there be a 1 more? Could the SNF of D actually be diag(1,2,0) or diag(1,1,0)? We computed D's SNF as diag(1,2,0). Let's double-check D reduction more carefully.
+
+D = 
+[ -9, 6, -9 ]
+[ 6, -4, 6 ]
+[ 2, -2, 2 ]
+
+We did steps: multiply row1 by -1: [9,-6,9]; swap row1 and row3: row1=[2,-2,2]; row2=[6,-4,6]; row3=[9,-6,9]. Then we did r3 = r3 - 4*r1 gave [1,2,1]; swapped to get row1=[1,2,1]; row2=[6,-4,6]; row3=[2,-2,2]. Then column ops: c2 = c2 - 2*c1 gave [0,-16,-6]; c3 = c3 - c1 gave [0,0,0]. So matrix: [1,0,0]; [6,-16,0]; [2,-6,0]. Then row ops: r2 = r2 - 6r1 gave [0,-16,0]; r3 = r3 - 2r1 gave [0,-6,0]. So we have [1,0,0]; [0,-16,0]; [0,-6,0]. Now we need to reduce the 2x2 part: rows2-3, cols2 only (since col3 zero). So we have a 2x1 matrix [-16; -6]. The invariant factors for a 2x1 matrix? But recall D is 3x3, but after reduction we have a block with a 1 and then a 2x1 block. The SNF of a 2x1 matrix (with two entries) is diag(gcd, 0) where gcd = gcd of the two entries. So the SNF of the 2x1 part is [g, 0]^T? But we need to extend to 3x3. The standard process: we can treat the submatrix of rows2-3, cols2-3 (including col3 which is zero). Then we can perform column operations to get a non-zero entry in (2,2) and zero elsewhere. Indeed, we can do column operations to bring the gcd to (2,2). Let's do it carefully.
+
+We have:
+r1: [1, 0, 0]
+r2: [0, -16, 0]
+r3: [0, -6, 0]
+
+We want to diagonalize. Since col3 is zero, we can ignore it. We have a 2x2 block in rows2-3, cols2-3, but col3 is zero. Actually it's 2x2 with second column entries -16 and -6, third column zeros. So the matrix is essentially [0,-16,0; 0,-6,0]. To get SNF, we can perform column operations to move the non-zero column to the leftmost among remaining columns, then reduce rows. Let's swap columns2 and3? That yields:
+r1: [1,0,0]
+r2: [0,0,-16]
+r3: [0,0,-6]
+Now we have zeros in column2 and non-zero in column3. Then we can swap rows2 and3? That doesn't matter. Then we can reduce the 2x1 column3 entries to gcd. Perform row operations on rows2 and3 to get one row with gcd and other zero. As we did, gcd(16,6)=2. So we can get:
+r2 = something, r3 = something. But note we also have column3 entries, we can also use column operations to clear other columns? Since col2 is zero, we just have column3 non-zero. So after row reduction, we can get:
+r2: [0,0,2] and r3: [0,0,0]. Then we can swap columns to bring the non-zero column to column2 (since we want diagonal). So swap column2 and column3 again: then matrix becomes:
+r1: [1,0,0]
+r2: [0,2,0]
+r3: [0,0,0]
+Thus SNF diag(1,2,0). So that's correct.
+
+Thus D's SNF is indeed diag(1,2,0). So our chain is solid.
+
+Thus final answer: 1,1,1,1,2,0.
+
+But wait, we have four 1's. Let's count: A gave 1, B gave 1, C gave 1, D gave 1. That's four 1's. So d1=1,d2=1,d3=1,d4=1,d5=2,d6=0.
+
+We should check if any further simplifications could combine those 1's? No, they are separate invariant factors. So answer is 1,1,1,1,2,0.
+
+However, we should also consider the possibility that we might have missed a factor due to the ordering: sometimes the invariant factors are defined as d1 | d2 | ... | dr and dr+1=...=0. Having four 1's is fine.
+
+We can double-check by computing the determinant of some 5x5 minors to see if gcd is 2. For instance, consider the submatrix formed by deleting row1 and column1? That is the original B? But B after our transformations is not the same as original submatrix, but the gcd of all 5x5 minors of A should be 2. Let's compute one 5x5 minor: delete row1 and column1. The resulting 5x5 matrix is the submatrix of original A rows2-6, cols2-6. Let's compute its determinant quickly? That might be messy but we can compute using our reduction: we had B after some column and row ops (but not unimodularly equivalent to that submatrix? Actually the submatrix of A formed by rows2-6, cols2-6 is not the same as B we started with because B we had after column operations on A that modified columns2-6. However the determinant of that submatrix might be something. But we can compute the gcd of all 5x5 minors; it's supposed to be 2. Could there be a 5x5 minor with determinant 1? Let's test a simple one: delete row2 and column2 maybe? Not sure. But we can be confident in our reduction.
+
+Alternatively, we can compute the SNF using a computational approach in mind: maybe we can compute the invariant factors by computing determinantal divisors (gcd of minors) systematically. Let's attempt that as verification.
+
+Compute the Smith normal form via determinantal divisors: Let D_k = gcd of all k×k minors of A. Then d1 = D_1, d2 = D_2/D_1, d3 = D_3/(D_2), etc. Since D_1 = 1. We need to compute D_2, D_3, D_4, D_5, D_6. D_6 = determinant of A (if non-zero) but since we suspect rank 5, D_6 = 0. So let's compute D_2. We already argued there is a 2x2 minor =1, so D_2=1. Then d2=1. Now D_3 = gcd of all 3x3 minors. We need to see if D_3=1. Likely yes. Let's try to find a 3x3 minor with determinant 1. For example, consider rows 3,4,5 and columns 1,2,3? Actually rows3,4,5: row3 = [-8,7,4,3,-12,-2]; row4=[1,-1,1,0,1,2]; row5=[4,1,0,-4,8,5]. Columns1,2,3: 
+[-8,7,4;
+ 1,-1,1;
+ 4,1,0]. Compute determinant: 
+det = -8 * det([[-1,1],[1,0]]) -7 * det([[1,1],[4,0]]) +4 * det([[1,-1],[4,1]]) = -8*((-1*0 - 1*1)= -1) -7*(1*0 - 1*4 = -4) +4*(1*1 - (-1)*4 = 1+4=5) = -8*(-1)=8, -7*(-4)=28, +4*5=20, total 8+28+20=56. Not 1.
+Try rows1,4,6 and cols1,2,3: 
+row1=[1,-3,-2,1,1,-2]; row4=[1,-1,1,0,1,2]; row6=[-3,4,3,0,-5,1]; cols1,2,3: 
+[1,-3,-2; 1,-1,1; -3,4,3]. Compute determinant: 
+1*det([[-1,1],[4,3]]) - (-3)*det([[1,1],[-3,3]]) + (-2)*det([[1,-1],[-3,4]]) = 1*((-1)*3 - 1*4 = -3-4=-7) +3*(1*3 - 1*(-3)=3+3=6) + (-2)*(1*4 - (-1)*(-3)=4-3=1) = -7 +18 -2 = 9. Not 1.
+Try rows2,3,4 and cols1,2,5: 
+row2=[3,0,0,-3,5,3]; row3=[-8,7,4,3,-12,-2]; row4=[1,-1,1,0,1,2]; cols1,2,5: 
+[3,0,5; -8,7,-12; 1,-1,1]. Compute det: 
+3*det([[7,-12],[-1,1]]) -0 +5*det([[-8,7],[1,-1]]) = 3*(7*1 - (-12)*(-1)=7-12=-5) +5*((-8)*(-1)-7*1=8-7=1) = 3*(-5)+5*1 = -15+5=-10. Not 1.
+Try rows3,4,5 and cols1,2,4: 
+[-8,7,3; 1,-1,0; 4,1,-4]. Compute det: 
+-8*det([[-1,0],[1,-4]]) -7*det([[1,0],[4,-4]]) +3*det([[1,-1],[4,1]]) = -8*((-1)*(-4)-0*1=4) -7*(1*(-4)-0*4=-4) +3*(1*1 - (-1)*4=1+4=5) = -32 +28 +15 = 11. Not 1.
+Try rows1,4,5 and cols1,2,3: 
+[1,-3,-2;1,-1,1;4,1,0] determinant we computed earlier? Not done. Compute: 
+det = 1*det([[-1,1],[1,0]]) - (-3)*det([[1,1],[4,0]]) + (-2)*det([[1,-1],[4,1]]) = 1*((-1)*0 -1*1 = -1) +3*(1*0-1*4=-4) -2*(1*1 - (-1)*4=1+4=5) = -1 -12 -10 = -23. Not 1.
+Try rows3,4,6 and cols1,2,3: 
+[-8,7,4; 1,-1,1; -3,4,3] compute det: 
+-8*det([[-1,1],[4,3]]) -7*det([[1,1],[-3,3]]) +4*det([[1,-1],[-3,4]]) = -8*((-1)*3-1*4=-3-4=-7) -7*(1*3-1*(-3)=3+3=6) +4*(1*4 - (-1)*(-3)=4-3=1) = 56 -42 +4 = 18. Not 1.
+Maybe a different combination yields 1. But we can also compute D_3 by looking at the minors of the reduced matrix? Since we already reduced to a form with many 1's, it's clear that D_3 = 1 because we have a 3x3 minor that equals 1 in the SNF? Actually the SNF itself provides that the product of the first three invariant factors is 1*1*1=1, so D_3 = d1*d2*d3 = 1. So D_3=1. So that matches. So we accept.
+
+Now D_4 = product d1 d2 d3 d4 = 1*1*1*1=1. So we need to ensure that there is a 4x4 minor equal to 1. Could be present. For instance, the 4x4 submatrix from rows2-5, cols2-5? That is our C matrix? Its determinant? But C had SNF diag(1,1,2,0), so its determinant is 0? Actually C is 4x4, its invariant factors product = 1*1*2*0 =0, so det=0. But there may be other 4x4 minors that have determinant 1. For example, take rows1,2,3,4 and cols1,2,3,4? Let's compute determinant of that 4x4 from original A? Might be messy, but we trust.
+
+Now D_5 = product d1..d5 = 1*1*1*1*2 = 2. So gcd of all 5x5 minors should be 2. Let's try to find a 5x5 minor that is 2. For instance, consider the submatrix formed by deleting row1 and column1 (the one we had earlier). We can compute its determinant using our reduction? Since we performed unimodular operations on A, the determinant of that 5x5 submatrix may have changed? However the gcd of all 5x5 minors is invariant under unimodular row/col operations. So we can compute it from the reduced form. Our reduced A after all operations? We have reduced A to a diagonal matrix diag(1,1,1,1,2,0) (since we reduced A to SNF). So the SNF itself shows that the gcd of all 5x5 minors is 2. Indeed, the only non-zero 5x5 minor in the diagonal matrix is the product of the first five diagonal entries = 1*1*1*1*2 = 2, and all other 5x5 minors are either zero or multiples? Actually in a diagonal matrix, the 5x5 minors are obtained by choosing 5 rows and 5 columns. If we omit the row and column corresponding to the zero diagonal (the 6th), then we get the product of the first five diagonals = 2. If we omit any other row/column, there will be a zero on the diagonal, so the minor is zero. So the gcd of all 5x5 minors is 2. So consistent. So our SNF is correct.
+
+Thus answer: 1,1,1,1,2,0.
+
+Now we need to present the answer as a comma-separated list. So "1,1,1,1,2,0". Ensure ordering: d1, d2, d3, d4, d5, d6.
+
+Therefore final output: ANSWER: 1,1,1,1,2,0
+
+I'll produce that.

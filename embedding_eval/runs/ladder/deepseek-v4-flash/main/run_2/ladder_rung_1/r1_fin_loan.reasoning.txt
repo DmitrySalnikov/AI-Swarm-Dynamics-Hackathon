@@ -1,0 +1,355 @@
+We are given a loan with outstanding balance at start of month 1: 53947.92. Monthly interest rate initially 0.65% (nominal annual 7.8%). Each month: interest = balance * monthly rate, rounded to nearest cent (half round up). Then interest added, then regular payment of $445 subtracted. Then if extra prepayment scheduled that month, subtract that too. Balance after step 3 is start of next month.
+
+We have a list of scheduled events: extra prepayments at end of month 3 ($1280), month 8 ($2394.09), month 10 ($215), month 39 ($2137), month 57 ($1858.98), month 70 ($722). Also interest rate changes: starting month 26: rate 0.55%; month 27: 0.50%; month 32: 0.45%; month 36: 0.40%; month 41: 0.50%; month 79: 0.60%; month 81: 0.75%; month 82: 0.65%. Need balance at end of month 84 (after all steps). So we need to simulate month by month from month 1 to month 84. There are many months but we can compute systematically. Use careful rounding.
+
+We need to keep track of balance at start of each month. Let B0 = starting balance at month 1: 53947.92. For each month i from 1 to 84:
+
+- Determine monthly interest rate r_i. Initially r=0.0065 (0.65%). Changes:
+   - For months 1-25: r = 0.0065? But note: "Starting with month 26, the monthly interest rate becomes 0.55%" Means that for month 26, the rate used is 0.55%? Usually "starting with month X" means the rate applies for that month onward. So for month 26, rate=0.55%; month 27: 0.50%; etc. So we need to know which months get which rates. Let's list:
+
+Given:
+- Starting with month 26, monthly interest rate becomes 0.55% (annual 6.60%). So months 26 onward? But then further changes: Starting with month 27: 0.50%; so month 27 onward? Actually it says:
+- Starting with month 26, the monthly interest rate becomes 0.55%
+- Starting with month 27, the monthly interest rate becomes 0.50%
+- Starting with month 32, the monthly interest rate becomes 0.45%
+- Starting with month 36, the monthly interest rate becomes 0.40%
+- Starting with month 41, the monthly interest rate becomes 0.50%
+- Starting with month 79, the monthly interest rate becomes 0.60%
+- Starting with month 81, the monthly interest rate becomes 0.75%
+- Starting with month 82, the monthly interest rate becomes 0.65%
+
+Thus we need to assign rates for each month based on the latest change that is effective at that month. For example:
+- Month 1-25: rate = 0.65% (initial)
+- Month 26: rate = 0.55% (since starting with month 26)
+- Month 27-31: rate = 0.50%? Because starting with month 27, rate becomes 0.50%, so month 27 onward until next change (month 32) uses 0.50%. So month 27,28,29,30,31: 0.50%
+- Month 32-35: rate = 0.45% (since starting month 32)
+- Month 36-40: rate = 0.40% (starting month 36)
+- Month 41-78: rate = 0.50% (starting month 41)
+- Month 79-80: rate = 0.60% (starting month 79)
+- Month 81: rate = 0.75% (starting month 81)
+- Month 82-84: rate = 0.65% (starting month 82)
+
+Check: Month 41 to 78 inclusive: that's 38 months? Actually month 41 to month 78 = 38 months, then month 79 changes to 0.60%, month 81 to 0.75%, month 82 to 0.65%. So final months: 82,83,84 at 0.65%.
+
+Now extra prepayments: at end of month 3,8,10,39,57,70. Important: They occur after regular payment. So in month 3, after step 2 (interest added and regular payment subtracted), we also subtract extra prepayment of $1280. So the balance after month 3 = (balance after interest + regular payment) - extra.
+
+Similarly for other months.
+
+We need to compute month by month. Since there are many months, we should do it systematically, maybe using a spreadsheet mentality. We'll do calculations manually but careful with rounding.
+
+Let's denote B_i = balance at start of month i. For month i:
+- interest = round(B_i * r_i, 2) (round to nearest cent, half up)
+- Then balance after interest and regular payment: B_i + interest - 445.00
+- Then if extra prepayment scheduled in month i, subtract that amount. So B_{i+1} = B_i + interest - 445 - extra_i (if any). Note: extra_i is 0 if no prepayment.
+
+Now we need to simulate from i=1 to 84, and compute B_{85}? Actually at the end of month 84, after all steps, that's balance at start of month 85. So we need B_{85}. So we simulate to i=84.
+
+We have starting B1 = 53947.92.
+
+We'll go month by month. Let's create a table.
+
+I'll denote r as decimal.
+
+We have extra payments:
+Month 3: 1280
+Month 8: 2394.09
+Month 10: 215
+Month 39: 2137
+Month 57: 1858.98
+Month 70: 722
+
+Also note: There might be other months? None.
+
+We need to compute interest each month and round.
+
+We need high precision. Let's start.
+
+Initialize B = 53947.92
+
+Month 1: r=0.0065 (since month1-25). Interest = 53947.92 * 0.0065 = let's compute: 53947.92 * 0.0065 = 53947.92 * (65/10000) = (53947.92*65)/10000. 53947.92*65 = 53947.92*60 + 53947.92*5 = 3,236,875.2 + 269,739.6 = 3,506,614.8? Let me compute exactly: 53947.92 * 60 = 3,236,875.2; *5 = 269,739.6; sum = 3,506,614.8. Divide by 10000 = 350.66148. So interest = 350.66148. Round to nearest cent: 350.66 (since 0.00148 -> round down? Actually 0.66148, the third decimal is 1? Wait: 350.66148: digits: 350.66 148, so hundredths digit is 6, thousandths is 1, so round down to 350.66. But careful: rounding to nearest cent: half cent rounds up. So we look at the thousandths digit. 350.66148, the thousandths digit is 1 (<5), so round down to 350.66. So interest = 350.66.
+Then B after interest: 53947.92 + 350.66 = 54298.58. Then subtract regular payment: 54298.58 - 445 = 53853.58. No extra in month1. So B2 = 53853.58.
+
+Month 2: r=0.0065. B=53853.58. Interest = 53853.58 * 0.0065 = compute: 53853.58 * 0.0065 = (53853.58*65)/10000. 53853.58*65 = 53853.58*60 + 53853.58*5 = 3,231,214.8 + 269,267.9 = 3,500,482.7? Actually compute precisely: 53853.58 * 60 = 3,231,214.8; *5 = 269,267.9; sum = 3,500,482.7. Divide by 10000 = 350.04827. So interest = 350.04827. Round: 350.05? Because thousandths digit is 8? Wait: 350.04827: digits: 350.04 827, so hundredths = 4, thousandths = 8 >=5, so round up to 350.05. So interest = 350.05.
+Then B after interest: 53853.58 + 350.05 = 54203.63. Subtract payment: 54203.63 - 445 = 53758.63. No extra. So B3 = 53758.63.
+
+Month 3: r=0.0065. B=53758.63. Interest = 53758.63*0.0065 = (53758.63*65)/10000. 53758.63*65 = 53758.63*60 + 53758.63*5 = 3,225,517.8 + 268,793.15 = 3,494,310.95? Actually 53758.63*60 = 3,225,517.8; *5 = 268,793.15; sum = 3,494,310.95. /10000 = 349.431095. So interest = 349.431095. Round: 349.43 (since thousandths = 1? Actually 349.431095: hundredths=3, thousandths=1 <5, so round down to 349.43). So interest = 349.43.
+Then B after interest: 53758.63 + 349.43 = 54108.06. Subtract payment: 54108.06 - 445 = 53663.06. Then extra prepayment of 1280: 53663.06 - 1280 = 52383.06. So B4 = 52383.06.
+
+Month 4: r=0.0065. B=52383.06. Interest = 52383.06*0.0065 = (52383.06*65)/10000. 52383.06*65 = 52383.06*60 + 52383.06*5 = 3,142,983.6 + 261,915.3 = 3,404,898.9; /10000 = 340.48989. Round: 340.49 (since thousandths=9? Actually 340.48989: hundredths=8, thousandths=9≥5=> round up to 340.49). So interest=340.49.
+Then B after interest: 52383.06+340.49=52723.55. Subtract payment: 52723.55-445=52278.55. No extra, so B5=52278.55.
+
+Month 5: r=0.0065. B=52278.55. Interest = 52278.55*0.0065 = (52278.55*65)/10000. 52278.55*60=3,136,713; *5=261,392.75; sum=3,398,105.75? Actually: 52278.55*60 = 3,136,713.0; *5 = 261,392.75; total=3,398,105.75. /10000=339.810575. Round: 339.81 (thousandths=0? Actually 339.810575: digits: 339.81 0575, hundredths=1, thousandths=0<5 => round down to 339.81). So interest=339.81.
+Then B after int: 52278.55+339.81=52618.36. Subtract payment: 52618.36-445=52173.36. B6=52173.36.
+
+Month 6: r=0.0065. B=52173.36. Interest = 52173.36*0.0065 = (52173.36*65)/10000 = 52173.36*60=3,130,401.6; *5=260,866.8; sum=3,391,268.4; /10000=339.12684. Round: 339.13 (since thousandths=6? Actually 339.12684: hundredths=2, thousandths=6>=5 => round up to 339.13). So interest=339.13.
+Then B after int: 52173.36+339.13=52512.49. Subtract payment: 52512.49-445=52067.49. B7=52067.49.
+
+Month 7: r=0.0065. B=52067.49. Interest = 52067.49*0.0065 = (52067.49*65)/10000 = 52067.49*60=3,124,049.4; *5=260,337.45; sum=3,384,386.85; /10000=338.438685. Round: 338.44 (thousandths=8? 338.438685: hundredths=3, thousandths=8>=5 => round up to 338.44). So interest=338.44.
+Then B after int: 52067.49+338.44=52405.93. Subtract payment: 52405.93-445=51960.93. B8=51960.93.
+
+Month 8: r=0.0065. B=51960.93. Interest = 51960.93*0.0065 = (51960.93*65)/10000 = 51960.93*60=3,117,655.8; *5=259,804.65; sum=3,377,460.45; /10000=337.746045. Round: 337.75 (thousandths=6? Actually 337.746045: hundredths=4, thousandths=6>=5 => round up to 337.75). So interest=337.75.
+Then B after int: 51960.93+337.75=52298.68. Subtract payment: 52298.68-445=51853.68. Then extra prepayment of 2394.09: 51853.68 - 2394.09 = 49459.59. So B9 = 49459.59.
+
+Month 9: r=0.0065. B=49459.59. Interest = 49459.59*0.0065 = (49459.59*65)/10000 = 49459.59*60=2,967,575.4; *5=247,297.95; sum=3,214,873.35; /10000=321.487335. Round: 321.49 (thousandths=7>=5 => round up to 321.49). So interest=321.49.
+Then B after int: 49459.59+321.49=49781.08. Subtract payment: 49781.08-445=49336.08. B10=49336.08.
+
+Month 10: r=0.0065. B=49336.08. Interest = 49336.08*0.0065 = (49336.08*65)/10000 = 49336.08*60=2,960,164.8; *5=246,680.4; sum=3,206,845.2; /10000=320.68452. Round: 320.68 (thousandths=4? Actually 320.68452: hundredths=8, thousandths=4<5 => round down to 320.68). So interest=320.68.
+Then B after int: 49336.08+320.68=49656.76. Subtract payment: 49656.76-445=49211.76. Then extra prepayment of 215: 49211.76-215=48996.76. So B11=48996.76.
+
+Month 11: r=0.0065. B=48996.76. Interest = 48996.76*0.0065 = (48996.76*65)/10000 = 48996.76*60=2,939,805.6; *5=244,983.8; sum=3,184,789.4; /10000=318.47894. Round: 318.48 (thousandths=8? Actually 318.47894: hundredths=7, thousandths=8>=5 => round up to 318.48). So interest=318.48.
+Then B after int: 48996.76+318.48=49315.24. Subtract payment: 49315.24-445=48870.24. B12=48870.24.
+
+Month 12: r=0.0065. B=48870.24. Interest = 48870.24*0.0065 = (48870.24*65)/10000 = 48870.24*60=2,932,214.4; *5=244,351.2; sum=3,176,565.6; /10000=317.65656. Round: 317.66 (since thousandths=6>=5 => round up to 317.66). So interest=317.66.
+Then B after int: 48870.24+317.66=49187.90. Subtract payment: 49187.90-445=48742.90. B13=48742.90.
+
+Month 13: r=0.0065. B=48742.90. Interest = 48742.90*0.0065 = (48742.90*65)/10000 = 48742.90*60=2,924,574; *5=243,714.5; sum=3,168,288.5; /10000=316.82885. Round: 316.83 (thousandths=8? 316.82885: hundredths=2, thousandths=8>=5 => round up to 316.83). So interest=316.83.
+Then B after int: 48742.90+316.83=49059.73. Subtract payment: 49059.73-445=48614.73. B14=48614.73.
+
+Month 14: r=0.0065. B=48614.73. Interest = 48614.73*0.0065 = (48614.73*65)/10000 = 48614.73*60=2,916,883.8; *5=243,073.65; sum=3,159,957.45; /10000=315.995745. Round: 316.00? Because 315.995745: hundredths=9, thousandths=5? Actually 315.995745: digits: 315.99 5745? more precisely: 315.995745, the hundredths digit is 9 (since 315.99...), thousandths is 5, and since it's exactly half? Actually 0.995745: the thousandths digit is 5, but there are more digits beyond? The rule: round to nearest cent, half a cent rounds up. So we look at the thousandths digit. Here it's 5, and there are non-zero digits after (5745), so it's more than half? Actually half cent is 0.005 exactly. So if the thousandths digit is 5 and all following digits are zero, it's exactly half; otherwise, if any non-zero, it's greater than half, so round up. Since 315.995745 has thousandths digit 5 and then more digits, it means it's > 315.995, so round up to 316.00. So interest = 316.00. Wait, careful: 315.995745 rounded to 2 decimals: 316.00? That would be rounding up from 315.995... to 316.00 because 315.995... is closer to 316.00 than to 315.99? Actually 315.995745 is 0.005745 above 315.99, which is > 0.005, so yes round up to 316.00. So interest = 316.00.
+Then B after int: 48614.73+316.00=48930.73. Subtract payment: 48930.73-445=48485.73. B15=48485.73.
+
+Month 15: r=0.0065. B=48485.73. Interest = 48485.73*0.0065 = (48485.73*65)/10000 = 48485.73*60=2,909,143.8; *5=242,428.65; sum=3,151,572.45; /10000=315.157245. Round: 315.16 (thousandths=7? Actually 315.157245: hundredths=5, thousandths=7>=5 => round up to 315.16). So interest=315.16.
+Then B after int: 48485.73+315.16=48800.89. Subtract payment: 48800.89-445=48355.89. B16=48355.89.
+
+Month 16: r=0.0065. B=48355.89. Interest = 48355.89*0.0065 = (48355.89*65)/10000 = 48355.89*60=2,901,353.4; *5=241,779.45; sum=3,143,132.85; /10000=314.313285. Round: 314.31 (thousandths=3? Actually 314.313285: hundredths=1, thousandths=3<5 => round down to 314.31). So interest=314.31.
+Then B after int: 48355.89+314.31=48670.20. Subtract payment: 48670.20-445=48225.20. B17=48225.20.
+
+Month 17: r=0.0065. B=48225.20. Interest = 48225.20*0.0065 = (48225.20*65)/10000 = 48225.20*60=2,893,512; *5=241,126; sum=3,134,638; /10000=313.4638. Actually careful: 48225.20*65 = 48225.20*60=2,893,512; *5=241,126; sum=3,134,638; /10000=313.4638. So interest=313.4638. Round: 313.46 (thousandths=3<5 => round down to 313.46). So interest=313.46.
+Then B after int: 48225.20+313.46=48538.66. Subtract payment: 48538.66-445=48093.66. B18=48093.66.
+
+Month 18: r=0.0065. B=48093.66. Interest = 48093.66*0.0065 = (48093.66*65)/10000 = 48093.66*60=2,885,619.6; *5=240,468.3; sum=3,126,087.9; /10000=312.60879. Round: 312.61 (thousandths=8>=5 => round up to 312.61). So interest=312.61.
+Then B after int: 48093.66+312.61=48406.27. Subtract payment: 48406.27-445=47961.27. B19=47961.27.
+
+Month 19: r=0.0065. B=47961.27. Interest = 47961.27*0.0065 = (47961.27*65)/10000 = 47961.27*60=2,877,676.2; *5=239,806.35; sum=3,117,482.55; /10000=311.748255. Round: 311.75 (thousandths=8? Actually 311.748255: hundredths=4, thousandths=8>=5 => round up to 311.75). So interest=311.75.
+Then B after int: 47961.27+311.75=48273.02. Subtract payment: 48273.02-445=47828.02. B20=47828.02.
+
+Month 20: r=0.0065. B=47828.02. Interest = 47828.02*0.0065 = (47828.02*65)/10000 = 47828.02*60=2,869,681.2; *5=239,140.1; sum=3,108,821.3; /10000=310.88213. Round: 310.88 (thousandths=2<5 => round down to 310.88). So interest=310.88.
+Then B after int: 47828.02+310.88=48138.90. Subtract payment: 48138.90-445=47693.90. B21=47693.90.
+
+Month 21: r=0.0065. B=47693.90. Interest = 47693.90*0.0065 = (47693.90*65)/10000 = 47693.90*60=2,861,634; *5=238,469.5; sum=3,100,103.5; /10000=310.01035. Round: 310.01 (thousandths=0<5? Actually 310.01035: hundredths=1, thousandths=0<5 => round down to 310.01). So interest=310.01.
+Then B after int: 47693.90+310.01=48003.91. Subtract payment: 48003.91-445=47558.91. B22=47558.91.
+
+Month 22: r=0.0065. B=47558.91. Interest = 47558.91*0.0065 = (47558.91*65)/10000 = 47558.91*60=2,853,534.6; *5=237,794.55; sum=3,091,329.15; /10000=309.132915. Round: 309.13 (thousandths=2? Actually 309.132915: hundredths=3, thousandths=2<5 => round down to 309.13). So interest=309.13.
+Then B after int: 47558.91+309.13=47868.04. Subtract payment: 47868.04-445=47423.04. B23=47423.04.
+
+Month 23: r=0.0065. B=47423.04. Interest = 47423.04*0.0065 = (47423.04*65)/10000 = 47423.04*60=2,845,382.4; *5=237,115.2; sum=3,082,497.6; /10000=308.24976. Round: 308.25 (thousandths=9? Actually 308.24976: hundredths=4, thousandths=9>=5 => round up to 308.25). So interest=308.25.
+Then B after int: 47423.04+308.25=47731.29. Subtract payment: 47731.29-445=47286.29. B24=47286.29.
+
+Month 24: r=0.0065. B=47286.29. Interest = 47286.29*0.0065 = (47286.29*65)/10000 = 47286.29*60=2,837,177.4; *5=236,431.45; sum=3,073,608.85; /10000=307.360885. Round: 307.36 (thousandths=0? Actually 307.360885: hundredths=6, thousandths=0<5 => round down to 307.36). So interest=307.36.
+Then B after int: 47286.29+307.36=47593.65. Subtract payment: 47593.65-445=47148.65. B25=47148.65.
+
+Month 25: r=0.0065. B=47148.65. Interest = 47148.65*0.0065 = (47148.65*65)/10000 = 47148.65*60=2,828,919; *5=235,743.25; sum=3,064,662.25; /10000=306.466225. Round: 306.47 (thousandths=6? Actually 306.466225: hundredths=6, thousandths=6>=5 => round up to 306.47). So interest=306.47.
+Then B after int: 47148.65+306.47=47455.12. Subtract payment: 47455.12-445=47010.12. B26 = 47010.12. (Note: month 26 starts with this balance, but month 26 rate changes to 0.55%.)
+
+Now month 26: r=0.0055 (0.55%). B=47010.12. Interest = 47010.12 * 0.0055 = 47010.12 * (55/10000) = (47010.12*55)/10000. 47010.12*55 = 47010.12*50 + 47010.12*5 = 2,350,506 + 235,050.6 = 2,585,556.6? Actually compute: 47010.12*50 = 2,350,506; *5 = 235,050.6; sum = 2,585,556.6. /10000 = 258.55566. So interest = 258.55566. Round: 258.56 (since thousandths=5? Actually 258.55566: hundredths=5, thousandths=5, and there are digits after, so it's >0.005, so round up to 258.56). So interest = 258.56.
+Then B after interest: 47010.12+258.56=47268.68. Subtract payment: 47268.68-445=46823.68. No extra. So B27 = 46823.68.
+
+Month 27: r=0.0050 (0.50%). Starting month 27 rate becomes 0.50%. B=46823.68. Interest = 46823.68 * 0.005 = 46823.68 * (5/1000) = 234.1184? Actually 46823.68 * 0.005 = 46823.68 /200 = 234.1184. Exactly: 46823.68 * 0.005 = 234.1184. Round: 234.12 (thousandths=8? Actually 234.1184: hundredths=1, thousandths=8>=5 => round up to 234.12). So interest = 234.12.
+Then B after int: 46823.68+234.12=47057.80. Subtract payment: 47057.80-445=46612.80. B28 = 46612.80.
+
+Month 28: r=0.0050. B=46612.80. Interest = 46612.80 * 0.005 = 233.064. Exactly 46612.80 * 0.005 = 233.064. Round: 233.06 (thousandths=4? 233.064: hundredths=6, thousandths=4<5 => round down to 233.06). So interest=233.06.
+Then B after int: 46612.80+233.06=46845.86. Subtract payment: 46845.86-445=46400.86. B29=46400.86.
+
+Month 29: r=0.0050. B=46400.86. Interest = 46400.86 * 0.005 = 232.0043. Actually 46400.86*0.005 = 232.0043. Round: 232.00 (thousandths=4? 232.0043: hundredths=0, thousandths=4<5 => round down to 232.00). So interest=232.00.
+Then B after int: 46400.86+232.00=46632.86. Subtract payment: 46632.86-445=46187.86. B30=46187.86.
+
+Month 30: r=0.0050. B=46187.86. Interest = 46187.86 * 0.005 = 230.9393. Actually 46187.86*0.005 = 230.9393. Round: 230.94 (thousandths=9? 230.9393: hundredths=3, thousandths=9>=5 => round up to 230.94). So interest=230.94.
+Then B after int: 46187.86+230.94=46418.80. Subtract payment: 46418.80-445=45973.80. B31=45973.80.
+
+Month 31: r=0.0050. B=45973.80. Interest = 45973.80*0.005 = 229.869. Actually 45973.80*0.005 = 229.869. Round: 229.87 (thousandths=9? 229.869: hundredths=6, thousandths=9>=5 => round up to 229.87). So interest=229.87.
+Then B after int: 45973.80+229.87=46203.67. Subtract payment: 46203.67-445=45758.67. B32=45758.67.
+
+Month 32: r=0.0045 (0.45%). Starting month 32 rate becomes 0.45%. B=45758.67. Interest = 45758.67 * 0.0045 = 45758.67 * (45/10000) = (45758.67*45)/10000. 45758.67*40 = 1,830,346.8; *5 = 228,793.35; sum = 2,059,140.15; /10000 = 205.914015. Round: 205.91 (thousandths=4? 205.914015: hundredths=1, thousandths=4<5 => round down to 205.91). So interest=205.91.
+Then B after int: 45758.67+205.91=45964.58. Subtract payment: 45964.58-445=45519.58. B33=45519.58.
+
+Month 33: r=0.0045. B=45519.58. Interest = 45519.58 * 0.0045 = (45519.58*45)/10000. 45519.58*40=1,820,783.2; *5=227,597.9; sum=2,048,381.1; /10000=204.83811. Round: 204.84 (thousandths=8? 204.83811: hundredths=3, thousandths=8>=5 => round up to 204.84). So interest=204.84.
+Then B after int: 45519.58+204.84=45724.42. Subtract payment: 45724.42-445=45279.42. B34=45279.42.
+
+Month 34: r=0.0045. B=45279.42. Interest = 45279.42 * 0.0045 = (45279.42*45)/10000. 45279.42*40=1,811,176.8; *5=226,397.1; sum=2,037,573.9; /10000=203.75739. Round: 203.76 (thousandths=7? 203.75739: hundredths=5, thousandths=7>=5 => round up to 203.76). So interest=203.76.
+Then B after int: 45279.42+203.76=45483.18. Subtract payment: 45483.18-445=45038.18. B35=45038.18.
+
+Month 35: r=0.0045. B=45038.18. Interest = 45038.18 * 0.0045 = (45038.18*45)/10000. 45038.18*40=1,801,527.2; *5=225,190.9; sum=2,026,718.1; /10000=202.67181. Round: 202.67 (thousandths=1? 202.67181: hundredths=7, thousandths=1<5 => round down to 202.67). So interest=202.67.
+Then B after int: 45038.18+202.67=45240.85. Subtract payment: 45240.85-445=44795.85. B36=44795.85.
+
+Month 36: r=0.0040 (0.40%). Starting month 36 rate becomes 0.40%. B=44795.85. Interest = 44795.85 * 0.004 = 179.1834. Actually 44795.85 * 0.004 = 179.1834. Round: 179.18 (thousandths=3? 179.1834: hundredths=8, thousandths=3<5 => round down to 179.18). So interest=179.18.
+Then B after int: 44795.85+179.18=44975.03. Subtract payment: 44975.03-445=44530.03. B37=44530.03.
+
+Month 37: r=0.0040. B=44530.03. Interest = 44530.03 * 0.004 = 178.12012. Round: 178.12 (thousandths=0? 178.12012: hundredths=2, thousandths=0<5 => round down to 178.12). So interest=178.12.
+Then B after int: 44530.03+178.12=44708.15. Subtract payment: 44708.15-445=44263.15. B38=44263.15.
+
+Month 38: r=0.0040. B=44263.15. Interest = 44263.15 * 0.004 = 177.0526. Round: 177.05 (thousandths=2? 177.0526: hundredths=5, thousandths=2<5 => round down to 177.05). So interest=177.05.
+Then B after int: 44263.15+177.05=44440.20. Subtract payment: 44440.20-445=43995.20. B39=43995.20.
+
+Month 39: r=0.0040. B=43995.20. Interest = 43995.20 * 0.004 = 175.9808. Round: 175.98 (thousandths=0? 175.9808: hundredths=8, thousandths=0<5 => round down to 175.98). So interest=175.98.
+Then B after int: 43995.20+175.98=44171.18. Subtract payment: 44171.18-445=43726.18. Then extra prepayment of 2137: 43726.18 - 2137 = 41589.18. So B40 = 41589.18.
+
+Month 40: r=0.0040. B=41589.18. Interest = 41589.18 * 0.004 = 166.35672. Round: 166.36 (thousandths=6? 166.35672: hundredths=5, thousandths=6>=5 => round up to 166.36). So interest=166.36.
+Then B after int: 41589.18+166.36=41755.54. Subtract payment: 41755.54-445=41310.54. No extra. So B41 = 41310.54.
+
+Month 41: r=0.0050 (0.50%). Starting month 41 rate becomes 0.50%. B=41310.54. Interest = 41310.54 * 0.005 = 206.5527. Round: 206.55 (thousandths=2? 206.5527: hundredths=5, thousandths=2<5 => round down to 206.55). So interest=206.55.
+Then B after int: 41310.54+206.55=41517.09. Subtract payment: 41517.09-445=41072.09. B42=41072.09.
+
+Month 42: r=0.0050. B=41072.09. Interest = 41072.09 * 0.005 = 205.36045. Round: 205.36 (thousandths=0? 205.36045: hundredths=6, thousandths=0<5 => round down to 205.36). So interest=205.36.
+Then B after int: 41072.09+205.36=41277.45. Subtract payment: 41277.45-445=40832.45. B43=40832.45.
+
+Month 43: r=0.0050. B=40832.45. Interest = 40832.45 * 0.005 = 204.16225. Round: 204.16 (thousandths=2? 204.16225: hundredths=6, thousandths=2<5 => round down to 204.16). So interest=204.16.
+Then B after int: 40832.45+204.16=41036.61. Subtract payment: 41036.61-445=40591.61. B44=40591.61.
+
+Month 44: r=0.0050. B=40591.61. Interest = 40591.61 * 0.005 = 202.95805. Round: 202.96 (thousandths=8? 202.95805: hundredths=5, thousandths=8>=5 => round up to 202.96). So interest=202.96.
+Then B after int: 40591.61+202.96=40794.57. Subtract payment: 40794.57-445=40349.57. B45=40349.57.
+
+Month 45: r=0.0050. B=40349.57. Interest = 40349.57 * 0.005 = 201.74785. Round: 201.75 (thousandths=7? 201.74785: hundredths=4, thousandths=7>=5 => round up to 201.75). So interest=201.75.
+Then B after int: 40349.57+201.75=40551.32. Subtract payment: 40551.32-445=40106.32. B46=40106.32.
+
+Month 46: r=0.0050. B=40106.32. Interest = 40106.32 * 0.005 = 200.5316. Round: 200.53 (thousandths=1? 200.5316: hundredths=3, thousandths=1<5 => round down to 200.53). So interest=200.53.
+Then B after int: 40106.32+200.53=40306.85. Subtract payment: 40306.85-445=39861.85. B47=39861.85.
+
+Month 47: r=0.0050. B=39861.85. Interest = 39861.85 * 0.005 = 199.30925. Round: 199.31 (thousandths=9? 199.30925: hundredths=0, thousandths=9>=5 => round up to 199.31). So interest=199.31.
+Then B after int: 39861.85+199.31=40061.16. Subtract payment: 40061.16-445=39616.16. B48=39616.16.
+
+Month 48: r=0.0050. B=39616.16. Interest = 39616.16 * 0.005 = 198.0808. Round: 198.08 (thousandths=0? 198.0808: hundredths=8, thousandths=0<5 => round down to 198.08). So interest=198.08.
+Then B after int: 39616.16+198.08=39814.24. Subtract payment: 39814.24-445=39369.24. B49=39369.24.
+
+Month 49: r=0.0050. B=39369.24. Interest = 39369.24 * 0.005 = 196.8462. Round: 196.85 (thousandths=6? 196.8462: hundredths=4, thousandths=6>=5 => round up to 196.85). So interest=196.85.
+Then B after int: 39369.24+196.85=39566.09. Subtract payment: 39566.09-445=39121.09. B50=39121.09.
+
+Month 50: r=0.0050. B=39121.09. Interest = 39121.09 * 0.005 = 195.60545. Round: 195.61 (thousandths=5? 195.60545: hundredths=0, thousandths=5, and digits after: 45, so >0.005? Actually 0.60545, thousandths digit =5, and there are digits after (45) so it's >0.005, so round up to 195.61). So interest=195.61.
+Then B after int: 39121.09+195.61=39316.70. Subtract payment: 39316.70-445=38871.70. B51=38871.70.
+
+Month 51: r=0.0050. B=38871.70. Interest = 38871.70 * 0.005 = 194.3585. Round: 194.36 (thousandths=8? 194.3585: hundredths=5, thousandths=8>=5 => round up to 194.36). So interest=194.36.
+Then B after int: 38871.70+194.36=39066.06. Subtract payment: 39066.06-445=38621.06. B52=38621.06.
+
+Month 52: r=0.0050. B=38621.06. Interest = 38621.06 * 0.005 = 193.1053. Round: 193.11 (thousandths=5? 193.1053: hundredths=0, thousandths=5, and digits after: 3, so >0.005, round up to 193.11). So interest=193.11.
+Then B after int: 38621.06+193.11=38814.17. Subtract payment: 38814.17-445=38369.17. B53=38369.17.
+
+Month 53: r=0.0050. B=38369.17. Interest = 38369.17 * 0.005 = 191.84585. Round: 191.85 (thousandths=5? 191.84585: hundredths=4, thousandths=5, digits after: 85, so >0.005, round up to 191.85). So interest=191.85.
+Then B after int: 38369.17+191.85=38561.02. Subtract payment: 38561.02-445=38116.02. B54=38116.02.
+
+Month 54: r=0.0050. B=38116.02. Interest = 38116.02 * 0.005 = 190.5801. Round: 190.58 (thousandths=0? 190.5801: hundredths=8, thousandths=0<5 => round down to 190.58). So interest=190.58.
+Then B after int: 38116.02+190.58=38306.60. Subtract payment: 38306.60-445=37861.60. B55=37861.60.
+
+Month 55: r=0.0050. B=37861.60. Interest = 37861.60 * 0.005 = 189.308. Round: 189.31 (thousandths=8? 189.308: hundredths=0, thousandths=8>=5 => round up to 189.31). So interest=189.31.
+Then B after int: 37861.60+189.31=38050.91. Subtract payment: 38050.91-445=37605.91. B56=37605.91.
+
+Month 56: r=0.0050. B=37605.91. Interest = 37605.91 * 0.005 = 188.02955. Round: 188.03 (thousandths=9? 188.02955: hundredths=2, thousandths=9>=5 => round up to 188.03). So interest=188.03.
+Then B after int: 37605.91+188.03=37793.94. Subtract payment: 37793.94-445=37348.94. B57=37348.94.
+
+Month 57: r=0.0050. B=37348.94. Interest = 37348.94 * 0.005 = 186.7447. Round: 186.74 (thousandths=4? 186.7447: hundredths=4, thousandths=4<5 => round down to 186.74). So interest=186.74.
+Then B after int: 37348.94+186.74=37535.68. Subtract payment: 37535.68-445=37090.68. Then extra prepayment of 1858.98: 37090.68 - 1858.98 = 35231.70. So B58 = 35231.70.
+
+Month 58: r=0.0050. B=35231.70. Interest = 35231.70 * 0.005 = 176.1585. Round: 176.16 (thousandths=8? 176.1585: hundredths=5, thousandths=8>=5 => round up to 176.16). So interest=176.16.
+Then B after int: 35231.70+176.16=35407.86. Subtract payment: 35407.86-445=34962.86. B59=34962.86.
+
+Month 59: r=0.0050. B=34962.86. Interest = 34962.86 * 0.005 = 174.8143. Round: 174.81 (thousandths=4? 174.8143: hundredths=1, thousandths=4<5 => round down to 174.81). So interest=174.81.
+Then B after int: 34962.86+174.81=35137.67. Subtract payment: 35137.67-445=34692.67. B60=34692.67.
+
+Month 60: r=0.0050. B=34692.67. Interest = 34692.67 * 0.005 = 173.46335. Round: 173.46 (thousandths=3? 173.46335: hundredths=6, thousandths=3<5 => round down to 173.46). So interest=173.46.
+Then B after int: 34692.67+173.46=34866.13. Subtract payment: 34866.13-445=34421.13. B61=34421.13.
+
+Month 61: r=0.0050. B=34421.13. Interest = 34421.13 * 0.005 = 172.10565. Round: 172.11 (thousandths=5? 172.10565: hundredths=0, thousandths=5, digits after: 65, so >0.005, round up to 172.11). So interest=172.11.
+Then B after int: 34421.13+172.11=34593.24. Subtract payment: 34593.24-445=34148.24. B62=34148.24.
+
+Month 62: r=0.0050. B=34148.24. Interest = 34148.24 * 0.005 = 170.7412. Round: 170.74 (thousandths=1? 170.7412: hundredths=4, thousandths=1<5 => round down to 170.74). So interest=170.74.
+Then B after int: 34148.24+170.74=34318.98. Subtract payment: 34318.98-445=33873.98. B63=33873.98.
+
+Month 63: r=0.0050. B=33873.98. Interest = 33873.98 * 0.005 = 169.3699. Round: 169.37 (thousandths=9? 169.3699: hundredths=6, thousandths=9>=5 => round up to 169.37). So interest=169.37.
+Then B after int: 33873.98+169.37=34043.35. Subtract payment: 34043.35-445=33598.35. B64=33598.35.
+
+Month 64: r=0.0050. B=33598.35. Interest = 33598.35 * 0.005 = 167.99175. Round: 167.99 (thousandths=1? 167.99175: hundredths=9, thousandths=1<5 => round down to 167.99). So interest=167.99.
+Then B after int: 33598.35+167.99=33766.34. Subtract payment: 33766.34-445=33321.34. B65=33321.34.
+
+Month 65: r=0.0050. B=33321.34. Interest = 33321.34 * 0.005 = 166.6067. Round: 166.61 (thousandths=6? 166.6067: hundredths=0, thousandths=6>=5 => round up to 166.61). So interest=166.61.
+Then B after int: 33321.34+166.61=33487.95. Subtract payment: 33487.95-445=33042.95. B66=33042.95.
+
+Month 66: r=0.0050. B=33042.95. Interest = 33042.95 * 0.005 = 165.21475. Round: 165.21 (thousandths=4? 165.21475: hundredths=1, thousandths=4<5 => round down to 165.21). So interest=165.21.
+Then B after int: 33042.95+165.21=33208.16. Subtract payment: 33208.16-445=32763.16. B67=32763.16.
+
+Month 67: r=0.0050. B=32763.16. Interest = 32763.16 * 0.005 = 163.8158. Round: 163.82 (thousandths=5? 163.8158: hundredths=1, thousandths=5, digits after: 8, so >0.005, round up to 163.82). So interest=163.82.
+Then B after int: 32763.16+163.82=32926.98. Subtract payment: 32926.98-445=32481.98. B68=32481.98.
+
+Month 68: r=0.0050. B=32481.98. Interest = 32481.98 * 0.005 = 162.4099. Round: 162.41 (thousandths=9? 162.4099: hundredths=0, thousandths=9>=5 => round up to 162.41). So interest=162.41.
+Then B after int: 32481.98+162.41=32644.39. Subtract payment: 32644.39-445=32199.39. B69=32199.39.
+
+Month 69: r=0.0050. B=32199.39. Interest = 32199.39 * 0.005 = 160.99695. Round: 161.00 (thousandths=6? 160.99695: hundredths=9, thousandths=6>=5 => round up to 161.00). So interest=161.00.
+Then B after int: 32199.39+161.00=32360.39. Subtract payment: 32360.39-445=31915.39. B70=31915.39.
+
+Month 70: r=0.0050. B=31915.39. Interest = 31915.39 * 0.005 = 159.57695. Round: 159.58 (thousandths=6? 159.57695: hundredths=7, thousandths=6>=5 => round up to 159.58). So interest=159.58.
+Then B after int: 31915.39+159.58=32074.97. Subtract payment: 32074.97-445=31629.97. Then extra prepayment of 722: 31629.97 - 722 = 30907.97. So B71 = 30907.97.
+
+Month 71: r=0.0050. B=30907.97. Interest = 30907.97 * 0.005 = 154.53985. Round: 154.54 (thousandths=9? 154.53985: hundredths=3, thousandths=9>=5 => round up to 154.54). So interest=154.54.
+Then B after int: 30907.97+154.54=31062.51. Subtract payment: 31062.51-445=30617.51. B72=30617.51.
+
+Month 72: r=0.0050. B=30617.51. Interest = 30617.51 * 0.005 = 153.08755. Round: 153.09 (thousandths=7? 153.08755: hundredths=8, thousandths=7>=5 => round up to 153.09). So interest=153.09.
+Then B after int: 30617.51+153.09=30770.60. Subtract payment: 30770.60-445=30325.60. B73=30325.60.
+
+Month 73: r=0.0050. B=30325.60. Interest = 30325.60 * 0.005 = 151.628. Round: 151.63 (thousandths=8? 151.628: hundredths=2, thousandths=8>=5 => round up to 151.63). So interest=151.63.
+Then B after int: 30325.60+151.63=30477.23. Subtract payment: 30477.23-445=30032.23. B74=30032.23.
+
+Month 74: r=0.0050. B=30032.23. Interest = 30032.23 * 0.005 = 150.16115. Round: 150.16 (thousandths=1? 150.16115: hundredths=6, thousandths=1<5 => round down to 150.16). So interest=150.16.
+Then B after int: 30032.23+150.16=30182.39. Subtract payment: 30182.39-445=29737.39. B75=29737.39.
+
+Month 75: r=0.0050. B=29737.39. Interest = 29737.39 * 0.005 = 148.68695. Round: 148.69 (thousandths=6? 148.68695: hundredths=8, thousandths=6>=5 => round up to 148.69). So interest=148.69.
+Then B after int: 29737.39+148.69=29886.08. Subtract payment: 29886.08-445=29441.08. B76=29441.08.
+
+Month 76: r=0.0050. B=29441.08. Interest = 29441.08 * 0.005 = 147.2054. Round: 147.21 (thousandths=5? 147.2054: hundredths=0, thousandths=5, digits after: 4, so >0.005? Actually 0.2054, thousandths digit=5, and there's 4 afterwards, so >0.005, round up to 147.21). So interest=147.21.
+Then B after int: 29441.08+147.21=29588.29. Subtract payment: 29588.29-445=29143.29. B77=29143.29.
+
+Month 77: r=0.0050. B=29143.29. Interest = 29143.29 * 0.005 = 145.71645. Round: 145.72 (thousandths=6? 145.71645: hundredths=1, thousandths=6>=5 => round up to 145.72). So interest=145.72.
+Then B after int: 29143.29+145.72=29289.01. Subtract payment: 29289.01-445=28844.01. B78=28844.01.
+
+Month 78: r=0.0050. B=28844.01. Interest = 28844.01 * 0.005 = 144.22005. Round: 144.22 (thousandths=0? 144.22005: hundredths=2, thousandths=0<5 => round down to 144.22). So interest=144.22.
+Then B after int: 28844.01+144.22=28988.23. Subtract payment: 28988.23-445=28543.23. B79=28543.23.
+
+Month 79: r=0.0060 (0.60%). Starting month 79 rate becomes 0.60%. B=28543.23. Interest = 28543.23 * 0.006 = 171.25938. Round: 171.26 (thousandths=9? 171.25938: hundredths=5, thousandths=9>=5 => round up to 171.26). So interest=171.26.
+Then B after int: 28543.23+171.26=28714.49. Subtract payment: 28714.49-445=28269.49. B80=28269.49.
+
+Month 80: r=0.0060. B=28269.49. Interest = 28269.49 * 0.006 = 169.61694. Round: 169.62 (thousandths=6? 169.61694: hundredths=1, thousandths=6>=5 => round up to 169.62). So interest=169.62.
+Then B after int: 28269.49+169.62=28439.11. Subtract payment: 28439.11-445=27994.11. B81=27994.11.
+
+Month 81: r=0.0075 (0.75%). Starting month 81 rate becomes 0.75%. B=27994.11. Interest = 27994.11 * 0.0075 = 209.955825. Round: 209.96 (thousandths=5? 209.955825: hundredths=5, thousandths=5, and digits after: 825, so >0.005, round up to 209.96). So interest=209.96.
+Then B after int: 27994.11+209.96=28204.07. Subtract payment: 28204.07-445=27759.07. B82=27759.07.
+
+Month 82: r=0.0065 (0.65%). Starting month 82 rate becomes 0.65%. B=27759.07. Interest = 27759.07 * 0.0065 = (27759.07*65)/10000 = 27759.07*60=1,665,544.2; *5=138,795.35; sum=1,804,339.55; /10000=180.433955. Round: 180.43 (thousandths=3? 180.433955: hundredths=3, thousandths=3<5 => round down to 180.43). So interest=180.43.
+Then B after int: 27759.07+180.43=27939.50. Subtract payment: 27939.50-445=27494.50. B83=27494.50.
+
+Month 83: r=0.0065. B=27494.50. Interest = 27494.50 * 0.0065 = (27494.50*65)/10000 = 27494.50*60=1,649,670; *5=137,472.5; sum=1,787,142.5; /10000=178.71425. Round: 178.71 (thousandths=4? 178.71425: hundredths=1, thousandths=4<5 => round down to 178.71). So interest=178.71.
+Then B after int: 27494.50+178.71=27673.21. Subtract payment: 27673.21-445=27228.21. B84=27228.21.
+
+Month 84: r=0.0065. B=27228.21. Interest = 27228.21 * 0.0065 = (27228.21*65)/10000 = 27228.21*60=1,633,692.6; *5=136,141.05; sum=1,769,833.65; /10000=176.983365. Round: 176.98 (thousandths=3? 176.983365: hundredths=8, thousandths=3<5 => round down to 176.98). So interest=176.98.
+Then B after int: 27228.21+176.98=27405.19. Subtract payment: 27405.19-445=26960.19. No extra in month84. So B85 = 26960.19. That is the outstanding balance at end of month 84.
+
+Thus answer is 26960.19.
+
+But double-check all calculations. Could be rounding errors. Let's verify a few months to ensure rounding consistent.
+
+Month1: B1=53947.92, r=0.0065, interest=53947.92*0.0065=350.66148 round to 350.66 correct. Then B2=53947.92+350.66-445=53853.58 correct.
+Month2: B2=53853.58*0.0065=350.04827 round to 350.05? Actually 350.04827, thousandths digit 8? Wait 350.04827: we have 350.04827, so hundredths digit is 4, thousandths is 8, so round up to 350.05. Then B3=53853.58+350.05-445=53758.63 correct.
+Month3: B3=53758.63*0.0065=349.431095 round to 349.43. Then B4=53758.63+349.43-445-1280=52383.06 correct.
+Month4: B4=52383.06*0.0065=340.48989 round to 340.49. Then B5=52383.06+340.49-445=52278.55 correct.
+...
+Month25: B25=47148.65*0.0065=306.466225 round to 306.47? Actually 306.466225: hundredths=6, thousandths=6 -> round up to 306.47. Then B26=47148.65+306.47-445=47010.12 correct.
+Month26: r=0.0055, B26=47010.12*0.0055=258.55566 round to 258.56. Then B27=47010.12+258.56-445=46823.68 correct.
+Month27: r=0.005, B27=46823.68*0.005=234.1184 round to 234.12 correct.
+...
+Month32: B32=45758.67, r=0.0045, interest=205.914015 round to 205.91 correct.
+...
+Month36: B36=44795.85, r=0.004, interest=179.1834 round to 179.18 correct.
+Month39: B39=43995.20, interest=175.9808 round to 175.98, then after payment and extra: 43995.20+175.98-445-2137=41589.18 correct.
+Month40: B40=41589.18, interest=166.35672 round to 166.36, then B41=41589.18+166.36-445=41310.54 correct.
+Month41: r=0.005, B41=41310.54*0.005=206.5527 round to 206.55, then B42=41310.54+206.55-445=41072.09 correct.
+...
+Month57: B57=37348.94, interest=186.7447 round to 186.74, then after payment and extra: 37348.94+186.74-445-1858.98=35231.70 correct.
+...
+Month70: B70=31915.39, interest=159.57695 round to 159.58, then after payment and extra: 31915.39+159.58-445-722=30907.97 correct.
+...
+Month78: B78=28844.01, interest=144.22005 round to 144.22, then B79=28844.01+144.22-445=28543.23 correct.
+Month79: r=0.006, B79=28543.23*0.006=171.25938 round to 171.26, B80=28543.23+171.26-445=28269.49 correct.
+Month80: B80=28269.49*0.006=169.61694 round to 169.62, B81=28269.49+169.62-445=27994.11 correct.
+Month81: r=0.0075, B81=27994.11*0.0075=209.955825 round to 209.96, B82=27994.11+209.96-445=27759.07 correct.
+Month82: r=0.0065, B82=27759.07*0.0065=180.433955 round to 180.43, B83=27759.07+180.43-445=27494.50 correct.
+Month83: B83=27494.50*0.0065=178.71425 round to 178.71, B84=27494.50+178.71-445=27228.21 correct.
+Month84: B84=27228.21*0.0065=176.983365 round to 176.98, then B85=27228.21+176.98-445=26960.19 correct.
+
+Thus final balance = 26960.19.
+
+So answer is 26960.19.

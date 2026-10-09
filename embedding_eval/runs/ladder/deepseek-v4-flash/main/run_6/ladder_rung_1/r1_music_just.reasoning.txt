@@ -1,0 +1,943 @@
+We are given a melody of 61 notes, starting on F4 tuned to 352 Hz. The tuning is just intonation relative to the previous note, using given ratios for intervals measured in semitones. The intervals are given as the number of semitones between consecutive notes. We need to compute the frequency of the last note, expressed as a reduced fraction.
+
+First, we need to parse the melody: "F4 G4 E4 A3 E4 E5 E4 A4 G4 B4 A4 C5 D5 D5 G4 G4 A4 B4 B3 B4 F4 E4 A3 C4 C5 E5 D5 G4 G5 G4 A4 F4 C4 F4 E4 D4 A4 E4 F4 B4 E5 E5 D5 G4 G5 D5 C5 C4 E4 F4 E4 B4 D5 F5 D5 G5 F5 E5 A4 G4 A4"
+
+We need to determine the sequence of notes and their octave numbers. The notes are given with letter and octave number. We need to compute the interval in semitones between consecutive notes. The intervals are measured in semitones as per standard Western chromatic scale. We need to know the number of semitones between any two notes, considering octave jumps. The rule: within an octave C–D, D–E, F–G, G–A, A–B are 2 semitones and E–F, B–C are 1 semitone; octave number increases from B to C. So we need to compute the semitone difference between notes, taking into account octave numbers. For example, from F4 to G4: F to G is 2 semitones (since F-G is whole step), same octave, so +2 semitones. From G4 to E4: G4 to E4 is descending, but we need semitone difference. G4 to E4: G4 down to E4: G4 to F#4? Actually, we need the interval in semitones regardless of direction. We'll compute the number of semitones from the first note to the second note, positive if going up, negative if going down. So we need to compute the difference in pitch class and octave.
+
+Better: We can assign numeric values to each note: let's use a mapping from note name to semitone offset within an octave, and then add octave*12. Typically, C=0, C#=1, D=2, D#=3, E=4, F=5, F#=6, G=7, G#=8, A=9, A#=10, B=11. But in this problem, the notes are natural only? The melody includes only natural notes? Let's list: F, G, E, A, E, E, E, A, G, B, A, C, D, D, G, G, A, B, B, B, F, E, A, C, C, E, D, G, G, G, A, F, C, F, E, D, A, E, F, B, E, E, D, G, G, D, C, C, E, F, E, B, D, F, D, G, F, E, A, G, A. All are natural notes (no sharps/flats). So we can use standard semitone positions: C=0, D=2, E=4, F=5, G=7, A=9, B=11. Octave numbers: C4 is middle C, so C4 = 0+4*12 = 48? Actually, if C4 is middle C, then note number = semitone + octave*12. Typically, C0 = 0, C1=12, etc. But we need to be consistent. We'll define note number as: note_number = semitone_index + 12 * octave_number, where octave number is as given. For example, C4 = 0 + 12*4 = 48. Then F4 = 5 + 12*4 = 53. Then we can compute interval in semitones as difference between note numbers. That's the simplest.
+
+We have the starting frequency: F4 = 352 Hz. That's given. So we will compute the frequency of each subsequent note by multiplying by the ratio for the interval (in semitones) if going up, or dividing if going down. The ratio for a given number of semitones is given:
+
+0 semitones: 1/1
+1 semitone: 16/15
+2 semitones: 9/8
+3 semitones: 6/5
+4 semitones: 5/4
+5 semitones: 4/3
+6 semitones: 45/32
+7 semitones: 3/2
+8 semitones: 8/5
+9 semitones: 5/3
+10 semitones: 16/9
+11 semitones: 15/8
+12 semitones: 2/1
+
+These are just intonation ratios for intervals. They correspond to: minor second, major second, minor third, major third, perfect fourth, tritone, perfect fifth, minor sixth, major sixth, minor seventh, major seventh, octave. Note: The tritone is 45/32, which is about 1.40625, while 12-tone equal temperament tritone is sqrt(2)=1.4142, so it's a bit flat.
+
+Now we have 61 notes. We need to process the sequence, computing frequency step by step. Since it's a long sequence, we need to be careful. We can compute cumulative product of ratios, but note that direction matters: if interval is positive (up), we multiply by the ratio; if negative (down), we divide by the ratio (or multiply by the reciprocal). Also, the ratio for a given absolute interval is the same; we just use it accordingly.
+
+We can compute frequency as: f_i = f_{i-1} * (ratio)^{sign(interval)}? Actually, if interval = d semitones (positive up, negative down), then we multiply by ratio for |d| if d>0, or divide by ratio for |d| if d<0. So f_i = f_{i-1} * r(|d|)^{sign(d)} where sign(d) = +1 for up, -1 for down. That is equivalent to multiplying by r if up, by 1/r if down.
+
+We need to compute the final frequency as a fraction. Since initial frequency is 352 Hz, which is a rational number (352 = 352/1). We'll multiply by rational ratios, so final frequency will be a rational number. We can compute as a fraction by multiplying numerators and denominators.
+
+We can compute stepwise with fractions, but given many steps, we might want to keep track of the cumulative multiplier as a rational number. Since we have 60 intervals, we can compute the product of ratios (or reciprocals) along the way.
+
+We need to be systematic: First, list all notes in order with their note numbers. Then compute interval semitones (difference). Then apply ratios.
+
+Let's list the notes from the melody:
+
+1. F4
+2. G4
+3. E4
+4. A3
+5. E4
+6. E5
+7. E4
+8. A4
+9. G4
+10. B4
+11. A4
+12. C5
+13. D5
+14. D5
+15. G4
+16. G4
+17. A4
+18. B4
+19. B3
+20. B4
+21. F4
+22. E4
+23. A3
+24. C4
+25. C5
+26. E5
+27. D5
+28. G4
+29. G5
+30. G4
+31. A4
+32. F4
+33. C4
+34. F4
+35. E4
+36. D4
+37. A4
+38. E4
+39. F4
+40. B4
+41. E5
+42. E5
+43. D5
+44. G4
+45. G5
+46. D5
+47. C5
+48. C4
+49. E4
+50. F4
+51. E4
+52. B4
+53. D5
+54. F5
+55. D5
+56. G5
+57. F5
+58. E5
+59. A4
+60. G4
+61. A4
+
+Let's verify count: I think it's 61. Let's number them 1 to 61.
+
+Now we need to compute note numbers: define semitone values: C=0, D=2, E=4, F=5, G=7, A=9, B=11. Octave numbers: as given. So:
+
+Note number = semitone + 12*octave.
+
+Let's compute each:
+
+1. F4: 5 + 12*4 = 5+48=53
+2. G4: 7+48=55
+3. E4: 4+48=52
+4. A3: 9+12*3=9+36=45
+5. E4: 52
+6. E5: 4+12*5=4+60=64
+7. E4: 52
+8. A4: 9+48=57
+9. G4: 55
+10. B4: 11+48=59
+11. A4: 57
+12. C5: 0+12*5=60
+13. D5: 2+60=62
+14. D5: 62
+15. G4: 55
+16. G4: 55
+17. A4: 57
+18. B4: 59
+19. B3: 11+12*3=11+36=47
+20. B4: 59
+21. F4: 53
+22. E4: 52
+23. A3: 45
+24. C4: 0+48=48
+25. C5: 60
+26. E5: 64
+27. D5: 62
+28. G4: 55
+29. G5: 7+60=67
+30. G4: 55
+31. A4: 57
+32. F4: 53
+33. C4: 48
+34. F4: 53
+35. E4: 52
+36. D4: 2+48=50
+37. A4: 57
+38. E4: 52
+39. F4: 53
+40. B4: 59
+41. E5: 64
+42. E5: 64
+43. D5: 62
+44. G4: 55
+45. G5: 67
+46. D5: 62
+47. C5: 60
+48. C4: 48
+49. E4: 52
+50. F4: 53
+51. E4: 52
+52. B4: 59
+53. D5: 62
+54. F5: 5+60=65? Wait F5: F=5, octave 5 => 5+60=65
+55. D5: 62
+56. G5: 67
+57. F5: 65
+58. E5: 64
+59. A4: 57
+60. G4: 55
+61. A4: 57
+
+Now compute intervals (difference between consecutive note numbers). For each step from note i to i+1, interval = note_{i+1} - note_i. Positive means up.
+
+Let's list them:
+
+1-2: 55-53= +2
+2-3: 52-55= -3
+3-4: 45-52= -7
+4-5: 52-45= +7
+5-6: 64-52= +12
+6-7: 52-64= -12
+7-8: 57-52= +5
+8-9: 55-57= -2
+9-10: 59-55= +4
+10-11: 57-59= -2
+11-12: 60-57= +3
+12-13: 62-60= +2
+13-14: 62-62= 0
+14-15: 55-62= -7
+15-16: 55-55= 0
+16-17: 57-55= +2
+17-18: 59-57= +2
+18-19: 47-59= -12
+19-20: 59-47= +12
+20-21: 53-59= -6
+21-22: 52-53= -1
+22-23: 45-52= -7
+23-24: 48-45= +3
+24-25: 60-48= +12
+25-26: 64-60= +4
+26-27: 62-64= -2
+27-28: 55-62= -7
+28-29: 67-55= +12
+29-30: 55-67= -12
+30-31: 57-55= +2
+31-32: 53-57= -4
+32-33: 48-53= -5
+33-34: 53-48= +5
+34-35: 52-53= -1
+35-36: 50-52= -2
+36-37: 57-50= +7
+37-38: 52-57= -5
+38-39: 53-52= +1
+39-40: 59-53= +6
+40-41: 64-59= +5
+41-42: 64-64= 0
+42-43: 62-64= -2
+43-44: 55-62= -7
+44-45: 67-55= +12
+45-46: 62-67= -5
+46-47: 60-62= -2
+47-48: 48-60= -12
+48-49: 52-48= +4
+49-50: 53-52= +1
+50-51: 52-53= -1
+51-52: 59-52= +7
+52-53: 62-59= +3
+53-54: 65-62= +3
+54-55: 62-65= -3
+55-56: 67-62= +5
+56-57: 65-67= -2
+57-58: 64-65= -1
+58-59: 57-64= -7
+59-60: 55-57= -2
+60-61: 57-55= +2
+
+Now we have 60 intervals. Let's list them as numbers (positive or negative) for clarity:
+
+1: +2
+2: -3
+3: -7
+4: +7
+5: +12
+6: -12
+7: +5
+8: -2
+9: +4
+10: -2
+11: +3
+12: +2
+13: 0
+14: -7
+15: 0
+16: +2
+17: +2
+18: -12
+19: +12
+20: -6
+21: -1
+22: -7
+23: +3
+24: +12
+25: +4
+26: -2
+27: -7
+28: +12
+29: -12
+30: +2
+31: -4
+32: -5
+33: +5
+34: -1
+35: -2
+36: +7
+37: -5
+38: +1
+39: +6
+40: +5
+41: 0
+42: -2
+43: -7
+44: +12
+45: -5
+46: -2
+47: -12
+48: +4
+49: +1
+50: -1
+51: +7
+52: +3
+53: +3
+54: -3
+55: +5
+56: -2
+57: -1
+58: -7
+59: -2
+60: +2
+
+Now we need to compute the frequency multiplier from start to end. Starting frequency: f0 = 352 Hz. Then f1 = f0 * r(2) because interval +2. f2 = f1 * r(3) because interval -3? Actually careful: For interval -3, we divide by r(3) or multiply by 1/r(3). So we need to apply the appropriate ratio for each step.
+
+Let rat[0] = 1/1, rat[1]=16/15, rat[2]=9/8, rat[3]=6/5, rat[4]=5/4, rat[5]=4/3, rat[6]=45/32, rat[7]=3/2, rat[8]=8/5, rat[9]=5/3, rat[10]=16/9, rat[11]=15/8, rat[12]=2/1.
+
+We'll denote r(d) = ratio for d semitones. For negative intervals, we use 1/r(|d|). For zero, r(0)=1.
+
+We need the overall multiplier M = product over steps of (r(|d|))^{sign(d)}. Then final frequency = 352 * M.
+
+We can compute M as a rational number by multiplying all factors. Since 352 = 2^5 * 11? Actually 352 = 2*176=2*2*88=2*2*2*44=2^5 *11? 2^5=32, 32*11=352 yes. So 352 = 2^5 * 11. We'll keep as fraction.
+
+We'll compute product of ratios step by step. Because many steps, we can simplify as we go. We can also keep track of numerator and denominator, maybe using prime factorization to avoid huge numbers. But with some care, we can compute the cumulative product rationally.
+
+Let's list all intervals (absolute) and direction. We'll create a list of (d, sign) where d = absolute interval, sign = +1 for up, -1 for down. But careful: interval of 0 gives 1, can ignore.
+
+Let's list each step with its absolute value and sign:
+
+Step1: d=2, sign=+1 => multiply by 9/8
+Step2: d=3, sign=-1 => multiply by 1/(6/5)=5/6
+Step3: d=7, sign=-1 => multiply by 1/(3/2)=2/3
+Step4: d=7, sign=+1 => multiply by 3/2
+Step5: d=12, sign=+1 => multiply by 2/1 = 2
+Step6: d=12, sign=-1 => multiply by 1/2 = 1/2
+Step7: d=5, sign=+1 => multiply by 4/3
+Step8: d=2, sign=-1 => multiply by 1/(9/8)=8/9
+Step9: d=4, sign=+1 => multiply by 5/4
+Step10: d=2, sign=-1 => multiply by 8/9
+Step11: d=3, sign=+1 => multiply by 6/5
+Step12: d=2, sign=+1 => multiply by 9/8
+Step13: d=0 => multiply by 1
+Step14: d=7, sign=-1 => multiply by 2/3
+Step15: d=0 => 1
+Step16: d=2, sign=+1 => 9/8
+Step17: d=2, sign=+1 => 9/8
+Step18: d=12, sign=-1 => 1/2
+Step19: d=12, sign=+1 => 2
+Step20: d=6, sign=-1 => multiply by 1/(45/32)=32/45
+Step21: d=1, sign=-1 => multiply by 1/(16/15)=15/16
+Step22: d=7, sign=-1 => 2/3
+Step23: d=3, sign=+1 => 6/5
+Step24: d=12, sign=+1 => 2
+Step25: d=4, sign=+1 => 5/4
+Step26: d=2, sign=-1 => 8/9
+Step27: d=7, sign=-1 => 2/3
+Step28: d=12, sign=+1 => 2
+Step29: d=12, sign=-1 => 1/2
+Step30: d=2, sign=+1 => 9/8
+Step31: d=4, sign=-1 => multiply by 1/(5/4)=4/5
+Step32: d=5, sign=-1 => multiply by 1/(4/3)=3/4
+Step33: d=5, sign=+1 => 4/3
+Step34: d=1, sign=-1 => 15/16
+Step35: d=2, sign=-1 => 8/9
+Step36: d=7, sign=+1 => 3/2
+Step37: d=5, sign=-1 => 3/4
+Step38: d=1, sign=+1 => 16/15
+Step39: d=6, sign=+1 => 45/32
+Step40: d=5, sign=+1 => 4/3
+Step41: d=0 => 1
+Step42: d=2, sign=-1 => 8/9
+Step43: d=7, sign=-1 => 2/3
+Step44: d=12, sign=+1 => 2
+Step45: d=5, sign=-1 => 3/4
+Step46: d=2, sign=-1 => 8/9
+Step47: d=12, sign=-1 => 1/2
+Step48: d=4, sign=+1 => 5/4
+Step49: d=1, sign=+1 => 16/15
+Step50: d=1, sign=-1 => 15/16
+Step51: d=7, sign=+1 => 3/2
+Step52: d=3, sign=+1 => 6/5
+Step53: d=3, sign=+1 => 6/5
+Step54: d=3, sign=-1 => 5/6
+Step55: d=5, sign=+1 => 4/3
+Step56: d=2, sign=-1 => 8/9
+Step57: d=1, sign=-1 => 15/16
+Step58: d=7, sign=-1 => 2/3
+Step59: d=2, sign=-1 => 8/9
+Step60: d=2, sign=+1 => 9/8
+
+Now we need to multiply all these factors together. Let's list them in order, including all fractions. We'll combine them stepwise, but we can collect all numerators and denominators. Since there are many, we should compute the product as a rational number in reduced form. We'll keep track of prime factors: 2,3,5,7,11? The ratios involve primes 2,3,5 only? Let's examine the ratios:
+1/1: 1
+16/15 = 2^4 / (3*5)
+9/8 = 3^2 / 2^3
+6/5 = 2*3 / 5
+5/4 = 5 / 2^2
+4/3 = 2^2 / 3
+45/32 = (3^2*5) / 2^5? Actually 45=9*5=3^2*5, 32=2^5
+3/2 = 3 / 2
+8/5 = 2^3 / 5
+5/3 = 5 / 3
+16/9 = 2^4 / 3^2
+15/8 = (3*5)/2^3
+2/1 = 2
+So all ratios involve primes 2,3,5 only. So final frequency will be 352 * product, and 352 has factor 2^5 and 11. So 11 will appear in numerator unless cancelled. Since no denominator has factor 11, the 11 will remain. So final answer will have a factor of 11. But we need reduced fraction.
+
+We can compute the overall exponent of 2,3,5 from the product, then multiply by 352 = 2^5*11, and simplify.
+
+Let's denote cumulative multiplier M = product of all fractions. We'll compute exponent sum for each prime 2,3,5 from all fractions. We also need to consider the sign (multiplying or dividing) which we already accounted as reciprocal when down. So each factor contributes exponents accordingly.
+
+We'll go through each step, and add exponents for 2,3,5 in numerator and denominator. Alternatively, we can compute overall exponent for each prime as (sum of exponents from numerators) - (sum of exponents from denominators). Since each factor is a fraction, we can treat each as a rational and sum exponents.
+
+Let's list each factor with its prime exponent representation (for 2,3,5). We'll treat each factor as numerator exponents minus denominator exponents. For example, 9/8 = 3^2 / 2^3 gives exponents: 2: -3, 3: +2, 5: 0. For up steps, we use that; for down steps, we use the reciprocal, so exponents are opposite: e.g., down step with d=3 gives 1/(6/5)=5/6 = 5/(2*3) => exponents: 2: -1? Actually 5/6 = 5^1 * 2^{-1} * 3^{-1}? Wait: 5/6 = 5/(2*3) = 2^{-1} * 3^{-1} *5^1. So exponents: 2: -1, 3: -1, 5: +1. But we can just take the exponents of the original ratio and negate them for down steps. So easier: For each step, compute the exponent vector (e2, e3, e5) of the ratio r(d) (the up ratio), then if sign = +1, add that vector; if sign = -1, subtract that vector. So we can accumulate exponents.
+
+Let's compute the exponent vectors for each d (absolute) from the ratios:
+
+Define for d:
+0: (0,0,0)
+1: 16/15 = 2^4 / (3*5) => (4, -1, -1) because numerator: 2^4, denominator: 3^1,5^1 => exponent: 2:+4, 3:-1, 5:-1
+2: 9/8 = 3^2 / 2^3 => ( -3, +2, 0)
+3: 6/5 = (2*3)/5 => (1,1,-1) because 2^1*3^1/5^1 => 2:+1, 3:+1, 5:-1
+4: 5/4 = 5/2^2 => ( -2, 0, +1)
+5: 4/3 = 2^2/3 => (2, -1, 0)
+6: 45/32 = (3^2*5)/2^5 => ( -5, +2, +1) because 2^-5, 3^+2, 5^+1
+7: 3/2 = 3/2 => ( -1, +1, 0)
+8: 8/5 = 2^3/5 => (3, 0, -1)
+9: 5/3 = 5/3 => (0, -1, +1)
+10: 16/9 = 2^4/3^2 => (4, -2, 0)
+11: 15/8 = (3*5)/2^3 => ( -3, +1, +1)
+12: 2/1 = 2 => (1,0,0)
+
+Double-check: For d=6, 45/32 = 45=3^2*5, 32=2^5, so exponents: 2: -5, 3: +2, 5: +1. Good.
+
+Now for each step, we have d and sign. We'll accumulate exps. Let's list all steps with (d, sign) and the exponent vector (e2, e3, e5) to add (if sign +) or subtract (if sign -). We'll compute total exponents.
+
+Better to create a table:
+
+Step 1: d=2, sign=+ => add ( -3, +2, 0)
+Step 2: d=3, sign=- => subtract (1,1,-1) i.e., add (-1,-1,1)? Actually subtracting vector means add negative: so add (-1,-1,+1) because subtract (1,1,-1) gives (-1,-1,+1). But careful: we want to add the negative of the vector. So for sign -, we add the negative of the ratio's exponent vector. So we can treat each step as adding sign * vector. So for each step, we add (sign * e2, sign * e3, sign * e5). Where sign = +1 for up, -1 for down. So we'll compute step contributions accordingly.
+
+Let's do that systematically. For each step, we'll compute contribution to each exponent: e2_contrib = sign * e2(d), similarly for e3 and e5.
+
+We'll need e2(d), e3(d), e5(d) from above. I'll list them:
+
+d: (e2, e3, e5)
+0: (0,0,0)
+1: (4, -1, -1)
+2: (-3, 2, 0)
+3: (1, 1, -1)
+4: (-2, 0, 1)
+5: (2, -1, 0)
+6: (-5, 2, 1)
+7: (-1, 1, 0)
+8: (3, 0, -1)
+9: (0, -1, 1)
+10: (4, -2, 0)
+11: (-3, 1, 1)
+12: (1, 0, 0)
+
+Now, for each step, we have d and sign. Let's list all steps with (d, sign) from earlier. I'll copy them:
+
+1: (2, +)
+2: (3, -)
+3: (7, -)
+4: (7, +)
+5: (12, +)
+6: (12, -)
+7: (5, +)
+8: (2, -)
+9: (4, +)
+10: (2, -)
+11: (3, +)
+12: (2, +)
+13: (0, ignore)
+14: (7, -)
+15: (0)
+16: (2, +)
+17: (2, +)
+18: (12, -)
+19: (12, +)
+20: (6, -)
+21: (1, -)
+22: (7, -)
+23: (3, +)
+24: (12, +)
+25: (4, +)
+26: (2, -)
+27: (7, -)
+28: (12, +)
+29: (12, -)
+30: (2, +)
+31: (4, -)
+32: (5, -)
+33: (5, +)
+34: (1, -)
+35: (2, -)
+36: (7, +)
+37: (5, -)
+38: (1, +)
+39: (6, +)
+40: (5, +)
+41: (0)
+42: (2, -)
+43: (7, -)
+44: (12, +)
+45: (5, -)
+46: (2, -)
+47: (12, -)
+48: (4, +)
+49: (1, +)
+50: (1, -)
+51: (7, +)
+52: (3, +)
+53: (3, +)
+54: (3, -)
+55: (5, +)
+56: (2, -)
+57: (1, -)
+58: (7, -)
+59: (2, -)
+60: (2, +)
+
+Now we need to compute cumulative exponents by summing sign * e2(d), etc., for each step. Let's do it step by step, maybe using a table or cumulative sum.
+
+I'll create a running total for e2, e3, e5. Starting at (0,0,0). For each step, add contribution.
+
+We'll go through each step:
+
+Step1: d=2, sign=+ => e2=-3, e3=2, e5=0 => add (-3,2,0). Total: (-3,2,0)
+Step2: d=3, sign=- => sign=- so contribution = - (1,1,-1) = (-1,-1,1). Add: (-3-1,2-1,0+1) = (-4,1,1)
+Step3: d=7, sign=- => contribution = -(-1,1,0) = (1,-1,0)? Actually careful: For d=7, e2=-1, e3=1, e5=0. Sign=- => multiply by -1: (-1)*(-1)=1, (-1)*1=-1, (-1)*0=0 => (1,-1,0). Add: (-4+1, 1-1, 1+0) = (-3,0,1)
+Step4: d=7, sign=+ => contribution = (-1,1,0). Add: (-3-1,0+1,1+0) = (-4,1,1)
+Step5: d=12, sign=+ => (1,0,0). Add: (-4+1,1+0,1+0)=(-3,1,1)
+Step6: d=12, sign=- => contribution = - (1,0,0) = (-1,0,0). Add: (-3-1,1+0,1+0)=(-4,1,1)
+Step7: d=5, sign=+ => (2,-1,0). Add: (-4+2,1-1,1+0)=(-2,0,1)
+Step8: d=2, sign=- => contribution = - (-3,2,0) = (3,-2,0). Add: (-2+3,0-2,1+0)=(1,-2,1)
+Step9: d=4, sign=+ => (-2,0,1). Add: (1-2,-2+0,1+1)=(-1,-2,2)
+Step10: d=2, sign=- => contribution = - (-3,2,0) = (3,-2,0). Add: (-1+3,-2-2,2+0)=(2,-4,2)
+Step11: d=3, sign=+ => (1,1,-1). Add: (2+1,-4+1,2-1)=(3,-3,1)
+Step12: d=2, sign=+ => (-3,2,0). Add: (3-3,-3+2,1+0)=(0,-1,1)
+Step13: d=0 skip, total unchanged: (0,-1,1)
+Step14: d=7, sign=- => contribution = - (-1,1,0) = (1,-1,0). Add: (0+1,-1-1,1+0)=(1,-2,1)
+Step15: d=0 skip: (1,-2,1)
+Step16: d=2, sign=+ => (-3,2,0). Add: (1-3,-2+2,1+0)=(-2,0,1)
+Step17: d=2, sign=+ => (-3,2,0). Add: (-2-3,0+2,1+0)=(-5,2,1)
+Step18: d=12, sign=- => contribution = - (1,0,0)=(-1,0,0). Add: (-5-1,2+0,1+0)=(-6,2,1)
+Step19: d=12, sign=+ => (1,0,0). Add: (-6+1,2+0,1+0)=(-5,2,1)
+Step20: d=6, sign=- => d=6: (-5,2,1). sign=- => contribution = -(-5,2,1) = (5,-2,-1). Add: (-5+5,2-2,1-1)=(0,0,0)
+Step21: d=1, sign=- => d=1: (4,-1,-1). sign=- => contribution = -(4,-1,-1)=(-4,1,1). Add: (0-4,0+1,0+1)=(-4,1,1)
+Step22: d=7, sign=- => d=7: (-1,1,0). sign=- => contribution = (1,-1,0). Add: (-4+1,1-1,1+0)=(-3,0,1)
+Step23: d=3, sign=+ => (1,1,-1). Add: (-3+1,0+1,1-1)=(-2,1,0)
+Step24: d=12, sign=+ => (1,0,0). Add: (-2+1,1+0,0+0)=(-1,1,0)
+Step25: d=4, sign=+ => (-2,0,1). Add: (-1-2,1+0,0+1)=(-3,1,1)
+Step26: d=2, sign=- => contribution = -(-3,2,0)=(3,-2,0). Add: (-3+3,1-2,1+0)=(0,-1,1)
+Step27: d=7, sign=- => contribution = -(-1,1,0)=(1,-1,0). Add: (0+1,-1-1,1+0)=(1,-2,1)
+Step28: d=12, sign=+ => (1,0,0). Add: (1+1,-2+0,1+0)=(2,-2,1)
+Step29: d=12, sign=- => contribution = -(1,0,0)=(-1,0,0). Add: (2-1,-2+0,1+0)=(1,-2,1)
+Step30: d=2, sign=+ => (-3,2,0). Add: (1-3,-2+2,1+0)=(-2,0,1)
+Step31: d=4, sign=- => d=4: (-2,0,1). sign=- => contribution = -(-2,0,1)=(2,0,-1). Add: (-2+2,0+0,1-1)=(0,0,0)
+Step32: d=5, sign=- => d=5: (2,-1,0). sign=- => contribution = -(2,-1,0)=(-2,1,0). Add: (0-2,0+1,0+0)=(-2,1,0)
+Step33: d=5, sign=+ => (2,-1,0). Add: (-2+2,1-1,0+0)=(0,0,0)
+Step34: d=1, sign=- => d=1: (4,-1,-1). sign=- => contribution = -(4,-1,-1)=(-4,1,1). Add: (0-4,0+1,0+1)=(-4,1,1)
+Step35: d=2, sign=- => contribution = -(-3,2,0)=(3,-2,0). Add: (-4+3,1-2,1+0)=(-1,-1,1)
+Step36: d=7, sign=+ => (-1,1,0). Add: (-1-1,-1+1,1+0)=(-2,0,1)
+Step37: d=5, sign=- => contribution = -(2,-1,0)=(-2,1,0). Add: (-2-2,0+1,1+0)=(-4,1,1)
+Step38: d=1, sign=+ => (4,-1,-1). Add: (-4+4,1-1,1-1)=(0,0,0)
+Step39: d=6, sign=+ => (-5,2,1). Add: (0-5,0+2,0+1)=(-5,2,1)
+Step40: d=5, sign=+ => (2,-1,0). Add: (-5+2,2-1,1+0)=(-3,1,1)
+Step41: d=0 skip: (-3,1,1)
+Step42: d=2, sign=- => contribution = -(-3,2,0)=(3,-2,0). Add: (-3+3,1-2,1+0)=(0,-1,1)
+Step43: d=7, sign=- => contribution = -(-1,1,0)=(1,-1,0). Add: (0+1,-1-1,1+0)=(1,-2,1)
+Step44: d=12, sign=+ => (1,0,0). Add: (1+1,-2+0,1+0)=(2,-2,1)
+Step45: d=5, sign=- => contribution = -(2,-1,0)=(-2,1,0). Add: (2-2,-2+1,1+0)=(0,-1,1)
+Step46: d=2, sign=- => contribution = -(-3,2,0)=(3,-2,0). Add: (0+3,-1-2,1+0)=(3,-3,1)
+Step47: d=12, sign=- => contribution = -(1,0,0)=(-1,0,0). Add: (3-1,-3+0,1+0)=(2,-3,1)
+Step48: d=4, sign=+ => (-2,0,1). Add: (2-2,-3+0,1+1)=(0,-3,2)
+Step49: d=1, sign=+ => (4,-1,-1). Add: (0+4,-3-1,2-1)=(4,-4,1)
+Step50: d=1, sign=- => contribution = -(4,-1,-1)=(-4,1,1). Add: (4-4,-4+1,1+1)=(0,-3,2)
+Step51: d=7, sign=+ => (-1,1,0). Add: (0-1,-3+1,2+0)=(-1,-2,2)
+Step52: d=3, sign=+ => (1,1,-1). Add: (-1+1,-2+1,2-1)=(0,-1,1)
+Step53: d=3, sign=+ => (1,1,-1). Add: (0+1,-1+1,1-1)=(1,0,0)
+Step54: d=3, sign=- => contribution = -(1,1,-1)=(-1,-1,1). Add: (1-1,0-1,0+1)=(0,-1,1)
+Step55: d=5, sign=+ => (2,-1,0). Add: (0+2,-1-1,1+0)=(2,-2,1)
+Step56: d=2, sign=- => contribution = -(-3,2,0)=(3,-2,0). Add: (2+3,-2-2,1+0)=(5,-4,1)
+Step57: d=1, sign=- => contribution = -(4,-1,-1)=(-4,1,1). Add: (5-4,-4+1,1+1)=(1,-3,2)
+Step58: d=7, sign=- => contribution = -(-1,1,0)=(1,-1,0). Add: (1+1,-3-1,2+0)=(2,-4,2)
+Step59: d=2, sign=- => contribution = -(-3,2,0)=(3,-2,0). Add: (2+3,-4-2,2+0)=(5,-6,2)
+Step60: d=2, sign=+ => (-3,2,0). Add: (5-3,-6+2,2+0)=(2,-4,2)
+
+So final exponents: e2 = 2, e3 = -4, e5 = 2. That means the product of all ratios (multiplier M) = 2^2 * 3^{-4} * 5^2 = 4 * (1/81) * 25 = (4*25)/81 = 100/81.
+
+Let's check: 2^2=4, 3^{-4}=1/81, 5^2=25, product = 4*25/81 = 100/81. So M = 100/81.
+
+But note: we also had steps with zero intervals, they contribute 1. So overall multiplier from start to end is 100/81.
+
+Wait, but we also need to account that the initial frequency is 352 Hz. So final frequency = 352 * (100/81) = (35200)/81? Actually 352 * 100 = 35200, divided by 81 = 35200/81. Simplify? 35200 and 81 share no common factors: 81=3^4, 35200=352*100= (2^5*11)*(2^2*5^2)=2^7*5^2*11 = 128*25*11=128*275=35200, yes. So no factor of 3. So fraction is 35200/81. Is that reduced? 81 = 3^4, 35200 has no factor 3, so it's in lowest terms. But we might also express as a mixed number? The problem asks for reduced fraction a/b in Hz (or integer if b=1). So answer is 35200/81.
+
+But let's double-check if we missed any steps. We have 60 steps, we accounted for all. Did we include step 41 (zero) and step 13,15? Yes. So final exponents seem plausible. We should also verify by doing a sanity check: The melody starts at F4=352 Hz. The last note is A4. What is the just intonation frequency of A4 relative to F4? In just intonation, the ratio for a major third (4 semitones) is 5/4, but from F to A is a major third? Actually F to A is 4 semitones (F-G-A; F to G is 2, G to A is 2, total 4), so A4 should be 352 * 5/4 = 440 Hz in just intonation? But 352*5/4 = 440 exactly. But here we got 35200/81 ≈ 434.5679 Hz, which is not 440. So the path is not simply direct; there are many ups and downs, so the final frequency is not necessarily the just intonation ratio of the initial to final note because of the tuning method: each step is relative to the previous, so the cumulative effect may not be the same as the direct interval due to the specific just intervals used. In this case, we ended up with a multiplier 100/81 ≈ 1.2345679, so final frequency ≈ 434.57 Hz. That is close to A4? Actually A4 in standard tuning is 440 Hz, but here it's lower. That's plausible.
+
+But we should verify our exponent calculation carefully, as it's easy to make a mistake. Let's maybe compute the product in a different way: multiply all fractions step by step, simplifying as we go. Since we have the list of fractions (multipliers) for each step, we can combine them.
+
+Let's list the multipliers in order as fractions (for each step, the factor to multiply the current frequency). We'll compile them:
+
+Step1: 9/8
+Step2: 5/6 (since down 3)
+Step3: 2/3 (down 7)
+Step4: 3/2
+Step5: 2
+Step6: 1/2
+Step7: 4/3
+Step8: 8/9
+Step9: 5/4
+Step10: 8/9
+Step11: 6/5
+Step12: 9/8
+Step13: 1
+Step14: 2/3
+Step15: 1
+Step16: 9/8
+Step17: 9/8
+Step18: 1/2
+Step19: 2
+Step20: 32/45
+Step21: 15/16
+Step22: 2/3
+Step23: 6/5
+Step24: 2
+Step25: 5/4
+Step26: 8/9
+Step27: 2/3
+Step28: 2
+Step29: 1/2
+Step30: 9/8
+Step31: 4/5
+Step32: 3/4
+Step33: 4/3
+Step34: 15/16
+Step35: 8/9
+Step36: 3/2
+Step37: 3/4
+Step38: 16/15
+Step39: 45/32
+Step40: 4/3
+Step41: 1
+Step42: 8/9
+Step43: 2/3
+Step44: 2
+Step45: 3/4
+Step46: 8/9
+Step47: 1/2
+Step48: 5/4
+Step49: 16/15
+Step50: 15/16
+Step51: 3/2
+Step52: 6/5
+Step53: 6/5
+Step54: 5/6
+Step55: 4/3
+Step56: 8/9
+Step57: 15/16
+Step58: 2/3
+Step59: 8/9
+Step60: 9/8
+
+Now we can multiply all these together. Since many factors, we can combine numerator and denominator. Let's list all numerators and denominators separately.
+
+Numerators: from each factor (if factor is a fraction a/b, we take a; for 1, no contribution).
+Denominators: b.
+
+We'll list each factor's numerator and denominator:
+
+1: 9/8 => num 9, den 8
+2: 5/6 => 5,6
+3: 2/3 => 2,3
+4: 3/2 => 3,2
+5: 2 => 2,1
+6: 1/2 => 1,2
+7: 4/3 => 4,3
+8: 8/9 => 8,9
+9: 5/4 => 5,4
+10: 8/9 => 8,9
+11: 6/5 => 6,5
+12: 9/8 => 9,8
+13: 1 => 1,1
+14: 2/3 => 2,3
+15: 1 => 1,1
+16: 9/8 => 9,8
+17: 9/8 => 9,8
+18: 1/2 => 1,2
+19: 2 => 2,1
+20: 32/45 => 32,45
+21: 15/16 => 15,16
+22: 2/3 => 2,3
+23: 6/5 => 6,5
+24: 2 => 2,1
+25: 5/4 => 5,4
+26: 8/9 => 8,9
+27: 2/3 => 2,3
+28: 2 => 2,1
+29: 1/2 => 1,2
+30: 9/8 => 9,8
+31: 4/5 => 4,5
+32: 3/4 => 3,4
+33: 4/3 => 4,3
+34: 15/16 => 15,16
+35: 8/9 => 8,9
+36: 3/2 => 3,2
+37: 3/4 => 3,4
+38: 16/15 => 16,15
+39: 45/32 => 45,32
+40: 4/3 => 4,3
+41: 1 => 1,1
+42: 8/9 => 8,9
+43: 2/3 => 2,3
+44: 2 => 2,1
+45: 3/4 => 3,4
+46: 8/9 => 8,9
+47: 1/2 => 1,2
+48: 5/4 => 5,4
+49: 16/15 => 16,15
+50: 15/16 => 15,16
+51: 3/2 => 3,2
+52: 6/5 => 6,5
+53: 6/5 => 6,5
+54: 5/6 => 5,6
+55: 4/3 => 4,3
+56: 8/9 => 8,9
+57: 15/16 => 15,16
+58: 2/3 => 2,3
+59: 8/9 => 8,9
+60: 9/8 => 9,8
+
+Now we need to multiply all numerators and denominators. Let's compute total numerator N = product of all numerators, total denominator D = product of all denominators, then simplify.
+
+We can factor each into primes. That is essentially what we did with exponents. But we can also compute the product stepwise to verify.
+
+We already have exponents from the other method: e2=2, e3=-4, e5=2. That means N/D = 2^2 * 3^{-4} * 5^2 = 4 * 25 / 81 = 100/81. So the product of all these fractions should be 100/81. Let's confirm by counting the number of each prime in numerators and denominators.
+
+Let's count the occurrences of each prime factor in numerators and denominators separately.
+
+We'll list each factor's prime factorization:
+
+1: 9/8 = 3^2 / 2^3
+2: 5/6 = 5 / (2*3) => num:5, den:2,3
+3: 2/3 = 2 / 3
+4: 3/2 = 3 / 2
+5: 2 = 2/1
+6: 1/2 = 1/2
+7: 4/3 = 2^2 / 3
+8: 8/9 = 2^3 / 3^2
+9: 5/4 = 5 / 2^2
+10: 8/9 = 2^3 / 3^2
+11: 6/5 = (2*3) / 5 => num:2,3; den:5
+12: 9/8 = 3^2 / 2^3
+13: 1
+14: 2/3 = 2/3
+15: 1
+16: 9/8 = 3^2 / 2^3
+17: 9/8 = 3^2 / 2^3
+18: 1/2 = 1/2
+19: 2 = 2/1
+20: 32/45 = 2^5 / (3^2*5) because 45=9*5=3^2*5, 32=2^5
+21: 15/16 = (3*5) / 2^4 => num:3,5; den:2^4
+22: 2/3 = 2/3
+23: 6/5 = (2*3)/5
+24: 2 = 2/1
+25: 5/4 = 5/2^2
+26: 8/9 = 2^3/3^2
+27: 2/3 = 2/3
+28: 2 = 2/1
+29: 1/2 = 1/2
+30: 9/8 = 3^2/2^3
+31: 4/5 = 2^2/5
+32: 3/4 = 3/2^2
+33: 4/3 = 2^2/3
+34: 15/16 = (3*5)/2^4
+35: 8/9 = 2^3/3^2
+36: 3/2 = 3/2
+37: 3/4 = 3/2^2
+38: 16/15 = 2^4/(3*5)
+39: 45/32 = (3^2*5)/2^5
+40: 4/3 = 2^2/3
+41: 1
+42: 8/9 = 2^3/3^2
+43: 2/3 = 2/3
+44: 2 = 2/1
+45: 3/4 = 3/2^2
+46: 8/9 = 2^3/3^2
+47: 1/2 = 1/2
+48: 5/4 = 5/2^2
+49: 16/15 = 2^4/(3*5)
+50: 15/16 = (3*5)/2^4
+51: 3/2 = 3/2
+52: 6/5 = (2*3)/5
+53: 6/5 = (2*3)/5
+54: 5/6 = 5/(2*3)
+55: 4/3 = 2^2/3
+56: 8/9 = 2^3/3^2
+57: 15/16 = (3*5)/2^4
+58: 2/3 = 2/3
+59: 8/9 = 2^3/3^2
+60: 9/8 = 3^2/2^3
+
+Now we need to sum up exponents for 2,3,5 in numerator and denominator.
+
+Let's create a tally. We'll go through each factor, add to numerator exponents (if prime appears in numerator) and denominator exponents (if in denominator). We'll do it systematically.
+
+I'll create a table: For each step, we have (num2, num3, num5) and (den2, den3, den5). Then we'll sum all num and den separately, then net exponent = num - den.
+
+Let's list each step's contributions:
+
+1: num: 3^2 => (0,2,0); den: 2^3 => (3,0,0)
+2: num: 5 => (0,0,1); den: 2,3 => (1,1,0)
+3: num: 2 => (1,0,0); den: 3 => (0,1,0)
+4: num: 3 => (0,1,0); den: 2 => (1,0,0)
+5: num: 2 => (1,0,0); den: none => (0,0,0)
+6: num: 1 => (0,0,0); den: 2 => (1,0,0)
+7: num: 2^2 => (2,0,0); den: 3 => (0,1,0)
+8: num: 2^3 => (3,0,0); den: 3^2 => (0,2,0)
+9: num: 5 => (0,0,1); den: 2^2 => (2,0,0)
+10: num: 2^3 => (3,0,0); den: 3^2 => (0,2,0)
+11: num: 2,3 => (1,1,0); den: 5 => (0,0,1)
+12: num: 3^2 => (0,2,0); den: 2^3 => (3,0,0)
+13: none
+14: num: 2 => (1,0,0); den: 3 => (0,1,0)
+15: none
+16: same as 1: (0,2,0) num, (3,0,0) den
+17: same: (0,2,0) num, (3,0,0) den
+18: num: none; den: 2 => (1,0,0)
+19: num: 2 => (1,0,0); den: none
+20: num: 2^5 => (5,0,0); den: 3^2,5 => (0,2,1)
+21: num: 3,5 => (0,1,1); den: 2^4 => (4,0,0)
+22: num: 2 => (1,0,0); den: 3 => (0,1,0)
+23: num: 2,3 => (1,1,0); den: 5 => (0,0,1)
+24: num: 2 => (1,0,0); den: none
+25: num: 5 => (0,0,1); den: 2^2 => (2,0,0)
+26: num: 2^3 => (3,0,0); den: 3^2 => (0,2,0)
+27: num: 2 => (1,0,0); den: 3 => (0,1,0)
+28: num: 2 => (1,0,0); den: none
+29: num: none; den: 2 => (1,0,0)
+30: num: 3^2 => (0,2,0); den: 2^3 => (3,0,0)
+31: num: 2^2 => (2,0,0); den: 5 => (0,0,1)
+32: num: 3 => (0,1,0); den: 2^2 => (2,0,0)
+33: num: 2^2 => (2,0,0); den: 3 => (0,1,0)
+34: num: 3,5 => (0,1,1); den: 2^4 => (4,0,0)
+35: num: 2^3 => (3,0,0); den: 3^2 => (0,2,0)
+36: num: 3 => (0,1,0); den: 2 => (1,0,0)
+37: num: 3 => (0,1,0); den: 2^2 => (2,0,0)
+38: num: 2^4 => (4,0,0); den: 3,5 => (0,1,1)
+39: num: 3^2,5 => (0,2,1); den: 2^5 => (5,0,0)
+40: num: 2^2 => (2,0,0); den: 3 => (0,1,0)
+41: none
+42: num: 2^3 => (3,0,0); den: 3^2 => (0,2,0)
+43: num: 2 => (1,0,0); den: 3 => (0,1,0)
+44: num: 2 => (1,0,0); den: none
+45: num: 3 => (0,1,0); den: 2^2 => (2,0,0)
+46: num: 2^3 => (3,0,0); den: 3^2 => (0,2,0)
+47: num: none; den: 2 => (1,0,0)
+48: num: 5 => (0,0,1); den: 2^2 => (2,0,0)
+49: num: 2^4 => (4,0,0); den: 3,5 => (0,1,1)
+50: num: 3,5 => (0,1,1); den: 2^4 => (4,0,0)
+51: num: 3 => (0,1,0); den: 2 => (1,0,0)
+52: num: 2,3 => (1,1,0); den: 5 => (0,0,1)
+53: num: 2,3 => (1,1,0); den: 5 => (0,0,1)
+54: num: 5 => (0,0,1); den: 2,3 => (1,1,0)
+55: num: 2^2 => (2,0,0); den: 3 => (0,1,0)
+56: num: 2^3 => (3,0,0); den: 3^2 => (0,2,0)
+57: num: 3,5 => (0,1,1); den: 2^4 => (4,0,0)
+58: num: 2 => (1,0,0); den: 3 => (0,1,0)
+59: num: 2^3 => (3,0,0); den: 3^2 => (0,2,0)
+60: num: 3^2 => (0,2,0); den: 2^3 => (3,0,0)
+
+Now we need to sum all numerator exponents for 2,3,5 across all steps, and denominator exponents similarly. Let's sum numerator 2's, numerator 3's, numerator 5's, denominator 2's, denominator 3's, denominator 5's.
+
+I'll create a running total. Let's go step by step and add to totals.
+
+I'll make six variables: N2, N3, N5, D2, D3, D5. Start at 0.
+
+Step1: N2+=0, N3+=2, N5+=0; D2+=3, D3+=0, D5+=0 => N2=0, N3=2, N5=0; D2=3, D3=0, D5=0
+Step2: N2+=0, N3+=0, N5+=1; D2+=1, D3+=1, D5+=0 => N2=0, N3=2, N5=1; D2=4, D3=1, D5=0
+Step3: N2+=1, N3+=0, N5+=0; D2+=0, D3+=1, D5+=0 => N2=1, N3=2, N5=1; D2=4, D3=2, D5=0
+Step4: N2+=0, N3+=1, N5+=0; D2+=1, D3+=0, D5+=0 => N2=1, N3=3, N5=1; D2=5, D3=2, D5=0
+Step5: N2+=1, N3+=0, N5+=0; D2+=0, D3+=0, D5+=0 => N2=2, N3=3, N5=1; D2=5, D3=2, D5=0
+Step6: N2+=0, N3+=0, N5+=0; D2+=1, D3+=0, D5+=0 => N2=2, N3=3, N5=1; D2=6, D3=2, D5=0
+Step7: N2+=2, N3+=0, N5+=0; D2+=0, D3+=1, D5+=0 => N2=4, N3=3, N5=1; D2=6, D3=3, D5=0
+Step8: N2+=3, N3+=0, N5+=0; D2+=0, D3+=2, D5+=0 => N2=7, N3=3, N5=1; D2=6, D3=5, D5=0
+Step9: N2+=0, N3+=0, N5+=1; D2+=2, D3+=0, D5+=0 => N2=7, N3=3, N5=2; D2=8, D3=5, D5=0
+Step10: N2+=3, N3+=0, N5+=0; D2+=0, D3+=2, D5+=0 => N2=10, N3=3, N5=2; D2=8, D3=7, D5=0
+Step11: N2+=1, N3+=1, N5+=0; D2+=0, D3+=0, D5+=1 => N2=11, N3=4, N5=2; D2=8, D3=7, D5=1
+Step12: N2+=0, N3+=2, N5+=0; D2+=3, D3+=0, D5+=0 => N2=11, N3=6, N5=2; D2=11, D3=7, D5=1
+Step13: no change
+Step14: N2+=1, N3+=0, N5+=0; D2+=0, D3+=1, D5+=0 => N2=12, N3=6, N5=2; D2=11, D3=8, D5=1
+Step15: no change
+Step16: N2+=0, N3+=2, N5+=0; D2+=3, D3+=0, D5+=0 => N2=12, N3=8, N5=2; D2=14, D3=8, D5=1
+Step17: same: N2=12, N3=10, N5=2; D2=17, D3=8, D5=1
+Step18: N2+=0, N3+=0, N5+=0; D2+=1, D3+=0, D5+=0 => N2=12, N3=10, N5=2; D2=18, D3=8, D5=1
+Step19: N2+=1, N3+=0, N5+=0; D2+=0, D3+=0, D5+=0 => N2=13, N3=10, N5=2; D2=18, D3=8, D5=1
+Step20: N2+=5, N3+=0, N5+=0; D2+=0, D3+=2, D5+=1 => N2=18, N3=10, N5=2; D2=18, D3=10, D5=2
+Step21: N2+=0, N3+=1, N5+=1; D2+=4, D3+=0, D5+=0 => N2=18, N3=11, N5=3; D2=22, D3=10, D5=2
+Step22: N2+=1, N3+=0, N5+=0; D2+=0, D3+=1, D5+=0 => N2=19, N3=11, N5=3; D2=22, D3=11, D5=2
+Step23: N2+=1, N3+=1, N5+=0; D2+=0, D3+=0, D5+=1 => N2=20, N3=12, N5=3; D2=22, D3=11, D5=3
+Step24: N2+=1, N3+=0, N5+=0; D2+=0, D3+=0, D5+=0 => N2=21, N3=12, N5=3; D2=22, D3=11, D5=3
+Step25: N2+=0, N3+=0, N5+=1; D2+=2, D3+=0, D5+=0 => N2=21, N3=12, N5=4; D2=24, D3=11, D5=3
+Step26: N2+=3, N3+=0, N5+=0; D2+=0, D3+=2, D5+=0 => N2=24, N3=12, N5=4; D2=24, D3=13, D5=3
+Step27: N2+=1, N3+=0, N5+=0; D2+=0, D3+=1, D5+=0 => N2=25, N3=12, N5=4; D2=24, D3=14, D5=3
+Step28: N2+=1, N3+=0, N5+=0; D2+=0, D3+=0, D5+=0 => N2=26, N3=12, N5=4; D2=24, D3=14, D5=3
+Step29: N2+=0, N3+=0, N5+=0; D2+=1, D3+=0, D5+=0 => N2=26, N3=12, N5=4; D2=25, D3=14, D5=3
+Step30: N2+=0, N3+=2, N5+=0; D2+=3, D3+=0, D5+=0 => N2=26, N3=14, N5=4; D2=28, D3=14, D5=3
+Step31: N2+=2, N3+=0, N5+=0; D2+=0, D3+=0, D5+=1 => N2=28, N3=14, N5=4; D2=28, D3=14, D5=4
+Step32: N2+=0, N3+=1, N5+=0; D2+=2, D3+=0, D5+=0 => N2=28, N3=15, N5=4; D2=30, D3=14, D5=4
+Step33: N2+=2, N3+=0, N5+=0; D2+=0, D3+=1, D5+=0 => N2=30, N3=15, N5=4; D2=30, D3=15, D5=4
+Step34: N2+=0, N3+=1, N5+=1; D2+=4, D3+=0, D5+=0 => N2=30, N3=16, N5=5; D2=34, D3=15, D5=4
+Step35: N2+=3, N3+=0, N5+=0; D2+=0, D3+=2, D5+=0 => N2=33, N3=16, N5=5; D2=34, D3=17, D5=4
+Step36: N2+=0, N3+=1, N5+=0; D2+=1, D3+=0, D5+=0 => N2=33, N3=17, N5=5; D2=35, D3=17, D5=4
+Step37: N2+=0, N3+=1, N5+=0; D2+=2, D3+=0, D5+=0 => N2=33, N3=18, N5=5; D2=37, D3=17, D5=4
+Step38: N2+=4, N3+=0, N5+=0; D2+=0, D3+=1, D5+=1 => N2=37, N3=18, N5=5; D2=37, D3=18, D5=5
+Step39: N2+=0, N3+=2, N5+=1; D2+=5, D3+=0, D5+=0 => N2=37, N3=20, N5=6; D2=42, D3=18, D5=5
+Step40: N2+=2, N3+=0, N5+=0; D2+=0, D3+=1, D5+=0 => N2=39, N3=20, N5=6; D2=42, D3=19, D5=5
+Step41: no change
+Step42: N2+=3, N3+=0, N5+=0; D2+=0, D3+=2, D5+=0 => N2=42, N3=20, N5=6; D2=42, D3=21, D5=5
+Step43: N2+=1, N3+=0, N5+=0; D2+=0, D3+=1, D5+=0 => N2=43, N3=20, N5=6; D2=42, D3=22, D5=5
+Step44: N2+=1, N3+=0, N5+=0; D2+=0, D3+=0, D5+=0 => N2=44, N3=20, N5=6; D2=42, D3=22, D5=5
+Step45: N2+=0, N3+=1, N5+=0; D2+=2, D3+=0, D5+=0 => N2=44, N3=21, N5=6; D2=44, D3=22, D5=5
+Step46: N2+=3, N3+=0, N5+=0; D2+=0, D3+=2, D5+=0 => N2=47, N3=21, N5=6; D2=44, D3=24, D5=5
+Step47: N2+=0, N3+=0, N5+=0; D2+=1, D3+=0, D5+=0 => N2=47, N3=21, N5=6; D2=45, D3=24, D5=5
+Step48: N2+=0, N3+=0, N5+=1; D2+=2, D3+=0, D5+=0 => N2=47, N3=21, N5=7; D2=47, D3=24, D5=5
+Step49: N2+=4, N3+=0, N5+=0; D2+=0, D3+=1, D5+=1 => N2=51, N3=21, N5=7; D2=47, D3=25, D5=6
+Step50: N2+=0, N3+=1, N5+=1; D2+=4, D3+=0, D5+=0 => N2=51, N3=22, N5=8; D2=51, D3=25, D5=6
+Step51: N2+=0, N3+=1, N5+=0; D2+=1, D3+=0, D5+=0 => N2=51, N3=23, N5=8; D2=52, D3=25, D5=6
+Step52: N2+=1, N3+=1, N5+=0; D2+=0, D3+=0, D5+=1 => N2=52, N3=24, N5=8; D2=52, D3=25, D5=7
+Step53: N2+=1, N3+=1, N5+=0; D2+=0, D3+=0, D5+=1 => N2=53, N3=25, N5=8; D2=52, D3=25, D5=8
+Step54: N2+=0, N3+=0, N5+=1; D2+=1, D3+=1, D5+=0 => N2=53, N3=25, N5=9; D2=53, D3=26, D5=8
+Step55: N2+=2, N3+=0, N5+=0; D2+=0, D3+=1, D5+=0 => N2=55, N3=25, N5=9; D2=53, D3=27, D5=8
+Step56: N2+=3, N3+=0, N5+=0; D2+=0, D3+=2, D5+=0 => N2=58, N3=25, N5=9; D2=53, D3=29, D5=8
+Step57: N2+=0, N3+=1, N5+=1; D2+=4, D3+=0, D5+=0 => N2=58, N3=26, N5=10; D2=57, D3=29, D5=8
+Step58: N2+=1, N3+=0, N5+=0; D2+=0, D3+=1, D5+=0 => N2=59, N3=26, N5=10; D2=57, D3=30, D5=8
+Step59: N2+=3, N3+=0, N5+=0; D2+=0, D3+=2, D5+=0 => N2=62, N3=26, N5=10; D2=57, D3=32, D5=8
+Step60: N2+=0, N3+=2, N5+=0; D2+=3, D3+=0, D5+=0 => N2=62, N3=28, N5=10; D2=60, D3=32, D5=8
+
+So final totals: N2=62, N3=28, N5=10; D2=60, D3=32, D5=8.
+
+Thus net exponent: e2 = N2 - D2 = 62 - 60 = 2; e3 = 28 - 32 = -4; e5 = 10 - 8 = 2. Exactly matches earlier. So product = 2^2 * 3^{-4} * 5^2 = 4 * 25 / 81 = 100/81. So M = 100/81. Good.
+
+Thus final frequency = 352 * (100/81) = 35200/81 Hz.
+
+Now we need to reduce fraction? 35200 and 81 have GCD? 81=3^4, 35200 is not divisible by 3 (sum digits 3+5+2+0+0=10, not divisible by 3). So reduced. So answer is 35200/81.
+
+But maybe we can simplify with 352? 352 and 81 share no common factors. So final answer: 35200/81.
+
+Thus the last note is A4? Actually the last note is A4, frequency 35200/81 ≈ 434.5679 Hz. That is a Just intonation A? In just intonation, A4 relative to F4 (352 Hz) would be 352 * 5/4 = 440 if F4 is 352? But note that the initial F4 is tuned to 352 Hz, which is not standard A440? Actually 352 is 2 octaves below 352*4=1408? Not sure. But anyway.
+
+Thus answer: 35200/81.
+
+We should present it as a reduced fraction: 35200/81. Or if they want integer, it's not integer. So answer: \boxed{\dfrac{35200}{81}}.
+
+But let's double-check the note sequence: The last note is A4. Did we compute correct note numbers? Yes, from list: note 61 = A4 = 57. Starting note F4=53. So the direct interval from F4 to A4 is +4 semitones. In just intonation, 4 semitones ratio is 5/4, so 352*5/4=440. But our cumulative product gave 100/81 ≈ 1.2346, while 5/4=1.25. So not equal because of the detour. So that seems plausible.
+
+Thus final answer.

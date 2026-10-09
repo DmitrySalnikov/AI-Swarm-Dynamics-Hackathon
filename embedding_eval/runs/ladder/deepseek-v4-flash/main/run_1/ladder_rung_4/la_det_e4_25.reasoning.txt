@@ -1,0 +1,299 @@
+We are asked to compute the determinant of a 6x6 integer matrix. We need to do it exactly. Since it's integer, the determinant is integer. We can compute by row reduction, or by expansion, or by using software-like reasoning. Since we are a human, we need to do it carefully. Let's write matrix A:
+
+Row1: [4, -1, -2, -1, -1, -4]
+Row2: [0, -4, 0, 0, -2, -2]
+Row3: [3, 1, 0, -1, 2, 4]
+Row4: [-1, -3, 0, 2, -1, -1]
+Row5: [1, 0, 1, -3, 3, -2]
+Row6: [-4, 2, 3, 0, 4, 2]
+
+We can compute determinant using row operations to simplify, but careful not to change determinant except by factor when swapping rows or multiplying rows. We can also compute by block decomposition if possible. Since it's 6x6, we can try to reduce to upper triangular form using Gaussian elimination, keeping track of row swaps and scaling. We'll do integer arithmetic to avoid fractions, but can also use fractions if needed. Alternatively, we can compute using expansion by minors with careful selection. Let's attempt Gaussian elimination.
+
+Let's write matrix:
+
+[ 4 -1 -2 -1 -1 -4]
+[ 0 -4  0  0 -2 -2]
+[ 3  1  0 -1  2  4]
+[-1 -3  0  2 -1 -1]
+[ 1  0  1 -3  3 -2]
+[-4  2  3  0  4  2]
+
+We can try to create zeros below pivot in column1. The pivot is row1 col1 = 4. We'll eliminate rows 3,4,5,6. For each row, we want to add a multiple of row1 to cancel the entry. Since we want integer operations, we can do row operations that combine integer multiples, but we need to keep determinant unchanged if we use row addition of one row to another (det unchanged). However, if we multiply a row by a factor, det gets multiplied. So we avoid scaling rows. Instead we can use elimination by adding multiples of pivot row, but the multiplier might not be integer if we want to zero out exactly. For example, row3 col1 = 3, we want to subtract (3/4)*row1, but that introduces fractions. To stay integer, we can swap rows to get a better pivot, or we can use the method of using the pivot as divisor, but determinant will then be product of pivots if we do elimination with row operations that don't scale rows. However, we can allow fractions if we treat the determinant as rational, but since we want exact integer, we might use fraction arithmetic. Alternatively, we can compute determinant by performing row operations that preserve determinant up to sign (like swapping rows changes sign, adding multiple of another row does not change determinant). But to eliminate entries, we can add a multiple of row1 to row3: row3 -> row3 - (3/4)*row1, which is not an integer combination unless we scale row3 by 4 first, but that would multiply determinant by 4. So we have to be careful.
+
+One common technique: Use Bareiss algorithm (fraction-free Gaussian elimination) which gives exact integer determinant. Or we can compute via expansion with minors using Laplace expansion if we find many zeros. Let's see if we have many zeros. Column2 has many zeros? Actually column2: row1=-1, row2=-4, row3=1, row4=-3, row5=0, row6=2. Not many zeros. Column3: row1=-2, row2=0, row3=0, row4=0, row5=1, row6=3. So there are zeros in rows2,3,4 for column3. That may be useful. Maybe we can do expansion along column3? But there are three entries: -2, 1, 3. That's three non-zero, but it's 6x6, doing expansion by minors would give 3 determinants of 5x5, which might be manageable but still many calculations. Alternatively, we can try to use row operations to create more zeros.
+
+Let's see if we can permute rows to get a pivot that is 1 or -1 to make elimination easier. We have row5 col1 = 1, which is good. We could swap row1 and row5. That would change sign of determinant. So we can swap row1 and row5. Then pivot=1. Let's do that.
+
+Matrix after swapping row1 and row5 (original rows). Original row5: [1,0,1,-3,3,-2]; row1: [4,-1,-2,-1,-1,-4]; row2: [0,-4,0,0,-2,-2]; row3: [3,1,0,-1,2,4]; row4: [-1,-3,0,2,-1,-1]; row6: [-4,2,3,0,4,2].
+
+Swap rows 1 and 5. New matrix:
+
+Row1: [1, 0, 1, -3, 3, -2]
+Row2: [0, -4, 0, 0, -2, -2]
+Row3: [3, 1, 0, -1, 2, 4]
+Row4: [-1, -3, 0, 2, -1, -1]
+Row5: [4, -1, -2, -1, -1, -4]
+Row6: [-4, 2, 3, 0, 4, 2]
+
+Now we eliminate column1 below row1. Use row1 as pivot (1). Compute:
+Row3: row3 - 3*row1 = [3-3*1, 1-3*0, 0-3*1, -1-3*(-3), 2-3*3, 4-3*(-2)] = [0, 1, -3, -1+9? Actually -1 -3*(-3)= -1 +9=8, 2-9=-7, 4+6=10] => [0, 1, -3, 8, -7, 10]
+Row4: row4 - (-1)*row1? Actually row4 has -1, so we do row4 + row1 (since -1 -1*? Actually we want to zero: row4 col1 = -1, so row4 + 1*row1 = [-1+1, -3+0, 0+1, 2+(-3), -1+3, -1+(-2)] = [0, -3, 1, -1, 2, -3]? Let's compute carefully: row4: [-1, -3, 0, 2, -1, -1]; add row1: [1,0,1,-3,3,-2] => sum = [0, -3, 1, -1, 2, -3]. Good.
+Row5: row5 - 4*row1 = [4-4*1, -1-4*0, -2-4*1, -1-4*(-3), -1-4*3, -4-4*(-2)] = [0, -1, -2-4? -2-4=-6, -1+12=11, -1-12=-13, -4+8=4] => [0, -1, -6, 11, -13, 4]
+Row6: row6 - (-4)*row1? Actually row6 col1 = -4, so row6 + 4*row1 = [-4+4*1, 2+4*0, 3+4*1, 0+4*(-3), 4+4*3, 2+4*(-2)] = [0, 2, 3+4=7, -12, 4+12=16, 2-8=-6] => [0, 2, 7, -12, 16, -6]
+
+Now matrix becomes:
+
+Row1: [1, 0, 1, -3, 3, -2]
+Row2: [0, -4, 0, 0, -2, -2]
+Row3: [0, 1, -3, 8, -7, 10]
+Row4: [0, -3, 1, -1, 2, -3]
+Row5: [0, -1, -6, 11, -13, 4]
+Row6: [0, 2, 7, -12, 16, -6]
+
+Now we need to work on submatrix rows2-6, cols2-6. Column2 pivot: we have entries: row2=-4, row3=1, row4=-3, row5=-1, row6=2. We can choose a pivot that is 1 or -1 to avoid fractions. Row3 has 1, so we could swap row2 and row3. Swapping rows changes sign. But careful: we have already performed one row swap (row1<->row5) earlier. That changed sign once. So we keep track of sign. We'll track total number of row swaps: initially we swapped row1 and row5, so sign = -1. Now we consider swapping row2 and row3: that would multiply determinant by -1 as well, total sign becomes +1. We can do it or we can avoid swapping and use other elimination strategies. Since we have a 1 at row3 col2, it's convenient to bring it to row2 position. Let's swap row2 and row3. So:
+
+Swap row2 and row3. Then matrix becomes:
+
+Row1: [1, 0, 1, -3, 3, -2]
+Row2: [0, 1, -3, 8, -7, 10]   (old row3)
+Row3: [0, -4, 0, 0, -2, -2]   (old row2)
+Row4: [0, -3, 1, -1, 2, -3]
+Row5: [0, -1, -6, 11, -13, 4]
+Row6: [0, 2, 7, -12, 16, -6]
+
+Now pivot at (2,2) = 1. Use it to eliminate entries below in column2. So we zero out row3 col2, row4 col2, row5 col2, row6 col2.
+
+Perform:
+Row3: row3 - (-4)*row2? Actually row3 col2 = -4, we want to add 4*row2 because -4 + 4*1 = 0. So row3 -> row3 + 4*row2.
+Row4: row4 - (-3)*row2? row4 col2 = -3, so row4 + 3*row2.
+Row5: row5 - (-1)*row2? row5 col2 = -1, so row5 + 1*row2.
+Row6: row6 - 2*row2? row6 col2 = 2, so row6 - 2*row2.
+
+Compute each:
+
+Row2 = [0,1,-3,8,-7,10]
+
+Row3 original = [0,-4,0,0,-2,-2]. Row3 + 4*row2 = [0, -4+4*1=0, 0+4*(-3)=-12, 0+4*8=32, -2+4*(-7)=-2-28=-30, -2+4*10=-2+40=38]. So row3 becomes [0,0,-12,32,-30,38].
+
+Row4 original = [0,-3,1,-1,2,-3]. Row4 + 3*row2 = [0, -3+3=0, 1+3*(-3)=1-9=-8, -1+3*8=-1+24=23, 2+3*(-7)=2-21=-19, -3+3*10=-3+30=27]. So row4 = [0,0,-8,23,-19,27].
+
+Row5 original = [0,-1,-6,11,-13,4]. Row5 + row2 = [0, -1+1=0, -6+(-3)=-9, 11+8=19, -13+(-7)=-20, 4+10=14]. So row5 = [0,0,-9,19,-20,14].
+
+Row6 original = [0,2,7,-12,16,-6]. Row6 - 2*row2 = [0, 2-2=0, 7-2*(-3)=7+6=13, -12-2*8=-12-16=-28, 16-2*(-7)=16+14=30, -6-2*10=-6-20=-26]. So row6 = [0,0,13,-28,30,-26].
+
+Now matrix becomes:
+
+Row1: [1, 0, 1, -3, 3, -2]
+Row2: [0, 1, -3, 8, -7, 10]
+Row3: [0, 0, -12, 32, -30, 38]
+Row4: [0, 0, -8, 23, -19, 27]
+Row5: [0, 0, -9, 19, -20, 14]
+Row6: [0, 0, 13, -28, 30, -26]
+
+Now we need to work on submatrix rows3-6, cols3-6. Pivot at (3,3) = -12. Since we have other entries in column3: -8, -9, 13. We can try to eliminate those using row operations. But we may again encounter fractions if we use -12 as pivot. However, we could swap rows to get a pivot of 1 or -1? Not available: -12, -8, -9, 13 none are 1 or -1. We could also use the fact that we can combine rows to produce a 1, maybe by row operations that involve adding multiples of rows, but careful: if we multiply a row by a constant, determinant multiplies. So we can avoid fractions by using Bareiss algorithm (which uses exact division). Since we are computing determinant by hand, we can continue with fraction arithmetic but keep track of factor. Alternatively, we can compute determinant as product of pivots if we do elimination without row swaps and with scaling? Actually, if we perform Gaussian elimination using row operations that are adding multiples of rows, but we do not scale rows, the determinant of the original matrix (with row swaps) equals the product of the diagonal entries of the final upper triangular matrix times (-1)^(number of swaps). But note: when we add a multiple of a row to another, determinant unchanged. When we swap rows, sign flips. However, if we do elimination with fractions (i.e., using rational multipliers), the diagonal entries become the pivots after elimination, and the product of those pivots gives the determinant of the row-echelon matrix? Actually, if we start with a matrix and perform row operations of type: row_i = row_i - c*row_j (where c is a scalar), the determinant does not change. So after such operations, we get an upper triangular matrix (if we eliminate everything below). The determinant of that upper triangular matrix is the product of its diagonal entries. Since the row operations didn't change the determinant (except row swaps), the determinant of the original matrix = product of diagonal entries * (-1)^(swaps). That is valid even if the multipliers are fractions. So we can continue with fractions. We'll keep the arithmetic exact as fractions. So we can proceed to eliminate below pivot (3,3) = -12.
+
+We want to zero out row4 col3, row5 col3, row6 col3. So for each row i (i=4,5,6), we compute factor = (entry_i3)/(pivot). Then do row_i = row_i - factor * row3. Since factor will be rational, we will get fractions. But we can combine into common denominators and keep as fractions. That's fine; we'll compute exact rational numbers. Eventually we'll have product of pivots (which may be fractions? Actually pivots from elimination with fractions will be rational numbers, but their product should give the determinant as integer). We have already done two row swaps: first swap row1<->row5 (sign -1), then swap row2<->row3 (sign flips again, total sign = +1). So determinant = product of diagonal entries after elimination (upper triangular) times (+1) because number of swaps is 2? Actually we swapped twice: first swap changes sign to -1, second swap changes sign to +1. So sign factor = (-1)^2 = 1. So we don't need to multiply by -1. So determinant = product of pivots after we finish elimination. But careful: When we do elimination using row addition, the diagonal entries we get after elimination are the pivots. However, we also might later need to eliminate above? No, we only need upper triangular. So we can proceed to eliminate below pivot (3,3). Then we will have zeros in column3 below row3. Then we move to pivot at (4,4), etc.
+
+So let's continue with fractions.
+
+Current matrix:
+
+Row3: [0,0,-12, 32, -30, 38]
+Row4: [0,0,-8, 23, -19, 27]
+Row5: [0,0,-9, 19, -20, 14]
+Row6: [0,0,13, -28, 30, -26]
+
+We will compute factors:
+
+For row4: factor = (-8)/(-12) = 2/3? Because -8 / -12 = 8/12 = 2/3. So row4 -> row4 - (2/3)*row3.
+For row5: factor = (-9)/(-12) = 9/12 = 3/4. So row5 -> row5 - (3/4)*row3.
+For row6: factor = 13/(-12) = -13/12. So row6 -> row6 - (-13/12)*row3 = row6 + (13/12)*row3.
+
+We compute these exactly using fractions.
+
+First, row3 = [0,0,-12, 32, -30, 38]. We'll keep as row3.
+
+Compute row4_new = row4 - (2/3)*row3.
+
+Row4: [0,0,-8, 23, -19, 27].
+Compute (2/3)*row3: multiply each entry of row3 by 2/3:
+-12*(2/3) = -8; 32*(2/3)=64/3; -30*(2/3)= -20; 38*(2/3)=76/3.
+So row4 - (2/3)*row3 = subtract: for col3: -8 - (-8)=0; col4: 23 - (64/3) = (69/3 - 64/3) = 5/3; col5: -19 - (-20) = -19+20 = 1; col6: 27 - (76/3) = (81/3 - 76/3) = 5/3.
+So row4_new = [0,0,0, 5/3, 1, 5/3].
+
+We can multiply row4 by 3 to clear denominators later? But careful: if we scale a row, determinant multiplies. We could keep fractions for now, but we might want to later factor out denominators to get integer entries. Since we are eventually taking product of pivots, we need the diagonal entries exactly as they are. So we keep fractions. But note that we have not done any row scaling yet; these are results of row operations of adding multiples of rows, which does not change determinant. So the matrix entries become fractions. That's okay.
+
+Now row5_new = row5 - (3/4)*row3.
+
+Row5: [0,0,-9, 19, -20, 14].
+Compute (3/4)*row3: -12*(3/4) = -9; 32*(3/4)=24; -30*(3/4)= -22.5? Actually -30 * 3/4 = -90/4 = -45/2 = -22.5; but we keep fractions: -30*3/4 = -90/4 = -45/2; 38*(3/4)=114/4=57/2. So (3/4)*row3 = [0,0,-9, 24, -45/2, 57/2].
+Now row5 - that: col3: -9 - (-9)=0; col4: 19 - 24 = -5; col5: -20 - (-45/2) = -20 + 45/2 = (-40/2+45/2)=5/2; col6: 14 - (57/2) = 28/2 - 57/2 = -29/2.
+So row5_new = [0,0,0, -5, 5/2, -29/2].
+
+Now row6_new = row6 + (13/12)*row3.
+
+Row6: [0,0,13, -28, 30, -26].
+Compute (13/12)*row3: -12*(13/12) = -13; 32*(13/12)= (32*13)/12 = 416/12 = 104/3? Actually simplify: 416/12 = 104/3 (since divide by 4: 104/3). -30*(13/12)= -390/12 = -65/2? 390/12=32.5, but fraction: -390/12 = -65/2 (since divide by 6: 65/2). 38*(13/12)= 494/12 = 247/6? 494/12=247/6 (since divide by 2). So (13/12)*row3 = [0,0,-13, 104/3, -65/2, 247/6].
+Now row6 + that: col3: 13 + (-13)=0; col4: -28 + 104/3 = (-84/3 + 104/3)=20/3; col5: 30 + (-65/2) = 60/2 - 65/2 = -5/2; col6: -26 + 247/6 = (-156/6 + 247/6)=91/6.
+So row6_new = [0,0,0, 20/3, -5/2, 91/6].
+
+So after elimination, matrix becomes:
+
+Row1: [1, 0, 1, -3, 3, -2]
+Row2: [0, 1, -3, 8, -7, 10]
+Row3: [0, 0, -12, 32, -30, 38]
+Row4: [0, 0, 0, 5/3, 1, 5/3]
+Row5: [0, 0, 0, -5, 5/2, -29/2]
+Row6: [0, 0, 0, 20/3, -5/2, 91/6]
+
+Now we need to eliminate below pivot at (4,4). The pivot is row4 col4 = 5/3. We need to zero out entries in rows5 and 6, column4. So we compute factors:
+
+For row5: entry = -5, pivot = 5/3. factor = (-5) / (5/3) = -5 * (3/5) = -3. So row5 -> row5 - (-3)*row4? Actually row5_new = row5 - factor * row4, where factor = (entry)/(pivot). So factor = -5 / (5/3) = -3. So row5 = row5 - (-3)*row4? Wait: we want row5 - (entry/pivot)*row4 = row5 - (-3)*row4 = row5 + 3*row4. Yes, because factor = (entry)/(pivot) = -3, so row5_new = row5 - (-3)*row4 = row5 + 3*row4. That will zero out col4.
+
+For row6: entry = 20/3, pivot = 5/3, factor = (20/3)/(5/3)=20/5=4. So row6_new = row6 - 4*row4.
+
+Let's compute.
+
+Row4 = [0,0,0, 5/3, 1, 5/3].
+
+Compute row5_new = row5 + 3*row4.
+
+Row5 = [0,0,0, -5, 5/2, -29/2].
+3*row4 = [0,0,0, 5, 3, 5]. Since 3*(5/3)=5, 3*1=3, 3*(5/3)=5.
+Add: col4: -5 + 5 = 0; col5: 5/2 + 3 = 5/2 + 6/2 = 11/2; col6: -29/2 + 5 = -29/2 + 10/2 = -19/2.
+So row5_new = [0,0,0,0, 11/2, -19/2].
+
+Now row6_new = row6 - 4*row4.
+
+Row6 = [0,0,0, 20/3, -5/2, 91/6].
+4*row4 = [0,0,0, 20/3, 4, 20/3] because 4*(5/3)=20/3, 4*1=4, 4*(5/3)=20/3.
+Now subtract: col4: 20/3 - 20/3 = 0; col5: -5/2 - 4 = -5/2 - 8/2 = -13/2; col6: 91/6 - 20/3 = 91/6 - 40/6 = 51/6 = 17/2? Actually 51/6 simplifies to 17/2. So row6_new = [0,0,0,0, -13/2, 17/2].
+
+Now matrix becomes:
+
+Row1: [1, 0, 1, -3, 3, -2]
+Row2: [0, 1, -3, 8, -7, 10]
+Row3: [0, 0, -12, 32, -30, 38]
+Row4: [0, 0, 0, 5/3, 1, 5/3]
+Row5: [0, 0, 0, 0, 11/2, -19/2]
+Row6: [0, 0, 0, 0, -13/2, 17/2]
+
+Now we need to eliminate below pivot at (5,5). Pivot = row5 col5 = 11/2. Row6 col5 = -13/2. So factor = (row6col5)/pivot = (-13/2)/(11/2) = -13/11. Then row6_new = row6 - factor * row5 = row6 - (-13/11)*row5 = row6 + (13/11)*row5. That will zero out col5. Then we get upper triangular. Let's compute.
+
+Row5 = [0,0,0,0, 11/2, -19/2].
+Row6 = [0,0,0,0, -13/2, 17/2].
+
+Compute (13/11)*row5: multiply each entry: (13/11)*(11/2)=13/2; (13/11)*(-19/2)= -247/22? Actually (13*(-19))/(11*2)= -247/22 = -247/22. Simplify? We'll keep as fractions.
+
+So row6_new = row6 + (13/11)*row5 = [0,0,0,0, -13/2 + 13/2, 17/2 + (-247/22)? Wait careful: row6 col5: -13/2 + (13/11)*(11/2)= -13/2 + 13/2 = 0. Good. col6: 17/2 + (13/11)*(-19/2) = 17/2 - (247/22) = convert to common denominator 22: 17/2 = 187/22? Because 17*11/22=187/22. Then 187/22 - 247/22 = -60/22 = -30/11. So row6_new = [0,0,0,0,0, -30/11].
+
+Thus after elimination, we have upper triangular matrix:
+
+Row1: [1, 0, 1, -3, 3, -2]
+Row2: [0, 1, -3, 8, -7, 10]
+Row3: [0, 0, -12, 32, -30, 38]
+Row4: [0, 0, 0, 5/3, 1, 5/3]
+Row5: [0, 0, 0, 0, 11/2, -19/2]
+Row6: [0, 0, 0, 0, 0, -30/11]
+
+The diagonal entries are: 1, 1, -12, 5/3, 11/2, -30/11.
+
+The determinant of this triangular matrix is the product of these diagonal entries. Since we only used row swaps (two swaps, sign = +1) and row addition operations (which don't change determinant), the determinant of original matrix A (after swapping rows) is exactly the product. But note: we swapped rows originally: first swapped row1 and row5, then swapped row2 and row3. That gave sign = (-1)^2 = 1. So det(A) = product of diagonal entries.
+
+Compute product: 1 * 1 * (-12) * (5/3) * (11/2) * (-30/11) = ?
+
+Simplify step by step:
+
+(-12) * (5/3) = -12 * 5 / 3 = -60/3 = -20.
+
+Then (-20) * (11/2) = -20 * 11 / 2 = -220/2 = -110.
+
+Then (-110) * (-30/11) = (-110)*(-30)/11 = 3300/11 = 300. Because 110*30=3300, divided by 11 = 300. And we have two negatives giving positive.
+
+Then multiply by the first 1*1=1. So product = 300.
+
+Thus det(A) = 300.
+
+But we should check if we missed any factor. Did we scale any rows? No, we only added multiples of rows, and swapped rows. So the determinant should be product of pivots times sign. So answer is 300.
+
+We can verify using another method quickly to be sure. Perhaps we can also compute using software mentally? But we can check by doing a quick sanity: The matrix entries are small, determinant likely not huge. 300 seems plausible.
+
+We could also compute via row reduction with integer arithmetic and Bareiss algorithm to confirm. Let's try a different approach: Use block matrix or perform elimination with integer arithmetic by scaling rows to keep integers. For example, after we had submatrix with column3 entries -12,-8,-9,13, we could have multiplied rows by something to make pivot 1 then eliminate. But we already got 300. Let's do a quick verification by computing determinant using expansion by minors along column 3? Could be messy but might confirm.
+
+Alternatively, we can compute the determinant using an online mental calculator? But we can double-check by performing some steps more carefully, maybe there is an arithmetic mistake.
+
+Let's recalc some steps to ensure no error.
+
+Original matrix A:
+
+Row1: 4 -1 -2 -1 -1 -4
+Row2: 0 -4 0 0 -2 -2
+Row3: 3 1 0 -1 2 4
+Row4: -1 -3 0 2 -1 -1
+Row5: 1 0 1 -3 3 -2
+Row6: -4 2 3 0 4 2
+
+Swapped row1 and row5:
+
+R1: [1,0,1,-3,3,-2]
+R2: [0,-4,0,0,-2,-2]
+R3: [3,1,0,-1,2,4]
+R4: [-1,-3,0,2,-1,-1]
+R5: [4,-1,-2,-1,-1,-4]
+R6: [-4,2,3,0,4,2]
+
+Now elimination below pivot1=1:
+
+R3 -> R3 - 3R1: (3-3,1-0,0-3,-1-(-9)=8,2-9=-7,4-(-6)=10) → (0,1,-3,8,-7,10) correct.
+R4 -> R4 + R1: (-1+1,-3+0,0+1,2-3=-1,-1+3=2,-1-2=-3) → (0,-3,1,-1,2,-3) correct.
+R5 -> R5 - 4R1: (4-4,-1-0,-2-4,-1-(-12)=11,-1-12=-13,-4-(-8)=4) → (0,-1,-6,11,-13,4) correct.
+R6 -> R6 + 4R1: (-4+4,2+0,3+4,0-12=-12,4+12=16,2-8=-6) → (0,2,7,-12,16,-6) correct.
+
+Now swap row2 and row3: after swap we have:
+
+R2: [0,1,-3,8,-7,10]
+R3: [0,-4,0,0,-2,-2]
+R4: [0,-3,1,-1,2,-3]
+R5: [0,-1,-6,11,-13,4]
+R6: [0,2,7,-12,16,-6]
+
+Now use pivot row2 (1) to eliminate col2 in rows3-6:
+
+R3 -> R3 + 4R2: compute: (-4+4=0, 0+4*(-3)= -12, 0+4*8=32, -2+4*(-7)=-2-28=-30, -2+4*10=-2+40=38) → (0,0,-12,32,-30,38) correct.
+R4 -> R4 + 3R2: (-3+3=0,1+3*(-3)=1-9=-8, -1+3*8=23,2+3*(-7)=2-21=-19,-3+3*10=27) → (0,0,-8,23,-19,27) correct.
+R5 -> R5 + R2: (-1+1=0,-6+(-3)=-9,11+8=19,-13+(-7)=-20,4+10=14) → (0,0,-9,19,-20,14) correct.
+R6 -> R6 - 2R2: (2-2=0,7-2*(-3)=7+6=13,-12-2*8=-28,16-2*(-7)=16+14=30,-6-2*10=-6-20=-26) → (0,0,13,-28,30,-26) correct.
+
+Now submatrix rows3-6 cols3-6. We then eliminated using pivot -12. Let's recompute those steps carefully with fractions to avoid arithmetic errors.
+
+We have row3: [0,0,-12,32,-30,38]
+row4: [0,0,-8,23,-19,27]
+row5: [0,0,-9,19,-20,14]
+row6: [0,0,13,-28,30,-26]
+
+Compute row4_new = row4 - (2/3)row3: because -8/(-12)=2/3. Let's compute exactly using fractions:
+
+row3 entries: a= -12, b=32, c=-30, d=38.
+(2/3)row3: a': -12*(2/3)= -8; b': 32*(2/3)=64/3; c': -30*(2/3)= -20; d': 38*(2/3)=76/3.
+
+Now row4: a4=-8, b4=23, c4=-19, d4=27. Subtract: a4 - a' = -8 - (-8)=0; b4 - b' = 23 - 64/3 = (69-64)/3=5/3; c4 - c' = -19 - (-20)=1; d4 - d' = 27 - 76/3 = (81-76)/3=5/3. So row4_new = [0,0,0,5/3,1,5/3] correct.
+
+row5_new = row5 - (3/4)row3 because -9/(-12)=3/4. Compute (3/4)row3: a': -12*(3/4)=-9; b': 32*(3/4)=24; c': -30*(3/4)=-90/4=-45/2; d': 38*(3/4)=114/4=57/2. row5: a5=-9,b5=19,c5=-20,d5=14. Subtract: a5 - (-9)=0; b5 - 24 = 19-24=-5; c5 - (-45/2) = -20 +45/2 = (-40+45)/2=5/2; d5 - 57/2 = 14 -57/2 = (28-57)/2 = -29/2. So row5_new = [0,0,0,-5,5/2,-29/2] correct.
+
+row6_new = row6 - (13/(-12))row3? Actually factor = 13/(-12) = -13/12, so row6 - (-13/12)row3 = row6 + (13/12)row3. Compute (13/12)row3: a': -12*(13/12) = -13; b': 32*(13/12)=416/12=104/3; c': -30*(13/12)= -390/12= -65/2; d': 38*(13/12)=494/12=247/6. row6: a6=13,b6=-28,c6=30,d6=-26. Add: a6+(-13)=0; b6+104/3 = -28 + 104/3 = -84/3+104/3=20/3; c6+(-65/2)=30 -65/2 = 60/2-65/2=-5/2; d6+247/6 = -26 +247/6 = -156/6+247/6=91/6. So row6_new = [0,0,0,20/3,-5/2,91/6] correct.
+
+Now we have rows4,5,6 with zeros in first three columns. Then we use pivot row4 col4=5/3. Then we eliminate row5 col4 = -5, row6 col4=20/3.
+
+Row5 factor = -5 / (5/3) = -5 * 3/5 = -3. So row5 -> row5 - (-3)row4 = row5 + 3 row4. Compute 3 row4: [0,0,0,5,3,5]. row5: [0,0,0,-5,5/2,-29/2]. Sum: col4: -5+5=0; col5: 5/2+3 = 5/2+6/2=11/2; col6: -29/2+5 = -29/2+10/2 = -19/2. So row5_new = [0,0,0,0,11/2,-19/2] correct.
+
+Row6 factor = (20/3) / (5/3) = 4. So row6 -> row6 - 4 row4. Compute 4 row4: [0,0,0,20/3,4,20/3]. row6: [0,0,0,20/3,-5/2,91/6]. Subtract: col4: 20/3-20/3=0; col5: -5/2 -4 = -5/2 -8/2 = -13/2; col6: 91/6 -20/3 = 91/6 -40/6 = 51/6 = 17/2? Wait 51/6 simplifies to 17/2, yes. So row6_new = [0,0,0,0,-13/2,17/2] correct.
+
+Now pivot row5 col5 = 11/2. Row6 col5 = -13/2. Factor = (-13/2) / (11/2) = -13/11. So row6_new = row6 - (-13/11) row5 = row6 + (13/11) row5. Compute (13/11) row5: row5 = [0,0,0,0,11/2,-19/2]. Multiply: (13/11)*(11/2)=13/2; (13/11)*(-19/2)= -247/22. row6: [0,0,0,0,-13/2,17/2]. Add: col5: -13/2 + 13/2 = 0; col6: 17/2 + (-247/22) = 17/2 = 187/22, 187/22 - 247/22 = -60/22 = -30/11. So row6_new = [0,0,0,0,0,-30/11]. Correct.
+
+Now diagonal: d1=1, d2=1, d3=-12, d4=5/3, d5=11/2, d6=-30/11. Multiply: 1*1=1; 1*(-12)=-12; -12*(5/3)= -60/3=-20; -20*(11/2)= -220/2=-110; -110*(-30/11)=3300/11=300. So det=300. Good.
+
+Thus determinant is 300.
+
+We should also consider the row swaps we performed. We swapped rows 1 and 5 initially: sign factor -1. Then swapped rows 2 and 3: sign factor -1 again, so total factor = (-1)*(-1)=1. So product is directly det. So answer is 300.
+
+Thus final answer: 300.

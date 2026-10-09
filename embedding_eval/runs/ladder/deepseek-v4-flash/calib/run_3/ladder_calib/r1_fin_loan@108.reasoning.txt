@@ -1,0 +1,716 @@
+We are given a loan with an outstanding balance at start of month 1 = $54048.10. The nominal annual interest rate is 9.00% initially, so monthly rate 0.75% (0.0075). Then there are many scheduled events: extra prepayments at specific months, and changes in interest rates at certain months. We need to compute the balance at the end of month 108 after all steps. Steps each month: interest = balance start * monthly rate (rounded to nearest cent, half up), then interest added and regular payment $454 subtracted, then any extra prepayment subtracted (if scheduled). The balance after that is the start of next month.
+
+We need to simulate month by month from month 1 to month 108 inclusive. There are many events; we must be careful with rounding each month. Since the problem expects a precise numeric answer, we need to simulate accurately.
+
+We should track the balance at start of each month. For each month, compute interest = round(balance * rate, 2) using standard rounding (half up). Then new balance after interest and regular payment: balance + interest - 454. Then if there is an extra prepayment that month, subtract that amount. That becomes the start balance for next month.
+
+We have list of extra prepayments and rate changes. Let's list all events in order:
+
+- At end of month 5: extra prepayment $725.11
+- At end of month 12: extra prepayment $2499.00
+- At end of month 23: extra prepayment $1279.74
+- Starting with month 25: monthly interest rate becomes 0.65% (0.0065)
+- At end of month 26: extra prepayment $2431.00
+- At end of month 35: extra prepayment $405.00
+- At end of month 42: extra prepayment $276.00
+- Starting with month 43: rate becomes 0.75% (0.0075)
+- Starting with month 47: rate becomes 0.70% (0.007)
+- At end of month 49: extra prepayment $489.00
+- At end of month 57: extra prepayment $2034.00
+- At end of month 62: extra prepayment $2203.00
+- At end of month 64: extra prepayment $868.00
+- At end of month 66: extra prepayment $2022.00
+- At end of month 67: extra prepayment $1688.00
+- Starting with month 74: rate becomes 0.60% (0.006)
+- Starting with month 75: rate becomes 0.55% (0.0055)
+- At end of month 97: extra prepayment $1786.00
+
+Note: "Starting with month X" means that the interest rate for month X is the new rate. So for month 25, the rate is 0.65%. For month 43, rate is 0.75%. For month 47, rate is 0.70%. For month 74, rate is 0.60%. For month 75, rate is 0.55%. Also note there might be additional rate changes? The initial rate is 0.75% for months 1-24? Actually, before month 25, rate is 0.75% (since nominal 9%). Then from month 25 to 42, rate 0.65%. Then from month 43 to 46, rate 0.75% (since starting month 43). Then from month 47 to 73, rate 0.70%? But careful: Starting with month 47, rate becomes 0.70%. Then starting month 74, rate becomes 0.60%, then starting month 75, rate becomes 0.55%. So from month 75 onward, rate is 0.55%? But note: month 74 is 0.60%, month 75 is 0.55% and after that it stays 0.55% (no further changes). Also note that there is an extra prepayment at month 97. So from month 75 to month 108, rate is 0.55%.
+
+We need to simulate all months from 1 to 108. Let's denote variables: balance_start for month i. For each month i, we compute interest = round(balance_start * rate_i, 2). Then balance after interest and regular payment: balance_mid = balance_start + interest - 454. Then if extra_prepayment exists for month i, balance_end = balance_mid - extra. That becomes start for next month i+1.
+
+We should be careful with rounding: "rounded to the nearest cent (half a cent rounds up)". So we need to use appropriate rounding function. In Python, round(x,2) uses bankers rounding? Actually Python's round for floats uses round-half-to-even, not standard half-up. So we need to implement half-up rounding. Since we are doing manual simulation, we can compute with high precision and apply rounding manually. Because the numbers are given to two decimals, we can treat them as exact. We can do calculations with integers (cents) to avoid floating point errors. Since all monetary amounts are in dollars with two decimals, we can work in cents. Let's convert everything to cents.
+
+Let balance in cents: initial balance = $54048.10 = 5404810 cents (since 54048.10 * 100 = 5,404,810? Actually 54048.10 * 100 = 5,404,810 cents). Regular payment = $454.00 = 45400 cents. Extra prepayments in cents: 725.11 -> 72511? Actually $725.11 = 72511 cents? Wait: $725.11 = 725.11 * 100 = 72511 cents. Check: 725.11 * 100 = 72511, yes. Similarly 2499.00 = 249900 cents, 1279.74 = 127974 cents, 2431.00 = 243100 cents, 405.00 = 40500 cents, 276.00 = 27600 cents, 489.00 = 48900 cents, 2034.00 = 203400 cents, 2203.00 = 220300 cents, 868.00 = 86800 cents, 2022.00 = 202200 cents, 1688.00 = 168800 cents, 1786.00 = 178600 cents.
+
+Interest rates: monthly rates as decimals. We need to compute interest = balance_start * rate, then round to nearest cent (half up). In cents: interest_cents = round(balance_start_cents * rate). But careful: rate is a decimal, e.g., 0.0075. So interest amount in cents = balance_start_cents * rate. Since balance_start_cents is an integer, multiply by rate yields a floating number. Better to do exact arithmetic using fractions: rate = percentage/100. For 0.75% = 0.0075 = 75/10000 = 3/400? Actually 0.0075 = 75/10000 = 3/400. So we could compute interest_cents = floor((balance_start_cents * 75 + 5000) / 10000)? But rounding half up: interest = (balance_start * rate) rounded to nearest cent. Since balance_start is in cents, we need to compute the amount in dollars with two decimals, then convert to cents. Let's do: interest amount in dollars = balance_start_dollars * rate. But we can compute in cents: interest_cents = round(balance_start_dollars * rate * 100) = round(balance_start_cents * rate) because balance_start_cents = balance_start_dollars * 100, so balance_start_cents * rate = balance_start_dollars * 100 * rate = interest in dollars * 100? Actually interest in dollars = balance_start_dollars * rate, so interest in cents = interest_dollars * 100 = balance_start_dollars * rate * 100 = balance_start_cents * rate? Because balance_start_cents = balance_start_dollars * 100, so balance_start_cents * rate = balance_start_dollars * 100 * rate = interest_dollars * 100 = interest_cents. So yes, interest_cents = balance_start_cents * rate. But note that rate is a decimal, so the product might be fractional. We then need to round to nearest integer cent (half up). So we can compute interest_cents = round(balance_start_cents * rate). But we need a consistent rounding rule. Use half-up rounding: if fractional part >= 0.5, round up; else round down. Since we are working with numbers that may not be exact in binary, we can use integer arithmetic: For a given rate r = p/10000 possibly, we can compute interest_cents = floor((balance_start_cents * p + 5000) / 10000) if p is integer representing basis points? For 0.75% = 0.0075 = 75/10000, so p=75. For 0.65% = 65/10000, 0.70% = 70/10000, 0.60% = 60/10000, 0.55% = 55/10000. Indeed all rates are multiples of 0.01% = 1 basis point. So we can represent each monthly rate as an integer number of basis points: 75, 65, 75, 70, 60, 55. Then interest in cents = (balance_start_cents * basis_points) / 10000. So compute product = balance_start_cents * basis_points, then interest_cents = floor((product + 5000) / 10000)? But that would round half-up: adding 5000 before integer division by 10000 gives rounding to nearest integer, with .5 rounding up. However careful: product may not be integer? It is integer because balance_start_cents is integer and basis_points is integer, so product is integer. Then we want to round product/10000 to nearest integer, with .5 rounding up. So integer division: (product + 5000) // 10000 gives rounding to nearest, but if product/10000 is exactly x.5, then product mod 10000 = 5000, product+5000 = product+5000, then (product+5000)//10000 = (product//10000) + 1 if product%10000 >= 5000? Actually if product%10000 = 5000, then product+5000 = product+5000, (product+5000)//10000 = (product//10000)*10000 + (product%10000)+5000? Let's test: suppose product = 15000, product/10000 = 1.5, rounding half up gives 2. product+5000=20000, //10000=2. Good. If product=14999, 1.4999, rounding gives 1, product+5000=19999, //10000=1. If product=15001, 1.5001, rounding gives 2, product+5000=20001, //10000=2. So it works. So we can use (balance_start_cents * bp + 5000) // 10000 as interest_cents. But note: If product is negative? Not here. So we'll use integer arithmetic.
+
+Thus we can simulate month by month using integer cents. Let's set up.
+
+Initial balance_start for month1 = 5404810 cents.
+Regular payment = 45400 cents.
+List of extra prepayments with month numbers: mapping month -> extra_cents.
+
+Define months list with rate bp for each month. We need to assign bp for each month from 1 to 108. The rate changes at certain months: month1-24: bp=75; month25-42: bp=65; month43-46: bp=75; month47-73: bp=70; month74: bp=60; month75-108: bp=55. Let's verify: Starting with month 25 -> bp=65 for month25, month26,... until month42? Because starting month43 rate becomes 0.75% so month43 uses bp=75. So months 25-42 inclusive: that's 18 months? 42-25+1=18, yes. Month43-46: bp=75? But note: starting with month43, rate becomes 0.75%. Then starting with month47, rate becomes 0.70%. So months 43,44,45,46 are bp=75. Then months 47-73: bp=70 (27 months? 73-47+1=27). Then month74: bp=60. Then month75-108: bp=55 (34 months? 108-75+1=34). Check total months: 1-24=24, 25-42=18, 43-46=4, 47-73=27, 74=1, 75-108=34; 24+18=42, +4=46, +27=73, +1=74, +34=108. Good.
+
+Now extra prepayments months: 5,12,23,26,35,42,49,57,62,64,66,67,97. Note: extra at end of month after regular payment. So for these months, we subtract extra after interest and regular payment.
+
+We must simulate sequentially. Let's do it systematically.
+
+We'll keep a variable bal = balance at start of month (in cents). For month i from 1 to 108:
+
+- bp = rate_bp[i]
+- prod = bal * bp
+- interest = (prod + 5000) // 10000   (since half-up rounding)
+- bal = bal + interest - 45400
+- if i in extra_months: bal = bal - extra_cents[i]
+- Then proceed to next month.
+
+At the end of month 108, after steps, we get the balance at start of month 109? Actually the problem asks: "What is the outstanding balance at the end of month 108 (after all steps of month 108)?" So that is the balance after step 3 of month 108, i.e., after interest, regular payment, and any extra prepayment. That balance is essentially the balance at start of month 109. So we just output that balance in dollars with two decimals.
+
+So we need to simulate all months.
+
+We can do manual calculation, but given many months, it's best to simulate programmatically. Since we are reasoning as an AI, we can simulate step by step using calculations. Possibly we can use a spreadsheet mentally? But we can write a simulation in reasoning. However we need to produce the exact answer. We can do the calculations systematically month by month. I'll do them in a structured way, perhaps grouping months with same rate and no extra payments to simplify? Since there are many months, but we can simulate with careful arithmetic. I'll create a table or iterate. Since the numbers might become large, but we can handle.
+
+Alternatively, we can compute using a script in mind? Since we are text, we'll simulate step by step, but maybe we can use some automated reasoning? I'll simulate manually but with careful tracking. Given the large number of months (108), it's tedious but doable with systematic approach. I can break into sections: months 1-24, then 25-42, etc., and incorporate extra payments at specific months. We'll compute balance after each month.
+
+We need to be accurate with rounding each month. So we must compute interest exactly.
+
+Let's start.
+
+Initialize bal = 5404810 cents.
+
+Define months and bp:
+
+We'll go month by month.
+
+Month 1: bp=75
+prod = 5404810 * 75 = let's compute: 5404810 * 75 = 5404810 * (3*25) or 5404810 * 100 * 0.75? Better: 5404810 * 75 = 5404810 * (50+25) = 5404810*50=270240500, +5404810*25=135120250, sum = 405360750? Actually 270240500+135120250=405360750. Yes. Then interest = (405360750 + 5000) // 10000 = 405365750 // 10000 = 40536.575? Actually integer division: 405365750 / 10000 = 40536.575, but we want floor after adding 5000? Wait 405360750+5000=405365750, //10000 = 40536 (since 405365750 // 10000 = 40536 remainder? 10000*40536 = 405360000, remainder 5750, so floor=40536, but we want rounding? Actually adding 5000 and then integer division by 10000 gives rounding: if remainder >=5000 then floor+1. Here product+5000 = 405365750, divide by 10000: 40536.575, but integer division yields 40536 if we truncate? Actually // does floor division, so 405365750 // 10000 = 40536 because 10000*40536=405360000, remainder 5750, but we added 5000 earlier? Wait we are using (prod+5000)//10000. That does rounding: if prod%10000 >= 5000, then (prod+5000)//10000 = prod//10000 +1; else prod//10000. So we need to compute prod%10000. For month1, prod = 405360750, prod%10000 = 405360750 mod 10000 = 0750? Actually 405360750 - 405360000 = 750. So remainder 750. Since 750 < 5000, rounding down, so interest = prod//10000 = 40536. So interest_cents = 40536. So interest = $405.36. But wait, check: balance start = $54048.10, interest rate 0.75% => interest = 54048.10 * 0.0075 = 405.36075, rounded to nearest cent => 405.36? Since 0.36075 rounds to 0.36 because the third decimal is 0? Actually 405.36075, the cents part is .36075, so rounding to nearest cent: look at thousandths digit = 0, so round down => 405.36. Yes correct.
+
+So bal after interest and payment: 5404810 + 40536 - 45400 = 5404810 + 40536 = 5445346, minus 45400 = 5409946? Let's compute: 5445346 - 45400 = 5409946. Actually 5445346 - 45400 = 5399946? Wait: 5445346 - 45000 = 5400346, minus 400 = 5399946? That seems off. Let's recalc: 5404810 + 40536 = 5445346? 5404810 + 40536 = 5445346? 5404810 + 40000 = 5444810, +536 = 5445346, yes. Then subtract 45400: 5445346 - 45400 = 540,? Actually 5445346 - 45000 = 5400346, minus 400 = 5399946. So bal = 5399946 cents? But that would be $53,999.46? But initial was $54,048.10, so after interest and payment, balance decreased by about $48.64? Actually interest $405.36, payment $454, net reduction $48.64, so balance becomes $54048.10 - $48.64 = $53999.46, yes. So bal = 5399946 cents. No extra payment in month 1, so bal start month2 = 5399946.
+
+Let's continue systematically. I'll create a table. Since many months, we can use computational approach; I'll do stepwise but perhaps group months without extra payments to compute quickly using formulas? However interest rounding makes it non-linear; we must simulate each month due to rounding. But we can compute sequentially. We'll do a loop in mind.
+
+I'll keep bal as integer cents.
+
+We'll list all months and extra payments:
+
+Month 5: extra 72511
+Month 12: extra 249900
+Month 23: extra 127974
+Month 26: extra 243100
+Month 35: extra 40500
+Month 42: extra 27600
+Month 49: extra 48900
+Month 57: extra 203400
+Month 62: extra 220300
+Month 64: extra 86800
+Month 66: extra 202200
+Month 67: extra 168800
+Month 97: extra 178600
+
+Now simulate.
+
+We'll do months 1-4 first (no extra, bp=75). Then month5 with extra. Then months 6-11, month12 with extra, etc.
+
+We need to be careful with rounding each month. Let's compute step by step.
+
+I will create a running bal.
+
+Initialize bal = 5404810
+
+Month1: bp=75
+prod = bal * 75 = 5404810*75 = 405360750
+prod%10000 = 750 -> <5000 => interest = 405360750//10000 = 40536
+bal = bal + 40536 - 45400 = 5404810 + 40536 - 45400 = 5404810 - 4864? Actually 40536-45400 = -4864, so bal = 5404810 - 4864 = 5399946. Yes.
+bal after month1 = 5399946
+
+Month2: bal=5399946, bp=75
+prod = 5399946*75 = 5399946*70 + 5399946*5 = 377996220 + 26999730 = 404995950? Let's compute accurately: 5399946 * 75 = 5399946 * (100 - 25) = 539994600 - 134998650 = 404995950. Check: 5399946*50=269997300, *25=134998650, sum=404995950. Yes.
+prod%10000 = 5950? Actually 404995950 mod 10000 = 5950? Since 404990000? Let's compute: 404995950 - 404990000 = 5950. So remainder 5950 >=5000, so interest = (prod+5000)//10000 = (404995950+5000)//10000 = 405000950//10000 = 40500 remainder? 405000950 /10000 = 40500.095, but floor division: 405000950 // 10000 = 40500? Because 10000*40500 = 405000000, remainder 950, so floor=40500. Actually we need to check: (prod+5000)//10000 = (404995950+5000)=405000950, //10000 = 40500 (since 10000*40500=405000000). So interest = 40500? But we need to see if rounding gave 40500 or 40501? Since remainder 5950, and we added 5000, so the sum remainder becomes 5950+5000=10950, so the division yields 40500 + 1? Actually (prod+5000)//10000 = floor((prod+5000)/10000). For prod=404995950, prod/10000=40499.5950, rounding half-up: 40499.5950 rounds to 40500 because .595 >= .5? Actually we need integer rounding: interest = round(prod/10000) = 40500 because 40499.5950 rounds to 40500? Wait: 40499.5950, the integer part is 40499, fractional .5950, which is >0.5, so round up to 40500. So interest should be 40500. Our formula (prod+5000)//10000 gives 40500? Let's compute: (404995950+5000)=405000950, integer division by 10000 gives 40500, because 405000950 / 10000 = 40500.095, floor is 40500. That yields 40500, correct. So interest = 40500 cents = $405.00. Check: 53999.46 * 0.0075 = 404.99595, rounded to nearest cent = 405.00, yes.
+bal = bal + 40500 - 45400 = 5399946 + 40500 - 45400 = 5399946 - 4900 = 5395046? Actually 40500-45400 = -4900, so bal = 5399946 - 4900 = 5395046. So month2 end bal = 5395046.
+
+Month3: bal=5395046, bp=75
+prod = 5395046*75 = 5395046*70 + 5395046*5 = 377653220 + 26975230 = 404628450? Compute: 5395046*100=539504600, minus 5395046*25=134876150, gives 404628450. Yes.
+prod%10000 = 8450? 404628450 mod 10000 = 8450? Since 404620000 gives 8450, so 8450 >=5000 => interest = (404628450+5000)//10000 = 404633450//10000 = 40463? 10000*40463=404630000, remainder 3450, so floor=40463? Wait compute: 404633450 / 10000 = 40463.345, floor=40463. So interest=40463? But we need rounding: 40462.8450 rounds to 40463 because .845>=.5, so yes 40463. So interest = 40463 cents = $404.63.
+bal = bal + 40463 - 45400 = 5395046 + 40463 - 45400 = 5395046 - 4937 = 5390109? Actually 40463-45400 = -4937, so bal = 5395046 - 4937 = 5390109. So month3 end = 5390109.
+
+Month4: bal=5390109, bp=75
+prod = 5390109*75 = 5390109*100 - 5390109*25 = 539010900 - 134752725 = 404258175.
+prod%10000 = 8175? 404258175 mod 10000 = 8175 (since 404250000 remainder 8175). 8175>=5000 => interest = (404258175+5000)//10000 = 404263175//10000 = 40426? 10000*40426=404260000, remainder 3175, so floor=40426. So interest=40426 cents? Let's compute rounding: 40425.8175 rounds to 40426, yes. So interest=40426.
+bal = 5390109 + 40426 - 45400 = 5390109 - 4974 = 5385135? Actually 40426-45400 = -4974, so bal = 5390109 - 4974 = 5385135. So month4 end = 5385135.
+
+Now month5: bal start = 5385135, bp=75, and extra payment $725.11 = 72511 cents at end.
+First compute interest: prod = 5385135*75 = 5385135*100 - 5385135*25 = 538513500 - 134628375 = 403885125.
+prod%10000 = 5125? 403885125 mod 10000 = 5125 (since 403880000 remainder 5125). 5125>=5000 => interest = (403885125+5000)//10000 = 403890125//10000 = 40389? 10000*40389=403890000, remainder 125, so floor=40389. So interest=40389 cents.
+bal after interest and payment: bal = 5385135 + 40389 - 45400 = 5385135 - 5011 = 5380124? Actually 40389-45400 = -5011, so bal = 5385135 - 5011 = 5380124. Then subtract extra 72511: bal = 5380124 - 72511 = 5307613. So month5 end bal = 5307613. (That is start for month6)
+
+Now month6: bal=5307613, bp=75, no extra.
+prod = 5307613*75 = 5307613*100 - 5307613*25 = 530761300 - 132690325 = 398070975.
+prod%10000 = 0975? Actually 398070975 mod 10000 = 0975? 398070000 remainder 975? Wait 398070975 - 398070000 = 975. So remainder 975 (<5000) => interest = prod//10000 = 39807 (since 398070975//10000 = 39807, because 10000*39807=398070000, remainder 975). So interest=39807 cents.
+bal = 5307613 + 39807 - 45400 = 5307613 - 5593 = 5302020? Actually 39807-45400 = -5593, so 5307613 - 5593 = 5302020. So month6 end = 5302020.
+
+Month7: bal=5302020, bp=75
+prod = 5302020*75 = 5302020*100 - 5302020*25 = 530202000 - 132550500 = 397651500.
+prod%10000 = 1500? Actually 397651500 mod 10000 = 1500 (since 397650000 remainder 1500). 1500<5000 => interest = 397651500//10000 = 39765 (since floor division yields 39765, remainder 1500?). Actually 397651500/10000=39765.15, floor=39765. So interest=39765.
+bal = 5302020 + 39765 - 45400 = 5302020 - 5635 = 5296385. So month7 end = 5296385.
+
+Month8: bal=5296385, bp=75
+prod = 5296385*75 = 5296385*100 - 5296385*25 = 529638500 - 132409625 = 397228875.
+prod%10000 = 8875? 397228875 mod 10000 = 8875? Since 397220000 remainder 8875. 8875>=5000 => interest = (397228875+5000)//10000 = 397233875//10000 = 39723? 10000*39723=397230000, remainder 3875, so floor=39723. So interest=39723.
+bal = 5296385 + 39723 - 45400 = 5296385 - 5677 = 5290708? Actually 39723-45400 = -5677, so bal = 5296385 - 5677 = 5290708. So month8 end = 5290708.
+
+Month9: bal=5290708, bp=75
+prod = 5290708*75 = 5290708*100 - 5290708*25 = 529070800 - 132267700 = 396803100.
+prod%10000 = 3100? 396803100 mod 10000 = 3100? Since 396800000 remainder 3100. 3100<5000 => interest = 396803100//10000 = 39680? Actually 396803100/10000=39680.31, floor=39680. So interest=39680.
+bal = 5290708 + 39680 - 45400 = 5290708 - 5720 = 5284988. So month9 end = 5284988.
+
+Month10: bal=5284988, bp=75
+prod = 5284988*75 = 5284988*100 - 5284988*25 = 528498800 - 132124700 = 396374100.
+prod%10000 = 4100? 396374100 mod 10000 = 4100? 396370000 remainder 4100, 4100<5000 => interest = 396374100//10000 = 39637? Actually 396374100/10000=39637.41, floor=39637. So interest=39637.
+bal = 5284988 + 39637 - 45400 = 5284988 - 5763 = 5279225. So month10 end = 5279225.
+
+Month11: bal=5279225, bp=75
+prod = 5279225*75 = 5279225*100 - 5279225*25 = 527922500 - 131980625 = 395941875.
+prod%10000 = 1875? 395941875 mod 10000 = 1875? 395940000 remainder 1875, <5000 => interest = 395941875//10000 = 39594? Actually 395941875/10000=39594.1875, floor=39594. So interest=39594.
+bal = 5279225 + 39594 - 45400 = 5279225 - 5806 = 5273419. So month11 end = 5273419.
+
+Month12: bal=5273419, bp=75, extra 249900 cents.
+First interest: prod = 5273419*75 = 5273419*100 - 5273419*25 = 527341900 - 131835475 = 395506425.
+prod%10000 = 6425? 395506425 mod 10000 = 6425 (since 395500000 remainder 6425). 6425>=5000 => interest = (395506425+5000)//10000 = 395511425//10000 = 39551? 10000*39551=395510000, remainder 1425, floor=39551. So interest=39551.
+bal after interest and payment: bal = 5273419 + 39551 - 45400 = 5273419 - 5849 = 5267570? Actually 39551-45400 = -5849, so 5273419 - 5849 = 5267570. Then subtract extra 249900: bal = 5267570 - 249900 = 5017670. So month12 end = 5017670.
+
+Now months 13-22: no extra, bp=75. We'll compute sequentially.
+
+Month13: bal=5017670, bp=75
+prod = 5017670*75 = 5017670*100 - 5017670*25 = 501767000 - 125441750 = 376325250.
+prod%10000 = 5250? 376325250 mod 10000 = 5250? Since 376320000 remainder 5250. 5250>=5000 => interest = (376325250+5000)//10000 = 376330250//10000 = 37633? 10000*37633=376330000, remainder 250, floor=37633. So interest=37633.
+bal = 5017670 + 37633 - 45400 = 5017670 - 7767 = 5009903? Actually 37633-45400 = -7767, so 5017670 - 7767 = 5009903. So month13 end = 5009903.
+
+Month14: bal=5009903, bp=75
+prod = 5009903*75 = 5009903*100 - 5009903*25 = 500990300 - 125247575 = 375742725.
+prod%10000 = 2725? 375742725 mod 10000 = 2725 (since 375740000 remainder 2725). 2725<5000 => interest = 375742725//10000 = 37574? Actually 375742725/10000=37574.2725, floor=37574. So interest=37574.
+bal = 5009903 + 37574 - 45400 = 5009903 - 7826 = 5002077. So month14 end = 5002077.
+
+Month15: bal=5002077, bp=75
+prod = 5002077*75 = 5002077*100 - 5002077*25 = 500207700 - 125051925 = 375155775.
+prod%10000 = 5775? 375155775 mod 10000 = 5775 (375150000 remainder 5775). 5775>=5000 => interest = (375155775+5000)//10000 = 375160775//10000 = 37516? 10000*37516=375160000, remainder 775, floor=37516. So interest=37516.
+bal = 5002077 + 37516 - 45400 = 5002077 - 7884 = 4994193. So month15 end = 4994193.
+
+Month16: bal=4994193, bp=75
+prod = 4994193*75 = 4994193*100 - 4994193*25 = 499419300 - 124854825 = 374564475.
+prod%10000 = 4475? 374564475 mod 10000 = 4475? 374560000 remainder 4475, <5000 => interest = 374564475//10000 = 37456? Actually 374564475/10000=37456.4475, floor=37456. So interest=37456.
+bal = 4994193 + 37456 - 45400 = 4994193 - 7944 = 4986249. So month16 end = 4986249.
+
+Month17: bal=4986249, bp=75
+prod = 4986249*75 = 4986249*100 - 4986249*25 = 498624900 - 124656225 = 373968675.
+prod%10000 = 8675? 373968675 mod 10000 = 8675? 373960000 remainder 8675, >=5000 => interest = (373968675+5000)//10000 = 373973675//10000 = 37397? 10000*37397=373970000, remainder 3675, floor=37397. So interest=37397.
+bal = 4986249 + 37397 - 45400 = 4986249 - 8003 = 4978246. So month17 end = 4978246.
+
+Month18: bal=4978246, bp=75
+prod = 4978246*75 = 4978246*100 - 4978246*25 = 497824600 - 124456150 = 373368450.
+prod%10000 = 8450? 373368450 mod 10000 = 8450 (since 373360000 remainder 8450). 8450>=5000 => interest = (373368450+5000)//10000 = 373373450//10000 = 37337? 10000*37337=373370000, remainder 3450, floor=37337. So interest=37337.
+bal = 4978246 + 37337 - 45400 = 4978246 - 8063 = 4970183. So month18 end = 4970183.
+
+Month19: bal=4970183, bp=75
+prod = 4970183*75 = 4970183*100 - 4970183*25 = 497018300 - 124254575 = 372763725.
+prod%10000 = 3725? 372763725 mod 10000 = 3725? 372760000 remainder 3725, <5000 => interest = 372763725//10000 = 37276? Actually 372763725/10000=37276.3725, floor=37276. So interest=37276.
+bal = 4970183 + 37276 - 45400 = 4970183 - 8124 = 4962059. So month19 end = 4962059.
+
+Month20: bal=4962059, bp=75
+prod = 4962059*75 = 4962059*100 - 4962059*25 = 496205900 - 124051475 = 372154425.
+prod%10000 = 4425? 372154425 mod 10000 = 4425? 372150000 remainder 4425, <5000 => interest = 372154425//10000 = 37215? Actually 372154425/10000=37215.4425, floor=37215. So interest=37215.
+bal = 4962059 + 37215 - 45400 = 4962059 - 8185 = 4953874. So month20 end = 4953874.
+
+Month21: bal=4953874, bp=75
+prod = 4953874*75 = 4953874*100 - 4953874*25 = 495387400 - 123846850 = 371540550.
+prod%10000 = 550? Actually 371540550 mod 10000 = 550? Since 371540000 remainder 550, <5000 => interest = 371540550//10000 = 37154? 371540550/10000=37154.055, floor=37154. So interest=37154.
+bal = 4953874 + 37154 - 45400 = 4953874 - 8246 = 4945628. So month21 end = 4945628.
+
+Month22: bal=4945628, bp=75
+prod = 4945628*75 = 4945628*100 - 4945628*25 = 494562800 - 123640700 = 370922100.
+prod%10000 = 2100? 370922100 mod 10000 = 2100 (370920000 remainder 2100), <5000 => interest = 370922100//10000 = 37092? 370922100/10000=37092.21, floor=37092. So interest=37092.
+bal = 4945628 + 37092 - 45400 = 4945628 - 8308 = 4937320. So month22 end = 4937320.
+
+Month23: bal=4937320, bp=75, extra 127974 cents.
+First interest: prod = 4937320*75 = 4937320*100 - 4937320*25 = 493732000 - 123433000 = 370299000? Wait compute: 4937320*25 = 123433000? 4,937,320 * 25 = 4,937,320 * 100 /4 = 493,732,000/4? Actually better: 4937320 * 25 = 4937320 * (100/4)=493732000/4=123433000, yes. So prod = 493732000 - 123433000 = 370299000.
+prod%10000 = 9000? 370299000 mod 10000 = 9000 (since 370290000 remainder 9000). 9000>=5000 => interest = (370299000+5000)//10000 = 370304000//10000 = 37030? 10000*37030=370300000, remainder 4000, floor=37030. So interest=37030.
+bal after interest and payment: bal = 4937320 + 37030 - 45400 = 4937320 - 8370 = 4928950. Then subtract extra 127974: bal = 4928950 - 127974 = 4800976. So month23 end = 4800976.
+
+Month24: bal=4800976, bp=75, no extra.
+prod = 4800976*75 = 4800976*100 - 4800976*25 = 480097600 - 120024400 = 360073200.
+prod%10000 = 3200? 360073200 mod 10000 = 3200 (360070000 remainder 3200), <5000 => interest = 360073200//10000 = 36007? Actually 360073200/10000=36007.32, floor=36007. So interest=36007.
+bal = 4800976 + 36007 - 45400 = 4800976 - 9393 = 4791583. So month24 end = 4791583.
+
+Now month25: Starting with month25, rate changes to 0.65% -> bp=65. No extra in month25.
+bal start = 4791583, bp=65.
+prod = 4791583 * 65 = 4791583 * (60+5) = 4791583*60=287494980, plus 4791583*5=23957915, total = 311452895? Let's compute: 287494980+23957915=311452895. Alternatively: 4791583*65 = 4791583 * (13*5) but fine.
+Now prod%10000 = 2895? 311452895 mod 10000 = 2895? Since 311450000 remainder 2895. 2895<5000 => interest = prod//10000 = 31145? Actually 311452895/10000=31145.2895, floor=31145. So interest=31145 cents = $311.45? Check: 47915.83 * 0.0065 = 311.452895, rounded to 311.45, yes.
+bal = 4791583 + 31145 - 45400 = 4791583 - 14255 = 4777328? Actually 31145-45400 = -14255, so bal = 4791583 - 14255 = 4777328. So month25 end = 4777328.
+
+Month26: bal=4777328, bp=65, extra 243100 cents at end.
+First interest: prod = 4777328 * 65 = 4777328*60=286639680, plus 4777328*5=23886640, total = 310526320? Actually 286639680+23886640=310526320. Check: 4777328*65 = 4777328* (13*5) but okay.
+prod%10000 = 6320? 310526320 mod 10000 = 6320? 310520000 remainder 6320. 6320>=5000 => interest = (310526320+5000)//10000 = 310531320//10000 = 31053? 10000*31053=310530000, remainder 1320, floor=31053. So interest=31053.
+bal after interest and payment: bal = 4777328 + 31053 - 45400 = 4777328 - 14347 = 4762981? Actually 31053-45400 = -14347, so 4777328 - 14347 = 4762981. Then subtract extra 243100: bal = 4762981 - 243100 = 4519881. So month26 end = 4519881.
+
+Now months 27-34: bp=65, no extra (month35 has extra, so months27-34 are 8 months). Then month35 extra. Also month42 extra later. So we continue.
+
+Month27: bal=4519881, bp=65
+prod = 4519881*65 = 4519881*60=271192860, +4519881*5=22599405, total = 293792265? Actually 271192860+22599405=293792265.
+prod%10000 = 2265? 293792265 mod 10000 = 2265? 293790000 remainder 2265, <5000 => interest = prod//10000 = 29379? 293792265/10000=29379.2265, floor=29379. So interest=29379.
+bal = 4519881 + 29379 - 45400 = 4519881 - 16021 = 4503860. So month27 end = 4503860.
+
+Month28: bal=4503860, bp=65
+prod = 4503860*65 = 4503860*60=270231600, +4503860*5=22519300, total = 292750900? Actually 270231600+22519300=292750900.
+prod%10000 = 0900? 292750900 mod 10000 = 900? 292750000 remainder 900, <5000 => interest = 292750900//10000 = 29275? 292750900/10000=29275.09, floor=29275. So interest=29275.
+bal = 4503860 + 29275 - 45400 = 4503860 - 16125 = 4487735. So month28 end = 4487735.
+
+Month29: bal=4487735, bp=65
+prod = 4487735*65 = 4487735*60=269264100, +4487735*5=22438675, total = 291702775? Actually 269264100+22438675=291702775.
+prod%10000 = 2775? 291702775 mod 10000 = 2775? 291700000 remainder 2775, <5000 => interest = 291702775//10000 = 29170? Actually 291702775/10000=29170.2775, floor=29170. So interest=29170.
+bal = 4487735 + 29170 - 45400 = 4487735 - 16230 = 4471505. So month29 end = 4471505.
+
+Month30: bal=4471505, bp=65
+prod = 4471505*65 = 4471505*60=268290300, +4471505*5=22357525, total = 290647825? Actually 268290300+22357525=290647825.
+prod%10000 = 7825? 290647825 mod 10000 = 7825? 290640000 remainder 7825, >=5000 => interest = (290647825+5000)//10000 = 290652825//10000 = 29065? 10000*29065=290650000, remainder 2825, floor=29065. So interest=29065.
+bal = 4471505 + 29065 - 45400 = 4471505 - 16335 = 4455170. So month30 end = 4455170.
+
+Month31: bal=4455170, bp=65
+prod = 4455170*65 = 4455170*60=267310200, +4455170*5=22275850, total = 289586050? Actually 267310200+22275850=289586050.
+prod%10000 = 6050? 289586050 mod 10000 = 6050? 289580000 remainder 6050, >=5000 => interest = (289586050+5000)//10000 = 289591050//10000 = 28959? 10000*28959=289590000, remainder 1050, floor=28959. So interest=28959.
+bal = 4455170 + 28959 - 45400 = 4455170 - 16441 = 4438729. So month31 end = 4438729.
+
+Month32: bal=4438729, bp=65
+prod = 4438729*65 = 4438729*60=266323740, +4438729*5=22193645, total = 288517385? Actually 266323740+22193645=288517385.
+prod%10000 = 7385? 288517385 mod 10000 = 7385? 288510000 remainder 7385, >=5000 => interest = (288517385+5000)//10000 = 288522385//10000 = 28852? 10000*28852=288520000, remainder 2385, floor=28852. So interest=28852.
+bal = 4438729 + 28852 - 45400 = 4438729 - 16548 = 4422181. So month32 end = 4422181.
+
+Month33: bal=4422181, bp=65
+prod = 4422181*65 = 4422181*60=265330860, +4422181*5=22110905, total = 287441765? Actually 265330860+22110905=287441765.
+prod%10000 = 1765? 287441765 mod 10000 = 1765? 287440000 remainder 1765, <5000 => interest = 287441765//10000 = 28744? 287441765/10000=28744.1765, floor=28744. So interest=28744.
+bal = 4422181 + 28744 - 45400 = 4422181 - 16656 = 4405525. So month33 end = 4405525.
+
+Month34: bal=4405525, bp=65
+prod = 4405525*65 = 4405525*60=264331500, +4405525*5=22027625, total = 286359125? Actually 264331500+22027625=286359125.
+prod%10000 = 9125? 286359125 mod 10000 = 9125? 286350000 remainder 9125, >=5000 => interest = (286359125+5000)//10000 = 286364125//10000 = 28636? 10000*28636=286360000, remainder 4125, floor=28636. So interest=28636.
+bal = 4405525 + 28636 - 45400 = 4405525 - 16764 = 4388761. So month34 end = 4388761.
+
+Month35: bal=4388761, bp=65, extra 40500 cents.
+First interest: prod = 4388761*65 = 4388761*60=263325660, +4388761*5=21943805, total = 285269465? Actually 263325660+21943805=285269465.
+prod%10000 = 9465? 285269465 mod 10000 = 9465 (285260000 remainder 9465). 9465>=5000 => interest = (285269465+5000)//10000 = 285274465//10000 = 28527? 10000*28527=285270000, remainder 4465, floor=28527. So interest=28527.
+bal after interest and payment: bal = 4388761 + 28527 - 45400 = 4388761 - 16873 = 4371888? Actually 28527-45400 = -16873, so 4388761 - 16873 = 4371888. Then subtract extra 40500: bal = 4371888 - 40500 = 4331388. So month35 end = 4331388.
+
+Now months 36-41: bp=65, no extra until month42 (extra at month42). So 6 months: 36,37,38,39,40,41. Then month42 extra.
+
+Month36: bal=4331388, bp=65
+prod = 4331388*65 = 4331388*60=259883280, +4331388*5=21656940, total = 281540220? Actually 259883280+21656940=281540220.
+prod%10000 = 0220? 281540220 mod 10000 = 220? 281540000 remainder 220, <5000 => interest = 281540220//10000 = 28154? 281540220/10000=28154.022, floor=28154. So interest=28154.
+bal = 4331388 + 28154 - 45400 = 4331388 - 17246 = 4314142. So month36 end = 4314142.
+
+Month37: bal=4314142, bp=65
+prod = 4314142*65 = 4314142*60=258848520, +4314142*5=21570710, total = 280419230? Actually 258848520+21570710=280419230.
+prod%10000 = 9230? 280419230 mod 10000 = 9230? 280410000 remainder 9230, >=5000 => interest = (280419230+5000)//10000 = 280424230//10000 = 28042? 10000*28042=280420000, remainder 4230, floor=28042. So interest=28042.
+bal = 4314142 + 28042 - 45400 = 4314142 - 17358 = 4296784. So month37 end = 4296784.
+
+Month38: bal=4296784, bp=65
+prod = 4296784*65 = 4296784*60=257807040, +4296784*5=21483920, total = 279290960? Actually 257807040+21483920=279290960.
+prod%10000 = 0960? 279290960 mod 10000 = 960? 279290000 remainder 960, <5000 => interest = 279290960//10000 = 27929? 279290960/10000=27929.096, floor=27929. So interest=27929.
+bal = 4296784 + 27929 - 45400 = 4296784 - 17471 = 4279313. So month38 end = 4279313.
+
+Month39: bal=4279313, bp=65
+prod = 4279313*65 = 4279313*60=256758780, +4279313*5=21396565, total = 278155345? Actually 256758780+21396565=278155345.
+prod%10000 = 5345? 278155345 mod 10000 = 5345? 278150000 remainder 5345, >=5000 => interest = (278155345+5000)//10000 = 278160345//10000 = 27816? 10000*27816=278160000, remainder 345, floor=27816. So interest=27816.
+bal = 4279313 + 27816 - 45400 = 4279313 - 17584 = 4261729. So month39 end = 4261729.
+
+Month40: bal=4261729, bp=65
+prod = 4261729*65 = 4261729*60=255703740, +4261729*5=21308645, total = 277012385? Actually 255703740+21308645=277012385.
+prod%10000 = 2385? 277012385 mod 10000 = 2385? 277010000 remainder 2385, <5000 => interest = 277012385//10000 = 27701? 277012385/10000=27701.2385, floor=27701. So interest=27701.
+bal = 4261729 + 27701 - 45400 = 4261729 - 17699 = 4244030. So month40 end = 4244030.
+
+Month41: bal=4244030, bp=65
+prod = 4244030*65 = 4244030*60=254641800, +4244030*5=21220150, total = 275861950? Actually 254641800+21220150=275861950.
+prod%10000 = 1950? 275861950 mod 10000 = 1950? 275860000 remainder 1950, <5000 => interest = 275861950//10000 = 27586? 275861950/10000=27586.195, floor=27586. So interest=27586.
+bal = 4244030 + 27586 - 45400 = 4244030 - 17814 = 4226216. So month41 end = 4226216.
+
+Month42: bal=4226216, bp=65, extra 27600 cents.
+Interest: prod = 4226216*65 = 4226216*60=253572960, +4226216*5=21131080, total = 274704040? Actually 253572960+21131080=274704040.
+prod%10000 = 4040? 274704040 mod 10000 = 4040? 274700000 remainder 4040, <5000? 4040<5000 so interest = 274704040//10000 = 27470? Actually 274704040/10000=27470.404, floor=27470. So interest=27470.
+bal after interest and payment: bal = 4226216 + 27470 - 45400 = 4226216 - 17930 = 4208286? Actually 27470-45400 = -17930, so 4226216 - 17930 = 4208286. Then subtract extra 27600: bal = 4208286 - 27600 = 4180686. So month42 end = 4180686.
+
+Now month43: Starting with month43, rate changes to 0.75% -> bp=75. No extra in month43? Extra list: month42 done, next extra is month49. So months43-48: bp=75, month49 extra. But note: month47 rate changes to 0.70%? Actually starting month47, rate becomes 0.70%. So months43-46: bp=75; months47-48: bp=70? Wait: month47 is starting with month47, so month47 uses bp=70; months47-73: bp=70. So months43,44,45,46: bp=75; month47 onward: bp=70 until month73, then month74 bp=60, month75+ bp=55. So we need to handle accordingly.
+
+So month43: bal=4180686, bp=75.
+prod = 4180686*75 = 4180686*100 - 4180686*25 = 418068600 - 104517150 = 313551450.
+prod%10000 = 1450? 313551450 mod 10000 = 1450? 313550000 remainder 1450, <5000 => interest = 313551450//10000 = 31355? 313551450/10000=31355.145, floor=31355. So interest=31355.
+bal = 4180686 + 31355 - 45400 = 4180686 - 14045 = 4166641. So month43 end = 4166641.
+
+Month44: bal=4166641, bp=75.
+prod = 4166641*75 = 4166641*100 - 4166641*25 = 416664100 - 104166025 = 312498075.
+prod%10000 = 8075? 312498075 mod 10000 = 8075? 312490000 remainder 8075, >=5000 => interest = (312498075+5000)//10000 = 312503075//10000 = 31250? 10000*31250=312500000, remainder 3075, floor=31250. So interest=31250.
+bal = 4166641 + 31250 - 45400 = 4166641 - 14150 = 4152491? Actually 31250-45400 = -14150, so 4166641 - 14150 = 4152491. So month44 end = 4152491.
+
+Month45: bal=4152491, bp=75.
+prod = 4152491*75 = 4152491*100 - 4152491*25 = 415249100 - 103812275 = 311436825.
+prod%10000 = 6825? 311436825 mod 10000 = 6825? 311430000 remainder 6825, >=5000 => interest = (311436825+5000)//10000 = 311441825//10000 = 31144? 10000*31144=311440000, remainder 1825, floor=31144. So interest=31144.
+bal = 4152491 + 31144 - 45400 = 4152491 - 14256 = 4138235. So month45 end = 4138235.
+
+Month46: bal=4138235, bp=75.
+prod = 4138235*75 = 4138235*100 - 4138235*25 = 413823500 - 103455875 = 310367625.
+prod%10000 = 7625? 310367625 mod 10000 = 7625? 310360000 remainder 7625, >=5000 => interest = (310367625+5000)//10000 = 310372625//10000 = 31037? 10000*31037=310370000, remainder 2625, floor=31037. So interest=31037.
+bal = 4138235 + 31037 - 45400 = 4138235 - 14363 = 4123872. So month46 end = 4123872.
+
+Now month47: Starting with month47, rate becomes 0.70% -> bp=70. No extra in month47? Extra next is month49. So month47: bal=4123872, bp=70.
+prod = 4123872 * 70 = 4123872 * 7 *10 = (4123872*7=28867104) *10? Actually 4123872*70 = 4123872*7*10 = 28867104*10 = 288671040. Or directly: 4123872*70 = 4123872*100 - 4123872*30 = 412387200 - 123716160 = 288671040. Good.
+prod%10000 = 1040? 288671040 mod 10000 = 1040? 288670000 remainder 1040, <5000 => interest = prod//10000 = 28867? 288671040/10000=28867.104, floor=28867. So interest=28867.
+bal = 4123872 + 28867 - 45400 = 4123872 - 16533 = 4107339? Actually 28867-45400 = -16533, so 4123872 - 16533 = 4107339. So month47 end = 4107339.
+
+Month48: bal=4107339, bp=70.
+prod = 4107339 * 70 = 4107339*7*10 = 28751373*10? Compute: 4107339*7 = 28751373, times 10 = 287513730. Or 4107339*70 = 410733900 - 4107339*30 = 410733900 - 123220170 = 287513730.
+prod%10000 = 3730? 287513730 mod 10000 = 3730? 287510000 remainder 3730, <5000 => interest = 287513730//10000 = 28751? 287513730/10000=28751.373, floor=28751. So interest=28751.
+bal = 4107339 + 28751 - 45400 = 4107339 - 16649 = 4090690? Actually 28751-45400 = -16649, so 4107339 - 16649 = 4090690. So month48 end = 4090690.
+
+Month49: bal=4090690, bp=70, extra 48900 cents.
+Interest: prod = 4090690 * 70 = 4090690*7*10 = 28634830*10? Compute: 4090690*7 = 28634830, times 10 = 286348300. Or 4090690*70 = 409069000 - 122720700 = 286348300.
+prod%10000 = 8300? 286348300 mod 10000 = 8300? 286340000 remainder 8300, >=5000 => interest = (286348300+5000)//10000 = 286353300//10000 = 28635? 10000*28635=286350000, remainder 3300, floor=28635. So interest=28635.
+bal after interest and payment: bal = 4090690 + 28635 - 45400 = 4090690 - 16765 = 4073925? Actually 28635-45400 = -16765, so 4090690 - 16765 = 4073925. Then subtract extra 48900: bal = 4073925 - 48900 = 4025025. So month49 end = 4025025.
+
+Now months 50-56: bp=70, no extra until month57 (extra at month57). So 7 months: 50,51,52,53,54,55,56. Then month57 extra. Also note month57 is extra, then month62, etc.
+
+Month50: bal=4025025, bp=70.
+prod = 4025025*70 = 4025025*7*10 = 28175175*10 = 281751750? Compute: 4025025*7 = 28175175, times10=281751750. Or 4025025*70 = 402502500 - 120750750 = 281751750.
+prod%10000 = 1750? 281751750 mod 10000 = 1750? 281750000 remainder 1750, <5000 => interest = 281751750//10000 = 28175? 281751750/10000=28175.175, floor=28175. So interest=28175.
+bal = 4025025 + 28175 - 45400 = 4025025 - 17225 = 4007800. So month50 end = 4007800.
+
+Month51: bal=4007800, bp=70.
+prod = 4007800*70 = 4007800*7*10 = 28054600*10 = 280546000? Actually 4007800*7 = 28,054,600? 4,007,800*7 = 28,054,600, times10=280,546,000. So prod=280546000.
+prod%10000 = 6000? 280546000 mod 10000 = 6000? 280540000 remainder 6000, >=5000 => interest = (280546000+5000)//10000 = 280551000//10000 = 28055? 10000*28055=280550000, remainder 1000, floor=28055. So interest=28055.
+bal = 4007800 + 28055 - 45400 = 4007800 - 17345 = 3990455? Actually 28055-45400 = -17345, so 4007800 - 17345 = 3990455. So month51 end = 3990455.
+
+Month52: bal=3990455, bp=70.
+prod = 3990455*70 = 3990455*7*10 = 27933185*10 = 279331850.
+prod%10000 = 1850? 279331850 mod 10000 = 1850? 279330000 remainder 1850, <5000 => interest = 279331850//10000 = 27933? 279331850/10000=27933.185, floor=27933. So interest=27933.
+bal = 3990455 + 27933 - 45400 = 3990455 - 17467 = 3972988. So month52 end = 3972988.
+
+Month53: bal=3972988, bp=70.
+prod = 3972988*70 = 3972988*7*10 = 27810916*10 = 278109160? Compute: 3,972,988*7 = 27,810,916, times10 = 278,109,160.
+prod%10000 = 9160? 278109160 mod 10000 = 9160? 278100000 remainder 9160, >=5000 => interest = (278109160+5000)//10000 = 278114160//10000 = 27811? 10000*27811=278110000, remainder 4160, floor=27811. So interest=27811.
+bal = 3972988 + 27811 - 45400 = 3972988 - 17589 = 3955399. So month53 end = 3955399.
+
+Month54: bal=3955399, bp=70.
+prod = 3955399*70 = 3955399*7*10 = 27687793*10 = 276877930? 3,955,399*7 = 27,687,793, times10=276,877,930.
+prod%10000 = 7930? 276877930 mod 10000 = 7930? 276870000 remainder 7930, >=5000 => interest = (276877930+5000)//10000 = 276882930//10000 = 27688? 10000*27688=276880000, remainder 2930, floor=27688. So interest=27688.
+bal = 3955399 + 27688 - 45400 = 3955399 - 17712 = 3937687. So month54 end = 3937687.
+
+Month55: bal=3937687, bp=70.
+prod = 3937687*70 = 3937687*7*10 = 27563809*10 = 275638090.
+prod%10000 = 8090? 275638090 mod 10000 = 8090? 275630000 remainder 8090, >=5000 => interest = (275638090+5000)//10000 = 275643090//10000 = 27564? 10000*27564=275640000, remainder 3090, floor=27564. So interest=27564.
+bal = 3937687 + 27564 - 45400 = 3937687 - 17836 = 3919851. So month55 end = 3919851.
+
+Month56: bal=3919851, bp=70.
+prod = 3919851*70 = 3919851*7*10 = 27438957*10 = 274389570.
+prod%10000 = 9570? 274389570 mod 10000 = 9570? 274380000 remainder 9570, >=5000 => interest = (274389570+5000)//10000 = 274394570//10000 = 27439? 10000*27439=274390000, remainder 4570, floor=27439. So interest=27439.
+bal = 3919851 + 27439 - 45400 = 3919851 - 17961 = 3901890. So month56 end = 3901890.
+
+Month57: bal=3901890, bp=70, extra 203400 cents.
+Interest: prod = 3901890*70 = 3901890*7*10 = 27313230*10 = 273132300.
+prod%10000 = 2300? 273132300 mod 10000 = 2300? 273130000 remainder 2300, <5000 => interest = 273132300//10000 = 27313? 273132300/10000=27313.23, floor=27313. So interest=27313.
+bal after interest and payment: bal = 3901890 + 27313 - 45400 = 3901890 - 18087 = 3883803? Actually 27313-45400 = -18087, so 3901890 - 18087 = 3883803. Then subtract extra 203400: bal = 3883803 - 203400 = 3680403. So month57 end = 3680403.
+
+Now months 58-61: bp=70, no extra until month62. So 4 months: 58,59,60,61. Then month62 extra.
+
+Month58: bal=3680403, bp=70.
+prod = 3680403*70 = 3680403*7*10 = 25762821*10 = 257628210.
+prod%10000 = 8210? 257628210 mod 10000 = 8210? 257620000 remainder 8210, >=5000 => interest = (257628210+5000)//10000 = 257633210//10000 = 25763? 10000*25763=257630000, remainder 3210, floor=25763. So interest=25763.
+bal = 3680403 + 25763 - 45400 = 3680403 - 19637 = 3660766? Actually 25763-45400 = -19637, so 3680403 - 19637 = 3660766. So month58 end = 3660766.
+
+Month59: bal=3660766, bp=70.
+prod = 3660766*70 = 3660766*7*10 = 25625362*10 = 256253620.
+prod%10000 = 3620? 256253620 mod 10000 = 3620? 256250000 remainder 3620, <5000 => interest = 256253620//10000 = 25625? 256253620/10000=25625.362, floor=25625. So interest=25625.
+bal = 3660766 + 25625 - 45400 = 3660766 - 19775 = 3640991. So month59 end = 3640991.
+
+Month60: bal=3640991, bp=70.
+prod = 3640991*70 = 3640991*7*10 = 25486937*10 = 254869370.
+prod%10000 = 9370? 254869370 mod 10000 = 9370? 254860000 remainder 9370, >=5000 => interest = (254869370+5000)//10000 = 254874370//10000 = 25487? 10000*25487=254870000, remainder 4370, floor=25487. So interest=25487.
+bal = 3640991 + 25487 - 45400 = 3640991 - 19913 = 3621078. So month60 end = 3621078.
+
+Month61: bal=3621078, bp=70.
+prod = 3621078*70 = 3621078*7*10 = 25347546*10 = 253475460.
+prod%10000 = 5460? 253475460 mod 10000 = 5460? 253470000 remainder 5460, >=5000 => interest = (253475460+5000)//10000 = 253480460//10000 = 25348? 10000*25348=253480000, remainder 460, floor=25348. So interest=25348.
+bal = 3621078 + 25348 - 45400 = 3621078 - 20052 = 3601026. So month61 end = 3601026.
+
+Month62: bal=3601026, bp=70, extra 220300 cents.
+Interest: prod = 3601026*70 = 3601026*7*10 = 25207182*10 = 252071820.
+prod%10000 = 1820? 252071820 mod 10000 = 1820? 252070000 remainder 1820, <5000 => interest = 252071820//10000 = 25207? 252071820/10000=25207.182, floor=25207. So interest=25207.
+bal after interest and payment: bal = 3601026 + 25207 - 45400 = 3601026 - 20193 = 3580833? Actually 25207-45400 = -20193, so 3601026 - 20193 = 3580833. Then subtract extra 220300: bal = 3580833 - 220300 = 3360533. So month62 end = 3360533.
+
+Now months 63: bp=70, no extra until month64 (extra at month64). So month63 then month64 extra.
+
+Month63: bal=3360533, bp=70.
+prod = 3360533*70 = 3360533*7*10 = 23523731*10 = 235237310.
+prod%10000 = 7310? 235237310 mod 10000 = 7310? 235230000 remainder 7310, >=5000 => interest = (235237310+5000)//10000 = 235242310//10000 = 23524? 10000*23524=235240000, remainder 2310, floor=23524. So interest=23524.
+bal = 3360533 + 23524 - 45400 = 3360533 - 21876 = 3338657? Actually 23524-45400 = -21876, so 3360533 - 21876 = 3338657. So month63 end = 3338657.
+
+Month64: bal=3338657, bp=70, extra 86800 cents.
+Interest: prod = 3338657*70 = 3338657*7*10 = 23370599*10 = 233705990.
+prod%10000 = 5990? 233705990 mod 10000 = 5990? 233700000 remainder 5990, >=5000 => interest = (233705990+5000)//10000 = 233710990//10000 = 23371? 10000*23371=233710000, remainder 990, floor=23371. So interest=23371.
+bal after interest and payment: bal = 3338657 + 23371 - 45400 = 3338657 - 22029 = 3316628? Actually 23371-45400 = -22029, so 3338657 - 22029 = 3316628. Then subtract extra 86800: bal = 3316628 - 86800 = 3229828. So month64 end = 3229828.
+
+Now months 65: bp=70, no extra until month66 (extra at month66). Then month66 extra, month67 extra. So month65, month66, month67.
+
+Month65: bal=3229828, bp=70.
+prod = 3229828*70 = 3229828*7*10 = 22608796*10 = 226087960.
+prod%10000 = 7960? 226087960 mod 10000 = 7960? 226080000 remainder 7960, >=5000 => interest = (226087960+5000)//10000 = 226092960//10000 = 22609? 10000*22609=226090000, remainder 2960, floor=22609. So interest=22609.
+bal = 3229828 + 22609 - 45400 = 3229828 - 22791 = 3207037? Actually 22609-45400 = -22791, so 3229828 - 22791 = 3207037. So month65 end = 3207037.
+
+Month66: bal=3207037, bp=70, extra 202200 cents.
+Interest: prod = 3207037*70 = 3207037*7*10 = 22449259*10 = 224492590.
+prod%10000 = 2590? 224492590 mod 10000 = 2590? 224490000 remainder 2590, <5000 => interest = 224492590//10000 = 22449? 224492590/10000=22449.259, floor=22449. So interest=22449.
+bal after interest and payment: bal = 3207037 + 22449 - 45400 = 3207037 - 22951 = 3184086? Actually 22449-45400 = -22951, so 3207037 - 22951 = 3184086. Then subtract extra 202200: bal = 3184086 - 202200 = 2981886. So month66 end = 2981886.
+
+Month67: bal=2981886, bp=70, extra 168800 cents.
+Interest: prod = 2981886*70 = 2981886*7*10 = 20873202*10 = 208732020.
+prod%10000 = 2020? 208732020 mod 10000 = 2020? 208730000 remainder 2020, <5000 => interest = 208732020//10000 = 20873? 208732020/10000=20873.202, floor=20873. So interest=20873.
+bal after interest and payment: bal = 2981886 + 20873 - 45400 = 2981886 - 24527 = 2957359? Actually 20873-45400 = -24527, so 2981886 - 24527 = 2957359. Then subtract extra 168800: bal = 2957359 - 168800 = 2788559. So month67 end = 2788559.
+
+Now months 68-73: bp=70, no extra until month74? Actually month74 is a rate change, not extra. Extra next is month97. So months 68 to 73: 6 months of bp=70. Then month74 rate becomes 0.60% (bp=60), month75 rate 0.55% (bp=55). And then continue until month97 extra, then month98-108. So we have a long stretch.
+
+Month68: bal=2788559, bp=70.
+prod = 2788559*70 = 2788559*7*10 = 19519913*10 = 195199130.
+prod%10000 = 9130? 195199130 mod 10000 = 9130? 195190000 remainder 9130, >=5000 => interest = (195199130+5000)//10000 = 195204130//10000 = 19520? 10000*19520=195200000, remainder 4130, floor=19520. So interest=19520.
+bal = 2788559 + 19520 - 45400 = 2788559 - 25880 = 2762679? Actually 19520-45400 = -25880, so 2788559 - 25880 = 2762679. So month68 end = 2762679.
+
+Month69: bal=2762679, bp=70.
+prod = 2762679*70 = 2762679*7*10 = 19338753*10 = 193387530.
+prod%10000 = 7530? 193387530 mod 10000 = 7530? 193380000 remainder 7530, >=5000 => interest = (193387530+5000)//10000 = 193392530//10000 = 19339? 10000*19339=193390000, remainder 2530, floor=19339. So interest=19339.
+bal = 2762679 + 19339 - 45400 = 2762679 - 26061 = 2736618. So month69 end = 2736618.
+
+Month70: bal=2736618, bp=70.
+prod = 2736618*70 = 2736618*7*10 = 19156326*10 = 191563260.
+prod%10000 = 3260? 191563260 mod 10000 = 3260? 191560000 remainder 3260, <5000 => interest = 191563260//10000 = 19156? 191563260/10000=19156.326, floor=19156. So interest=19156.
+bal = 2736618 + 19156 - 45400 = 2736618 - 26244 = 2710374. So month70 end = 2710374.
+
+Month71: bal=2710374, bp=70.
+prod = 2710374*70 = 2710374*7*10 = 18972618*10 = 189726180.
+prod%10000 = 6180? 189726180 mod 10000 = 6180? 189720000 remainder 6180, >=5000 => interest = (189726180+5000)//10000 = 189731180//10000 = 18973? 10000*18973=189730000, remainder 1180, floor=18973. So interest=18973.
+bal = 2710374 + 18973 - 45400 = 2710374 - 26427 = 2683947. So month71 end = 2683947.
+
+Month72: bal=2683947, bp=70.
+prod = 2683947*70 = 2683947*7*10 = 18787629*10 = 187876290.
+prod%10000 = 6290? 187876290 mod 10000 = 6290? 187870000 remainder 6290, >=5000 => interest = (187876290+5000)//10000 = 187881290//10000 = 18788? 10000*18788=187880000, remainder 1290, floor=18788. So interest=18788.
+bal = 2683947 + 18788 - 45400 = 2683947 - 26612 = 2657335. So month72 end = 2657335.
+
+Month73: bal=2657335, bp=70.
+prod = 2657335*70 = 2657335*7*10 = 18601345*10 = 186013450.
+prod%10000 = 3450? 186013450 mod 10000 = 3450? 186010000 remainder 3450, <5000 => interest = 186013450//10000 = 18601? 186013450/10000=18601.345, floor=18601. So interest=18601.
+bal = 2657335 + 18601 - 45400 = 2657335 - 26799 = 2630536. So month73 end = 2630536.
+
+Now month74: Starting with month74, rate becomes 0.60% -> bp=60. No extra. So month74: bal=2630536, bp=60.
+prod = 2630536 * 60 = 2630536*6*10 = 15783216*10 = 157832160.
+prod%10000 = 2160? 157832160 mod 10000 = 2160? 157830000 remainder 2160, <5000 => interest = 157832160//10000 = 15783? 157832160/10000=15783.216, floor=15783. So interest=15783.
+bal = 2630536 + 15783 - 45400 = 2630536 - 29617 = 2600919? Actually 15783-45400 = -29617, so 2630536 - 29617 = 2600919. So month74 end = 2600919.
+
+Now month75: Starting with month75, rate becomes 0.55% -> bp=55. No extra. So month75: bal=2600919, bp=55.
+prod = 2600919 * 55 = 2600919 * (50+5) = 130045950 + 13004595 = 143050545? Actually 2600919*50=130045950, *5=13004595, sum=143050545.
+prod%10000 = 0545? 143050545 mod 10000 = 545? 143050000 remainder 545, <5000 => interest = 143050545//10000 = 14305? 143050545/10000=14305.0545, floor=14305. So interest=14305.
+bal = 2600919 + 14305 - 45400 = 2600919 - 31095 = 2569824? Actually 14305-45400 = -31095, so 2600919 - 31095 = 2569824. So month75 end = 2569824.
+
+Now months 76-96: bp=55, no extra until month97 (extra at month97). 21 months? Let's count: month76 to month96 inclusive is 21 months (96-76+1=21). Then month97 extra, then months 98-108: bp=55, no extra after month97? Actually only extra at month97 listed. So months 98-108: 11 months (108-98+1=11). So total months from 75 to 108: 34 months. We have done month75. So we need to simulate months 76 to 96 (21 months), then month97 with extra, then months 98-108 (11 months). That's a long stretch. We'll continue step by step.
+
+We need to be careful with rounding each month. We'll do each month sequentially. Since the interest rate is lower now, the balance decreases more slowly. Let's continue.
+
+Month76: bal=2569824, bp=55.
+prod = 2569824 * 55 = 2569824*50=128491200, +2569824*5=12849120, total=141340320? Actually 128491200+12,849,120 = 141,340,320. Yes.
+prod%10000 = 0320? 141340320 mod 10000 = 320? 141340000 remainder 320, <5000 => interest = 141340320//10000 = 14134? 141340320/10000=14134.032, floor=14134. So interest=14134.
+bal = 2569824 + 14134 - 45400 = 2569824 - 31266 = 2538558. So month76 end = 2538558.
+
+Month77: bal=2538558, bp=55.
+prod = 2538558*55 = 2538558*50=126927900, +2538558*5=12692790, total=139620690.
+prod%10000 = 0690? 139620690 mod 10000 = 690? 139620000 remainder 690, <5000 => interest = 139620690//10000 = 13962? 139620690/10000=13962.069, floor=13962. So interest=13962.
+bal = 2538558 + 13962 - 45400 = 2538558 - 31438 = 2507120. So month77 end = 2507120.
+
+Month78: bal=2507120, bp=55.
+prod = 2507120*55 = 2507120*50=125356000, +2507120*5=12535600, total=137891600.
+prod%10000 = 1600? 137891600 mod 10000 = 1600? 137890000 remainder 1600, <5000 => interest = 137891600//10000 = 13789? 137891600/10000=13789.16, floor=13789. So interest=13789.
+bal = 2507120 + 13789 - 45400 = 2507120 - 31611 = 2475509. So month78 end = 2475509.
+
+Month79: bal=2475509, bp=55.
+prod = 2475509*55 = 2475509*50=123775450, +2475509*5=12377545, total=136152995.
+prod%10000 = 2995? 136152995 mod 10000 = 2995? 136150000 remainder 2995, <5000 => interest = 136152995//10000 = 13615? 136152995/10000=13615.2995, floor=13615. So interest=13615.
+bal = 2475509 + 13615 - 45400 = 2475509 - 31785 = 2443724. So month79 end = 2443724.
+
+Month80: bal=2443724, bp=55.
+prod = 2443724*55 = 2443724*50=122186200, +2443724*5=12218620, total=134404820.
+prod%10000 = 4820? 134404820 mod 10000 = 4820? 134400000 remainder 4820, <5000 => interest = 134404820//10000 = 13440? 134404820/10000=13440.482, floor=13440. So interest=13440.
+bal = 2443724 + 13440 - 45400 = 2443724 - 31960 = 2411764. So month80 end = 2411764.
+
+Month81: bal=2411764, bp=55.
+prod = 2411764*55 = 2411764*50=120588200, +2411764*5=12058820, total=132647020.
+prod%10000 = 7020? 132647020 mod 10000 = 7020? 132640000 remainder 7020, >=5000 => interest = (132647020+5000)//10000 = 132652020//10000 = 13265? 10000*13265=132650000, remainder 2020, floor=13265. So interest=13265.
+bal = 2411764 + 13265 - 45400 = 2411764 - 32135 = 2379629. So month81 end = 2379629.
+
+Month82: bal=2379629, bp=55.
+prod = 2379629*55 = 2379629*50=118981450, +2379629*5=11898145, total=130879595.
+prod%10000 = 9595? 130879595 mod 10000 = 9595? 130870000 remainder 9595, >=5000 => interest = (130879595+5000)//10000 = 130884595//10000 = 13088? 10000*13088=130880000, remainder 4595, floor=13088. So interest=13088.
+bal = 2379629 + 13088 - 45400 = 2379629 - 32312 = 2347317. So month82 end = 2347317.
+
+Month83: bal=2347317, bp=55.
+prod = 2347317*55 = 2347317*50=117365850, +2347317*5=11736585, total=129102435.
+prod%10000 = 2435? 129102435 mod 10000 = 2435? 129100000 remainder 2435, <5000 => interest = 129102435//10000 = 12910? 129102435/10000=12910.2435, floor=12910. So interest=12910.
+bal = 2347317 + 12910 - 45400 = 2347317 - 32490 = 2314827. So month83 end = 2314827.
+
+Month84: bal=2314827, bp=55.
+prod = 2314827*55 = 2314827*50=115741350, +2314827*5=11574135, total=127315485.
+prod%10000 = 5485? 127315485 mod 10000 = 5485? 127310000 remainder 5485, >=5000 => interest = (127315485+5000)//10000 = 127320485//10000 = 12732? 10000*12732=127320000, remainder 485, floor=12732. So interest=12732.
+bal = 2314827 + 12732 - 45400 = 2314827 - 32668 = 2282159. So month84 end = 2282159.
+
+Month85: bal=2282159, bp=55.
+prod = 2282159*55 = 2282159*50=114107950, +2282159*5=11410795, total=125518745.
+prod%10000 = 8745? 125518745 mod 10000 = 8745? 125510000 remainder 8745, >=5000 => interest = (125518745+5000)//10000 = 125523745//10000 = 12552? 10000*12552=125520000, remainder 3745, floor=12552. So interest=12552.
+bal = 2282159 + 12552 - 45400 = 2282159 - 32848 = 2249311. So month85 end = 2249311.
+
+Month86: bal=2249311, bp=55.
+prod = 2249311*55 = 2249311*50=112465550, +2249311*5=11246555, total=123712105.
+prod%10000 = 2105? 123712105 mod 10000 = 2105? 123710000 remainder 2105, <5000 => interest = 123712105//10000 = 12371? 123712105/10000=12371.2105, floor=12371. So interest=12371.
+bal = 2249311 + 12371 - 45400 = 2249311 - 33029 = 2216282. So month86 end = 2216282.
+
+Month87: bal=2216282, bp=55.
+prod = 2216282*55 = 2216282*50=110814100, +2216282*5=11081410, total=121895510.
+prod%10000 = 5510? 121895510 mod 10000 = 5510? 121890000 remainder 5510, >=5000 => interest = (121895510+5000)//10000 = 121900510//10000 = 12190? 10000*12190=121900000, remainder 510, floor=12190. So interest=12190.
+bal = 2216282 + 12190 - 45400 = 2216282 - 33210 = 2183072. So month87 end = 2183072.
+
+Month88: bal=2183072, bp=55.
+prod = 2183072*55 = 2183072*50=109153600, +2183072*5=10915360, total=120068960.
+prod%10000 = 8960? 120068960 mod 10000 = 8960? 120060000 remainder 8960, >=5000 => interest = (120068960+5000)//10000 = 120073960//10000 = 12007? 10000*12007=120070000, remainder 3960, floor=12007. So interest=12007.
+bal = 2183072 + 12007 - 45400 = 2183072 - 33393 = 2149679. So month88 end = 2149679.
+
+Month89: bal=2149679, bp=55.
+prod = 2149679*55 = 2149679*50=107483950, +2149679*5=10748395, total=118232345.
+prod%10000 = 2345? 118232345 mod 10000 = 2345? 118230000 remainder 2345, <5000 => interest = 118232345//10000 = 11823? 118232345/10000=11823.2345, floor=11823. So interest=11823.
+bal = 2149679 + 11823 - 45400 = 2149679 - 33577 = 2116102. So month89 end = 2116102.
+
+Month90: bal=2116102, bp=55.
+prod = 2116102*55 = 2116102*50=105805100, +2116102*5=10580510, total=116385610.
+prod%10000 = 5610? 116385610 mod 10000 = 5610? 116380000 remainder 5610, >=5000 => interest = (116385610+5000)//10000 = 116390610//10000 = 11639? 10000*11639=116390000, remainder 610, floor=11639. So interest=11639.
+bal = 2116102 + 11639 - 45400 = 2116102 - 33761 = 2082341. So month90 end = 2082341.
+
+Month91: bal=2082341, bp=55.
+prod = 2082341*55 = 2082341*50=104117050, +2082341*5=10411705, total=114528755.
+prod%10000 = 8755? 114528755 mod 10000 = 8755? 114520000 remainder 8755, >=5000 => interest = (114528755+5000)//10000 = 114533755//10000 = 11453? 10000*11453=114530000, remainder 3755, floor=11453. So interest=11453.
+bal = 2082341 + 11453 - 45400 = 2082341 - 33947 = 2048394. So month91 end = 2048394.
+
+Month92: bal=2048394, bp=55.
+prod = 2048394*55 = 2048394*50=102419700, +2048394*5=10241970, total=112661670.
+prod%10000 = 1670? 112661670 mod 10000 = 1670? 112660000 remainder 1670, <5000 => interest = 112661670//10000 = 11266? 112661670/10000=11266.167, floor=11266. So interest=11266.
+bal = 2048394 + 11266 - 45400 = 2048394 - 34134 = 2014260. So month92 end = 2014260.
+
+Month93: bal=2014260, bp=55.
+prod = 2014260*55 = 2014260*50=100713000, +2014260*5=10071300, total=110784300.
+prod%10000 = 4300? 110784300 mod 10000 = 4300? 110780000 remainder 4300, <5000 => interest = 110784300//10000 = 11078? 110784300/10000=11078.43, floor=11078. So interest=11078.
+bal = 2014260 + 11078 - 45400 = 2014260 - 34322 = 1979938. So month93 end = 1979938.
+
+Month94: bal=1979938, bp=55.
+prod = 1979938*55 = 1979938*50=98996900, +1979938*5=9899690, total=108896590.
+prod%10000 = 6590? 108896590 mod 10000 = 6590? 108890000 remainder 6590, >=5000 => interest = (108896590+5000)//10000 = 108901590//10000 = 10890? 10000*10890=108900000, remainder 1590, floor=10890. So interest=10890.
+bal = 1979938 + 10890 - 45400 = 1979938 - 34510 = 1945428. So month94 end = 1945428.
+
+Month95: bal=1945428, bp=55.
+prod = 1945428*55 = 1945428*50=97271400, +1945428*5=9727140, total=106998540.
+prod%10000 = 8540? 106998540 mod 10000 = 8540? 106990000 remainder 8540, >=5000 => interest = (106998540+5000)//10000 = 107003540//10000 = 10700? 10000*10700=107000000, remainder 3540, floor=10700. So interest=10700.
+bal = 1945428 + 10700 - 45400 = 1945428 - 34700 = 1910728. So month95 end = 1910728.
+
+Month96: bal=1910728, bp=55.
+prod = 1910728*55 = 1910728*50=95536400, +1910728*5=9553640, total=105090040.
+prod%10000 = 0040? 105090040 mod 10000 = 40? 105090000 remainder 40, <5000 => interest = 105090040//10000 = 10509? 105090040/10000=10509.004, floor=10509. So interest=10509.
+bal = 1910728 + 10509 - 45400 = 1910728 - 34891 = 1875837. So month96 end = 1875837.
+
+Now month97: bal=1875837, bp=55, extra 178600 cents.
+Interest: prod = 1875837*55 = 1875837*50=93791850, +1875837*5=9379185, total=103171035.
+prod%10000 = 1035? 103171035 mod 10000 = 1035? 103170000 remainder 1035, <5000 => interest = 103171035//10000 = 10317? 103171035/10000=10317.1035, floor=10317. So interest=10317.
+bal after interest and payment: bal = 1875837 + 10317 - 45400 = 1875837 - 35083 = 1840754? Actually 10317-45400 = -35083, so 1875837 - 35083 = 1840754. Then subtract extra 178600: bal = 1840754 - 178600 = 1662154. So month97 end = 1662154.
+
+Now months 98-108: bp=55, no extra. 11 months: 98,99,100,101,102,103,104,105,106,107,108.
+
+We need to simulate each month from 98 to 108.
+
+Month98: bal=1662154, bp=55.
+prod = 1662154*55 = 1662154*50=83107700, +1662154*5=8310770, total=91418470.
+prod%10000 = 8470? 91418470 mod 10000 = 8470? 91410000 remainder 8470? Actually 91418470 - 91410000 = 8470. 8470>=5000 => interest = (91418470+5000)//10000 = 91423470//10000 = 9142? 10000*9142=91420000, remainder 3470, floor=9142. So interest=9142? Wait 91423470//10000 = 9142 because 10000*9142=91420000, remainder 3470, so floor=9142. So interest=9142 cents = $91.42. But check: 16621.54 * 0.0055 = 91.41847, rounded to 91.42? Actually 91.41847 rounds to 91.42 because 0.00847? The thousandths digit is 8? Actually 91.41847, the cents part is .41847, rounding to nearest cent: look at thousandths digit = 8 (since 0.41847, thousandths is 8? Actually 0.41847: hundredths=1, thousandths=8, so round up to 0.42, so 91.42. Yes correct.
+bal = 1662154 + 9142 - 45400 = 1662154 - 36258 = 1625896? Actually 9142-45400 = -36258, so 1662154 - 36258 = 1625896. So month98 end = 1625896.
+
+Month99: bal=1625896, bp=55.
+prod = 1625896*55 = 1625896*50=81294800, +1625896*5=8129480, total=89424280.
+prod%10000 = 4280? 89424280 mod 10000 = 4280? 89420000 remainder 4280, <5000 => interest = 89424280//10000 = 8942? Actually 89424280/10000=8942.428, floor=8942. So interest=8942.
+bal = 1625896 + 8942 - 45400 = 1625896 - 36458 = 1589438. So month99 end = 1589438.
+
+Month100: bal=1589438, bp=55.
+prod = 1589438*55 = 1589438*50=79471900, +1589438*5=7947190, total=87419090.
+prod%10000 = 9090? 87419090 mod 10000 = 9090? 87410000 remainder 9090, >=5000 => interest = (87419090+5000)//10000 = 87424090//10000 = 8742? 10000*8742=87420000, remainder 4090, floor=8742. So interest=8742.
+bal = 1589438 + 8742 - 45400 = 1589438 - 36658 = 1552780. So month100 end = 1552780.
+
+Month101: bal=1552780, bp=55.
+prod = 1552780*55 = 1552780*50=77639000, +1552780*5=7763900, total=85402900.
+prod%10000 = 2900? 85402900 mod 10000 = 2900? 85400000 remainder 2900, <5000 => interest = 85402900//10000 = 8540? Actually 85402900/10000=8540.29, floor=8540. So interest=8540.
+bal = 1552780 + 8540 - 45400 = 1552780 - 36860 = 1515920. So month101 end = 1515920.
+
+Month102: bal=1515920, bp=55.
+prod = 1515920*55 = 1515920*50=75796000, +1515920*5=7579600, total=83375600.
+prod%10000 = 5600? 83375600 mod 10000 = 5600? 83370000 remainder 5600, >=5000 => interest = (83375600+5000)//10000 = 83380600//10000 = 8338? 10000*8338=83380000, remainder 600, floor=8338. So interest=8338.
+bal = 1515920 + 8338 - 45400 = 1515920 - 37062 = 1478858. So month102 end = 1478858.
+
+Month103: bal=1478858, bp=55.
+prod = 1478858*55 = 1478858*50=73942900, +1478858*5=7394290, total=81337190.
+prod%10000 = 7190? 81337190 mod 10000 = 7190? 81330000 remainder 7190, >=5000 => interest = (81337190+5000)//10000 = 81342190//10000 = 8134? 10000*8134=81340000, remainder 2190, floor=8134. So interest=8134.
+bal = 1478858 + 8134 - 45400 = 1478858 - 37266 = 1441592. So month103 end = 1441592.
+
+Month104: bal=1441592, bp=55.
+prod = 1441592*55 = 1441592*50=72079600, +1441592*5=7207960, total=79287560.
+prod%10000 = 7560? 79287560 mod 10000 = 7560? 79280000 remainder 7560, >=5000 => interest = (79287560+5000)//10000 = 79292560//10000 = 7929? 10000*7929=79290000, remainder 2560, floor=7929. So interest=7929.
+bal = 1441592 + 7929 - 45400 = 1441592 - 37471 = 1404121. So month104 end = 1404121.
+
+Month105: bal=1404121, bp=55.
+prod = 1404121*55 = 1404121*50=70206050, +1404121*5=7020605, total=77226655.
+prod%10000 = 6655? 77226655 mod 10000 = 6655? 77220000 remainder 6655, >=5000 => interest = (77226655+5000)//10000 = 77231655//10000 = 7723? 10000*7723=77230000, remainder 1655, floor=7723. So interest=7723.
+bal = 1404121 + 7723 - 45400 = 1404121 - 37677 = 1366444. So month105 end = 1366444.
+
+Month106: bal=1366444, bp=55.
+prod = 1366444*55 = 1366444*50=68322200, +1366444*5=6832220, total=75154420.
+prod%10000 = 4420? 75154420 mod 10000 = 4420? 75150000 remainder 4420, <5000 => interest = 75154420//10000 = 7515? 75154420/10000=7515.442, floor=7515. So interest=7515.
+bal = 1366444 + 7515 - 45400 = 1366444 - 37885 = 1328559. So month106 end = 1328559.
+
+Month107: bal=1328559, bp=55.
+prod = 1328559*55 = 1328559*50=66427950, +1328559*5=6642795, total=73070745.
+prod%10000 = 0745? 73070745 mod 10000 = 745? 73070000 remainder 745, <5000 => interest = 73070745//10000 = 7307? 73070745/10000=7307.0745, floor=7307. So interest=7307.
+bal = 1328559 + 7307 - 45400 = 1328559 - 38093 = 1290466. So month107 end = 1290466.
+
+Month108: bal=1290466, bp=55.
+prod = 1290466*55 = 1290466*50=64523300, +1290466*5=6452330, total=70975630.
+prod%10000 = 5630? 70975630 mod 10000 = 5630? 70970000 remainder 5630, >=5000 => interest = (70975630+5000)//10000 = 70980630//10000 = 7098? 10000*7098=70980000, remainder 630, floor=7098. So interest=7098.
+bal = 1290466 + 7098 - 45400 = 1290466 - 38302 = 1252164? Actually 7098-45400 = -38302, so 1290466 - 38302 = 1252164. So month108 end = 1252164 cents.
+
+Thus balance after month108 = 1252164 cents = $12521.64? Wait 1252164 cents = $12521.64? Actually 1252164 / 100 = 12521.64. But we need to ensure that this is the final balance after all steps of month108. It ends at $12521.64.
+
+But we should double-check our calculations for possible errors, especially in the later months where rounding may be off. Let's verify some intermediate balances with sanity checks. For instance, after month97 we had 1662154 cents = $16621.54. Then over 11 months with interest rate 0.55% and payment $454, the balance should reduce by roughly net of (payment - interest). Interest each month is about 0.55% of balance, which is decreasing. Over 11 months, we got final 12521.64, which is a reduction of about $4100. That seems plausible. But we need to ensure that we didn't miss any extra payments or rate changes. Let's list all events again and check if any we missed: The extra payments at months: 5,12,23,26,35,42,49,57,62,64,66,67,97. We included all. Rate changes: month25(0.65%), month43(0.75%), month47(0.70%), month74(0.60%), month75(0.55%). We accounted for those. So simulation seems complete.
+
+However, we must be absolutely sure about rounding each month. We used integer arithmetic with rounding half-up by (prod+5000)//10000. That is correct. But we need to double-check some calculations where remainder was exactly 5000? Did that occur? If remainder=5000, then (prod+5000)//10000 = prod//10000 + 1 because (prod+5000) = prod+5000, and if prod%10000=5000, then prod = 10000k+5000, plus 5000 gives 10000k+10000, //10000 = k+1, which is rounding up as required. So our method works.
+
+Now I'll re-check some early months for consistency. For month1, interest 405.36, balance after payment: 54048.10 + 405.36 - 454 = 53999.46, correct. Month2: 53999.46 *0.0075 = 404.99595 -> rounds to 405.00, balance becomes 53999.46+405-454=53950.46, we had 5395046 cents, correct. Month3: 53950.46*0.0075=404.62845 -> rounds to 404.63, balance 53950.46-49.37? Actually 404.63-454 = -49.37, so 53950.46-49.37=53901.09, we had 5390109, correct. So far so good.
+
+We should also check month25 when rate changed: bal 4791583 cents = $47915.83, *0.0065 = 311.452895 -> rounds to 311.45, balance after payment: 47915.83+311.45-454=47773.28, we had 4777328, correct. Month26: 47773.28*0.0065=310.52632 -> rounds to 310.53? Actually 310.52632 rounds to 310.53? The thousandths digit is 6, so round up to 310.53, we got 31053 cents, yes. Then after payment: 47773.28+310.53-454=47629.81, minus extra 2431 = 45198.81, we got 4519881, correct.
+
+Now check month43: bal 4180686 = $41806.86, *0.0075=313.55145 -> rounds to 313.55, balance after payment: 41806.86+313.55-454=41666.41, we had 4166641, correct.
+
+Month47: bal 4123872 = $41238.72, *0.007 = 288.67104 -> rounds to 288.67, after payment: 41238.72+288.67-454=41073.39, we had 4107339, correct.
+
+Month74: bal 2630536 = $26305.36, *0.006 = 157.83216 -> rounds to 157.83, after payment: 26305.36+157.83-454=26009.19, we had 2600919, correct.
+
+Month75: bal 2600919 = $26009.19, *0.0055 = 143.050545 -> rounds to 143.05, after payment: 26009.19+143.05-454=25698.24, we had 2569824, correct.
+
+Now check month97: bal 1875837 = $18758.37, *0.0055 = 103.171035 -> rounds to 103.17, after payment: 18758.37+103.17-454=18407.54, minus 1786 = 16621.54, we had 1662154, correct.
+
+Then month98: 16621.54*0.0055=91.41847 -> rounds to 91.42, after payment: 16621.54+91.42-454=16258.96, we had 1625896, correct. So far consistent.
+
+Now let's re-calc month108 carefully to ensure no mistake. At month108 start, bal = 1290466 cents = $12904.66? Wait we had month107 end = 1290466, which is $12,904.66? Actually 1290466 cents = $12,904.66? No: 1290466/100 = 12904.66, yes. Then month108 interest = 12904.66 *0.0055 = 70.97563, rounding: 70.97563, thousandths digit = 5? Actually 70.97563, the hundredths is 7, thousandths is 5? Let's see: 70.97563: dollars:70, cents: .97563, so the cents part is 97.563? Wait, the amount in dollars is 12904.66, not 12904.66? Actually 12904.66 * 0.0055 = 70.97563, so interest is $70.97563, which rounds to $70.98 because the third decimal is 5? Typically rounding to nearest cent: 70.97563, the thousandths digit is 5, and then there are more digits? Actually 70.97563: the cents digits are 97? Wait, we need to be careful: The number 70.97563 means 70 dollars and 97.563 cents. So the amount in dollars and cents: 70.97563 = 70 dollars + 97.563 cents. But the usual representation: the integer part is dollars, the fractional part is cents. So 70.97563 = 70 dollars and 97.563 cents. To round to nearest cent, we look at the thousandths of a dollar, which is the third decimal: 70.97563, the third decimal is 5 (since 0.97563, digits: tenths=9, hundredths=7, thousandths=5). So we round up the hundredths digit from 7 to 8, giving 70.98. So interest = $70.98 = 7098 cents. That matches our calculation: prod = 1290466*55 = 70975630, remainder 5630, which is >=5000, so interest = 7098 cents. So interest=7098. Then bal after interest and payment: 1290466 + 7098 - 45400 = 1290466 - 38302 = 1252164 cents = $12521.64. So final balance is $12521.64.
+
+But we need to ensure that there is no extra payment in month108. None is listed, so that's final.
+
+Thus answer: 12521.64.
+
+However, we must confirm that we didn't miss any extra payment or rate change after month97. The list includes: "At the end of month 97, after the regular payment, an extra prepayment of $1786.00 is made." That's the last event. So after that, no more extra payments. Also rate changes: last change was month75 (0.55%), which remains until the end. So that's correct.
+
+So the outstanding balance at end of month108 is $12521.64.
+
+Let's express it as 12521.64.
+
+Thus final answer: 12521.64.
+
+We should present it as ANSWER: 12521.64.

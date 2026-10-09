@@ -1,0 +1,670 @@
+We need to compute determinant of a 6x6 integer matrix. We can do row operations (or column) to simplify, compute via expansion, or use methods like LU decomposition. Since it's integer, we can do elimination carefully to avoid fractions. Alternatively, we can compute using systematic Gaussian elimination with integer arithmetic, tracking sign changes.
+
+Let A be:
+
+A = 
+[ 4, 0, 3, -2, -4, -4 ]
+[ 0, -1, -2, 2, 3, 4 ]
+[ 1, -4, 4, -4, -2, -1 ]
+[ 3, 1, 2, 1, -2, 1 ]
+[ 3, -4, -1, 1, -1, -1 ]
+[ -3, 0, 2, 2, -2, 1 ]
+
+We'll compute determinant det(A). Let's denote rows R1..R6.
+
+We can perform row operations that do not change determinant (like swapping rows changes sign, adding multiple of one row to another doesn't change det). We can also factor out common factors from rows (but careful). We can also do column operations, but we'll stick to row operations.
+
+Better to compute by converting to upper triangular form using integer elimination (like Gaussian elimination, but keep track of scaling). Since we only need determinant, we can do elimination with row operations of type: replace R_i by R_i + k * R_j (det unchanged). Also we can swap rows (record sign) and we can multiply a row by a constant (but that multiplies det by that constant, so we need to compensate). So we avoid scaling rows; we can use row swaps to bring a pivot that divides others.
+
+We can also use the method of "fraction-free Gaussian elimination" (Bareiss algorithm) which is exact integer. But doing manually for 6x6 is tedious but possible with careful arithmetic. Alternatively, we can compute using systematic approach with row operations.
+
+Let me write the matrix clearly:
+
+Row1: [4, 0, 3, -2, -4, -4]
+Row2: [0, -1, -2, 2, 3, 4]
+Row3: [1, -4, 4, -4, -2, -1]
+Row4: [3, 1, 2, 1, -2, 1]
+Row5: [3, -4, -1, 1, -1, -1]
+Row6: [-3, 0, 2, 2, -2, 1]
+
+We'll try to eliminate below pivot in column 1. The first pivot is 4 at (1,1). We can use row operations to zero out entries below it. Rows 3,4,5,6 have non-zero in col1. We'll replace them by combinations with R1.
+
+We want to do R3 <- R3 - (1/4)*R1? But that introduces fractions. To avoid fractions, we can use integer elimination by swapping rows or using row operations with multipliers that eliminate without fractions if we combine appropriately. For instance, we can use R3 = 4*R3 - R1, but that multiplies the row by 4, which changes determinant. So we need to keep track of scaling. Instead, we can use the method: we can do row operations of the form: R_i <- R_i - (a_ij / pivot) * R_j, but that introduces fractions unless pivot divides a_ij. Since pivot=4, and entries in col1: row3=1, row4=3, row5=3, row6=-3. None are multiples of 4. So we can't eliminate without fractions. We could swap with a row that has a nicer pivot? Row2 has 0 in col1, so not. Row3 has 1; maybe we can swap rows to put row3 as first row? But then we have pivot 1, which is easier. Swapping rows changes sign of determinant. So we can reorder rows to get pivot 1. Let's consider swapping row1 with row3. But then row order changes. We need to compute final determinant with sign. So we can perform row swaps to get a pivot that divides others. Since we have a row with 1 in col1 (row3), we can swap row1 and row3. That will give pivot 1, then elimination becomes integer. Then we need to account for the sign change.
+
+So let's do: swap R1 and R3. The determinant multiplies by -1. We'll keep track of sign.
+
+After swap, new matrix (I'll denote rows in order: R1' = old R3, R2' = old R2, R3' = old R1, R4 = old R4, R5 = old R5, R6 = old R6). But careful: we should keep consistent labeling. Let's just construct new matrix:
+
+New A:
+R1: [1, -4, 4, -4, -2, -1]
+R2: [0, -1, -2, 2, 3, 4]
+R3: [4, 0, 3, -2, -4, -4]
+R4: [3, 1, 2, 1, -2, 1]
+R5: [3, -4, -1, 1, -1, -1]
+R6: [-3, 0, 2, 2, -2, 1]
+
+Now pivot at (1,1)=1. We can eliminate below: rows 3,4,5,6 have entries 4,3,3,-3 respectively. We can do: R3 <- R3 - 4*R1; R4 <- R4 - 3*R1; R5 <- R5 - 3*R1; R6 <- R6 + 3*R1 (since -3 - 3*(-1?) Actually careful: R6 col1 = -3, we want to zero it: R6 <- R6 + 3*R1 because -3 + 3*1 = 0. But we need to add 3*R1, not subtract. So operations:
+
+R3 = R3 - 4*R1
+R4 = R4 - 3*R1
+R5 = R5 - 3*R1
+R6 = R6 + 3*R1
+
+These row operations (adding multiple of another row) do not change determinant.
+
+Compute each:
+
+R1: [1, -4, 4, -4, -2, -1]
+
+Compute R3 - 4*R1:
+R3 original: [4, 0, 3, -2, -4, -4]
+4*R1: [4, -16, 16, -16, -8, -4]
+Subtract: [0, 16, -13, 14, 4, 0]? Wait compute: 0-(-16)? Actually R3 - 4R1: (4-4)=0; (0 - (-16))=0+16=16; (3-16)= -13; (-2 - (-16)) = -2+16=14; (-4 - (-8)) = -4+8=4; (-4 - (-4)) = -4+4=0. So R3 becomes [0, 16, -13, 14, 4, 0]. Check: Yeah.
+
+R4 = R4 - 3*R1:
+R4 original: [3, 1, 2, 1, -2, 1]
+3*R1: [3, -12, 12, -12, -6, -3]
+Subtract: (3-3)=0; (1-(-12))=1+12=13; (2-12)=-10; (1-(-12))=1+12=13; (-2-(-6)) = -2+6=4; (1-(-3))=1+3=4. So R4 = [0, 13, -10, 13, 4, 4].
+
+R5 = R5 - 3*R1:
+R5 original: [3, -4, -1, 1, -1, -1]
+3*R1: [3, -12, 12, -12, -6, -3]
+Subtract: (3-3)=0; (-4-(-12)) = -4+12=8; (-1-12)= -13; (1-(-12))=1+12=13; (-1-(-6)) = -1+6=5; (-1-(-3)) = -1+3=2. So R5 = [0, 8, -13, 13, 5, 2].
+
+R6 = R6 + 3*R1:
+R6 original: [-3, 0, 2, 2, -2, 1]
+3*R1: [3, -12, 12, -12, -6, -3]
+Add: (-3+3)=0; (0+(-12)) = -12; (2+12)=14; (2+(-12)) = -10; (-2+(-6)) = -8; (1+(-3)) = -2. So R6 = [0, -12, 14, -10, -8, -2].
+
+Now we have matrix after column1 elimination:
+
+R1: [1, -4, 4, -4, -2, -1]
+R2: [0, -1, -2, 2, 3, 4]
+R3: [0, 16, -13, 14, 4, 0]
+R4: [0, 13, -10, 13, 4, 4]
+R5: [0, 8, -13, 13, 5, 2]
+R6: [0, -12, 14, -10, -8, -2]
+
+Now we focus on the 5x5 submatrix from rows 2-6, columns 2-6. The determinant of the whole matrix = 1 * det(submatrix) because pivot=1 and row operations didn't change det. Also we had a row swap earlier which multiplied det by -1. So current det = (-1) * det(submatrix) where submatrix is rows 2-6, columns 2-6. But careful: the row operations we did after swap are all of type R_i <- R_i + kR1, which don't change determinant. So total determinant so far = (-1) * det(After elimination, but we need to consider the submatrix determinant as the determinant of the block after eliminating column1? Actually, when we have upper triangular block, the determinant of the full matrix is the product of the pivot and the determinant of the submatrix after elimination. Since pivot=1, the determinant of the whole matrix after row operations = 1 * det(submatrix). But we must remember the sign from row swap: original det = (-1) * det(current matrix). So original det = (-1) * det(current). So we need to compute det(current) = det of the matrix after elimination, which is 1 * det of the 5x5 submatrix (since first row and column have only pivot at (1,1) and zeros below). Actually the current matrix is block triangular: first row and first column have pivot=1 at (1,1), and zeros in first column below. So det(current) = 1 * det(M), where M is the submatrix formed by rows 2-6, columns 2-6. So original det = (-1) * det(M). So we need to compute det(M).
+
+Thus, let M be the 5x5 matrix:
+
+Rows (original indices but now rows 2 to 6 from current matrix), columns 2..6 (i.e., columns indices 2..6 of original matrix after transformation, but we can just list the entries we have). So M =
+
+Row2: [-1, -2, 2, 3, 4] (from old R2: [0,-1,-2,2,3,4] columns 2-6)
+Row3: [16, -13, 14, 4, 0] (R3: [0,16,-13,14,4,0] col2-6)
+Row4: [13, -10, 13, 4, 4] (R4: [0,13,-10,13,4,4])
+Row5: [8, -13, 13, 5, 2] (R5: [0,8,-13,13,5,2])
+Row6: [-12, 14, -10, -8, -2] (R6: [0,-12,14,-10,-8,-2])
+
+So M is 5x5:
+
+M = 
+[ -1,   -2,    2,    3,    4 ]
+[ 16,  -13,   14,    4,    0 ]
+[ 13,  -10,   13,    4,    4 ]
+[ 8,   -13,   13,    5,    2 ]
+[ -12,  14,  -10,   -8,   -2 ]
+
+We need det(M). Since original det = - det(M). So compute det(M). Then answer = - det(M).
+
+Now we can compute det(M) via similar elimination. Let's work on M.
+
+We can try to simplify M using row operations that preserve determinant (or column operations). Again, note the first pivot is -1 at (1,1) (row1 col1). That's nice because it's ±1, so we can eliminate below without fractions. So we can use row operations to zero out first column below.
+
+Write M with rows R1' to R5' (I will rename them as rows 1..5 for convenience):
+
+R1: [-1, -2, 2, 3, 4]
+R2: [16, -13, 14, 4, 0]
+R3: [13, -10, 13, 4, 4]
+R4: [8, -13, 13, 5, 2]
+R5: [-12, 14, -10, -8, -2]
+
+We want to eliminate entries in column1 below R1. Since pivot = -1, we can do:
+
+R2 <- R2 + 16*R1 (because 16 + 16*(-1) = 16-16=0? Actually careful: R2 col1=16, pivot=-1, we can do R2 = R2 + 16 * R1, because 16 + 16*(-1)=0. Similarly, R3: 13 + 13*(-1)=0 => R3 = R3 + 13*R1. R4: 8 + 8*(-1)=0 => R4 = R4 + 8*R1. R5: -12 + (-12)*(-1)? That would be -12 +12=0? Actually we need to cancel -12: use R5 = R5 -12*R1? Because -12 -12*(-1)= -12+12=0? Let's compute: R5 col1 = -12. If we do R5 = R5 + 12*R1? Then -12 + 12*(-1) = -12 -12 = -24, not zero. If we do R5 = R5 -12*R1? Then -12 -12*(-1) = -12+12=0. So we need to add or subtract appropriately. The operation is R5 <- R5 - 12*R1? Check: -12 - 12*(-1) = -12+12=0. So set R5 = R5 -12*R1. That's equivalent to R5 = R5 + (-12)*R1? Actually subtracting 12*R1 is adding -12*R1. So we can do: R5 = R5 -12*R1.
+
+But all these operations (adding multiple of a row to another) do not change determinant.
+
+Now compute each new row.
+
+First, R1 unchanged.
+
+Compute R2_new = R2 + 16*R1:
+R2: [16, -13, 14, 4, 0]
+16*R1: [ -16, -32, 32, 48, 64] (since R1 multiplied by 16: each entry times 16: -1*16=-16, -2*16=-32, 2*16=32, 3*16=48, 4*16=64)
+Add: (16-16)=0; (-13-32)=-45; (14+32)=46; (4+48)=52; (0+64)=64. So R2 becomes [0, -45, 46, 52, 64].
+
+R3_new = R3 + 13*R1:
+R3: [13, -10, 13, 4, 4]
+13*R1: [ -13, -26, 26, 39, 52]
+Add: (13-13)=0; (-10-26)=-36; (13+26)=39; (4+39)=43; (4+52)=56. So R3 = [0, -36, 39, 43, 56].
+
+R4_new = R4 + 8*R1:
+R4: [8, -13, 13, 5, 2]
+8*R1: [ -8, -16, 16, 24, 32]
+Add: (8-8)=0; (-13-16)=-29; (13+16)=29; (5+24)=29; (2+32)=34. So R4 = [0, -29, 29, 29, 34].
+
+R5_new = R5 - 12*R1:
+R5: [-12, 14, -10, -8, -2]
+12*R1: [ -12, -24, 24, 36, 48] (since R1: -1,-2,2,3,4 times 12 gives -12,-24,24,36,48)
+Now subtract: R5 - 12*R1 = R5 - (12*R1). But careful: R5 - 12*R1 = (-12 - (-12))? Actually we compute: R5 - 12*R1 = (-12 - (-12))? Wait: 12*R1 = [-12, -24, 24, 36, 48]. So R5 - 12*R1 = [ -12 - (-12), 14 - (-24), -10 - 24, -8 - 36, -2 - 48] = [0, 14+24, -34, -44, -50] = [0, 38, -34, -44, -50]. But double-check: Actually R5 original: [-12,14,-10,-8,-2]. Subtract 12*R1: [-12 - (-12)=0, 14 - (-24)=38, -10 - 24 = -34, -8 - 36 = -44, -2 - 48 = -50]. So R5 = [0, 38, -34, -44, -50].
+
+So after elimination, we have:
+
+R1: [-1, -2, 2, 3, 4]
+R2: [0, -45, 46, 52, 64]
+R3: [0, -36, 39, 43, 56]
+R4: [0, -29, 29, 29, 34]
+R5: [0, 38, -34, -44, -50]
+
+Now determinant of M = determinant of this matrix = (-1) * det of the 4x4 submatrix formed by rows 2-5, columns 2-5? Because we have pivot = -1 at (1,1) and zeros below. So det(M) = (-1) * det(N), where N is the 4x4 matrix from rows 2-5, columns 2-5 (since pivot is -1, the determinant = pivot * det(block) = (-1) * det(block). Wait careful: For a block triangular matrix, if the first row has pivot a11 and zeros below in column1, then the determinant = a11 * det(submatrix of rows2..n, cols2..n). So yes, det(M) = (-1) * det(N), where N is the 4x4 matrix:
+
+N = rows (R2,R3,R4,R5) cols 2..5 (i.e., columns 2-5 of the current matrix, but note that our new rows have entries for columns 2-5; we have 5 columns originally, but after eliminating col1, we consider submatrix from columns 2 to 5 (since column1 is done). Since M is 5x5, columns indices: 1: first col, 2: second, 3: third, 4: fourth, 5: fifth. In our transformed rows, col1 is zeros except R1. So N consists of rows 2-5 and columns 2-5. So we extract those entries:
+
+From R2: col2=-45, col3=46, col4=52, col5=64 → row1 of N: [-45, 46, 52, 64]
+R3: col2=-36, col3=39, col4=43, col5=56 → [-36, 39, 43, 56]
+R4: col2=-29, col3=29, col4=29, col5=34 → [-29, 29, 29, 34]
+R5: col2=38, col3=-34, col4=-44, col5=-50 → [38, -34, -44, -50]
+
+So N = 
+[ -45, 46, 52, 64 ]
+[ -36, 39, 43, 56 ]
+[ -29, 29, 29, 34 ]
+[ 38, -34, -44, -50 ]
+
+Now det(M) = (-1) * det(N). Then original det = - det(M) = -[(-1)*det(N)] = det(N). Because original det = - det(M) = - ( (-1)*det(N) ) = det(N). Let's verify: original determinant = (-1) * det(M) from earlier (because of row swap). Then det(M) = (-1)*det(N). So original det = (-1)*[(-1)*det(N)] = det(N). So we have original determinant = det(N). So we need to compute det(N) directly. Nice! So we only need determinant of that 4x4 matrix N. That simplifies.
+
+So compute det(N) where N =
+
+[ -45, 46, 52, 64 ]
+[ -36, 39, 43, 56 ]
+[ -29, 29, 29, 34 ]
+[ 38, -34, -44, -50 ]
+
+We can compute this 4x4 determinant by further elimination or by direct formula (e.g., using row operations). Let's attempt to simplify N via row operations that preserve determinant, maybe to triangular form.
+
+We can try to eliminate first column entries below pivot. The pivot at (1,1) is -45. We can use that to eliminate below. But we may have fractions, but we can avoid fractions by using integer elimination with scaling? Alternatively, we can factor out common factors from rows or columns, use row swaps to get better pivot. Notice some rows have common factors? Row1: -45,46,52,64 - no obvious common factor. Row2: -36,39,43,56 - maybe gcd? 36 and 39 share 3, but 43 and 56 not; but maybe row2 divisible by? Not all. Row3: -29,29,29,34 - can factor 29? Actually -29,29,29,34: not all divisible by 29 because 34 is not divisible by 29. But note row3: -29,29,29,34 could be simplified by dividing by? Not integer. Row4: 38,-34,-44,-50: common factor 2? 38,34,44,50 all even: 2*19, 2*(-17), 2*(-22), 2*(-25). So we can factor 2 out of row4, but that multiplies determinant by 2; we can keep track. Factoring out may simplify, but we need to multiply back later. Let's decide whether to factor or not. If we factor 2 from row4, then we get row4 = 2 * [19, -17, -22, -25]. Then det(N) = 2 * det(N') where N' has row4 replaced by [19,-17,-22,-25]. But careful: factoring from a row multiplies determinant by that factor. So we can do that.
+
+Alternatively, we can use row operations to create zeros. Let's try to eliminate first column below using integer combinations that avoid fractions. Since pivot -45, we can do row operations like R2 <- 45*R2 - 36*R1? That would multiply determinant by 45? Not straightforward. Better to use the method of elimination with fractions (since we are just computing manually, fractions are okay as long as we keep track, but we can also compute by direct expansion using minors if numbers are manageable). But 4x4 determinant can be computed by expansion along a row or column, but numbers are decent. Let's try to compute det(N) directly by performing row operations that preserve determinant (adding multiples of rows) but we can also use column operations.
+
+We can try to simplify by noticing some patterns: For example, row3 has 29,29; maybe we can subtract row3 from row2? Let's see.
+
+We can aim to get many zeros. Let's denote rows:
+
+R1: [-45, 46, 52, 64]
+R2: [-36, 39, 43, 56]
+R3: [-29, 29, 29, 34]
+R4: [38, -34, -44, -50]
+
+We can do operations like R2 <- R2 - R1? That would give: (-36+45=9, 39-46=-7, 43-52=-9, 56-64=-8) but that's not obviously simpler. Or R3 <- R3 - R2? etc. Possibly we can reduce all entries by using linear combinations. Another approach: Since we have 4x4, we can compute using Laplace expansion along a row or column with many zeros, but there are none. We can try to create zeros by row operations.
+
+Let's attempt to eliminate the first column entries below pivot using row operations that add a multiple of R1 to others. Since pivot is -45, we can compute multipliers: For R2, factor = (-36)/(-45) = 36/45 = 4/5? Actually we want to zero R2[1] = -36. We can do R2 <- R2 - (36/45)*R1? But that's fraction. But we can avoid fractions by swapping rows to get a better pivot. For instance, we can swap rows to bring row3 to top because its first entry -29, but still not 1. Could we factor something? Maybe we can use column operations? Alternatively, we can compute determinant using Bareiss algorithm step by step.
+
+Better: We can compute det(N) by Gaussian elimination with fractions, but we can keep rational numbers and compute exact rational result, then simplify to integer. Since we expect final answer integer, it's fine.
+
+We can also reduce the matrix by factoring common factors from rows and columns. For instance, we can factor -1 from row1? That would change sign. Row1: all entries negative? Actually row1 = [-45,46,52,64] - only first is negative. Factoring -1 from entire row would multiply det by -1, but we can keep track.
+
+Alternatively, we can consider using row operations that add multiples of rows to each other to create zeros without fractions, by doing elimination with integer combinations that preserve determinant up to a factor that we track. For example, we can use the "fraction-free" method: For a matrix, we can compute determinant by transforming to upper triangular using operations that multiply rows by the pivot and subtract, but then we need to divide by previous pivot. The Bareiss algorithm does that exactly. But let's try systematically with row operations that keep everything integer and record scaling.
+
+Let's denote the 4x4 matrix N. Let pivot p1 = -45. To eliminate below, we can do operations: For each i>1, let multiplier = a_i1 (the entry in column1). Then we can replace R_i by p1 * R_i - a_i1 * R_1. This operation multiplies the determinant by p1 (since we multiply R_i by p1, then subtract a multiple of R1, which doesn't change determinant as long as we consider the effect of multiplying R_i by p1). Actually, the operation "R_i <- p1 * R_i - a_i1 * R_1" is equivalent to first multiplying R_i by p1 (which multiplies determinant by p1), then subtracting a_i1 * R_1 (which doesn't change determinant). So the overall effect on determinant is to multiply by p1. To compensate, we would need to divide by p1 at the end, but it's tricky. However, Bareiss algorithm does a sequence of such operations and then divides by previous pivot to keep determinant unchanged. For a simple approach, we can compute the determinant by performing such eliminations and then at the end we have product of pivots divided by the product of the factors we multiplied by. But it's easier to compute directly via expansion.
+
+Since it's only 4x4, we can compute using the formula: det = sum over permutations, but we can use systematic cofactor expansion. Let's do cofactor expansion along the first row, for example. But first row entries are -45,46,52,64. So we need to compute four 3x3 determinants and combine with signs. That might be manageable with careful arithmetic.
+
+Let's denote N = (a_ij) for i,j=1..4.
+
+Compute det(N) = a11*C11 - a12*C12 + a13*C13 - a14*C14, where C1j are cofactors (determinants of submatrices). Actually expansion: det = sum_{j=1}^{4} (-1)^{1+j} a_{1j} M_{1j}, where M_{1j} is minor (determinant of matrix after removing row1 and col j). So we need M11, M12, M13, M14.
+
+Calculate minors:
+
+M11: remove row1 and col1, get 3x3 from rows2-4, cols2-4:
+Rows2-4: 
+R2: [39, 43, 56]
+R3: [29, 29, 34]
+R4: [-34, -44, -50]
+
+So M11 = det( [39,43,56; 29,29,34; -34,-44,-50] ).
+
+M12: remove row1 and col2, get rows2-4, cols1,3,4:
+Cols: col1, col3, col4. So:
+R2: [-36, 43, 56] (since col1: -36, col3: 43, col4:56)
+R3: [-29, 29, 34]
+R4: [38, -44, -50] (col1:38, col3:-44, col4:-50)
+
+M13: remove row1 and col3, get rows2-4, cols1,2,4:
+R2: [-36, 39, 56]
+R3: [-29, 29, 34]
+R4: [38, -34, -50]
+
+M14: remove row1 and col4, get rows2-4, cols1,2,3:
+R2: [-36, 39, 43]
+R3: [-29, 29, 29]
+R4: [38, -34, -44]
+
+Then det(N) = (-45)*M11 - 46*M12? Wait sign: (-1)^{1+1}=+1 for a11, so + a11 * M11 = (-45)*M11. For a12: (-1)^{1+2} = -1, so - a12 * M12 = -46 * M12. For a13: (-1)^{1+3}=+1, so + a13 * M13 = +52 * M13. For a14: (-1)^{1+4}=-1, so - a14 * M14 = -64 * M14.
+
+So det(N) = -45*M11 - 46*M12 + 52*M13 - 64*M14.
+
+We need compute M11, M12, M13, M14.
+
+Let's compute each 3x3 determinant.
+
+First, M11 = det( A11 ) where A11 = 
+[39, 43, 56]
+[29, 29, 34]
+[-34, -44, -50]
+
+We can compute using formula: det = a(ei − fh) − b(di − fg) + c(dh − eg) for rows: a,b,c first row; d,e,f second; g,h,i third. So:
+
+a=39, b=43, c=56
+d=29, e=29, f=34
+g=-34, h=-44, i=-50
+
+Compute:
+ei - fh = e*i - f*h = 29*(-50) - 34*(-44) = -1450 - (-1496) = -1450 + 1496 = 46.
+di - fg = d*i - f*g = 29*(-50) - 34*(-34) = -1450 - (-1156) = -1450 + 1156 = -294.
+dh - eg = d*h - e*g = 29*(-44) - 29*(-34) = -1276 - (-986) = -1276 + 986 = -290.
+
+Then det = a*(ei-fh) - b*(di-fg) + c*(dh-eg) = 39*46 - 43*(-294) + 56*(-290) = 39*46 + 43*294 - 56*290.
+Compute each:
+39*46 = 39*40=1560, 39*6=234, sum=1794.
+43*294: 43*300=12900 minus 43*6=258 gives 12642? Actually 43*294 = 43*(300-6)=12900-258=12642.
+56*290 = 56*300 - 56*10 = 16800 - 560 = 16240.
+So M11 = 1794 + 12642 - 16240 = (1794+12642)=14436; 14436-16240 = -1804.
+So M11 = -1804.
+
+Check: 14436 - 16240 = -1804. Yes.
+
+Now M12 = det of:
+[-36, 43, 56]
+[-29, 29, 34]
+[38, -44, -50]
+
+Let's denote:
+a=-36, b=43, c=56
+d=-29, e=29, f=34
+g=38, h=-44, i=-50
+
+Compute ei - fh = e*i - f*h = 29*(-50) - 34*(-44) = -1450 - (-1496) = 46 (same as before).
+di - fg = d*i - f*g = (-29)*(-50) - 34*38 = 1450 - 1292 = 158.
+dh - eg = d*h - e*g = (-29)*(-44) - 29*38 = 1276 - 1102 = 174.
+
+Then det = a*(ei-fh) - b*(di-fg) + c*(dh-eg) = (-36)*46 - 43*158 + 56*174 = (-1656) - (43*158) + (56*174).
+
+Compute 43*158 = 43*160 - 43*2 = 6880 - 86 = 6794.
+Compute 56*174 = 56*170 + 56*4 = 9520 + 224 = 9744.
+So det = -1656 - 6794 + 9744 = (-1656-6794) = -8450; -8450+9744 = 1294.
+So M12 = 1294.
+
+Now M13 = det of:
+[-36, 39, 56]
+[-29, 29, 34]
+[38, -34, -50] (note: third row col2 is -34, correct from earlier: 38, -34, -50)
+Matrix:
+a=-36, b=39, c=56
+d=-29, e=29, f=34
+g=38, h=-34, i=-50
+
+Compute:
+ei - fh = e*i - f*h = 29*(-50) - 34*(-34) = -1450 - (-1156) = -1450+1156 = -294.
+di - fg = d*i - f*g = (-29)*(-50) - 34*38 = 1450 - 1292 = 158.
+dh - eg = d*h - e*g = (-29)*(-34) - 29*38 = 986 - 1102 = -116.
+Now det = a*(ei-fh) - b*(di-fg) + c*(dh-eg) = (-36)*(-294) - 39*158 + 56*(-116) = (36*294) - (39*158) - (56*116).
+Compute:
+36*294 = 36*300 - 36*6 = 10800 - 216 = 10584.
+39*158 = 39*160 - 39*2 = 6240 - 78 = 6162.
+56*116 = 56*100=5600, 56*16=896, total=6496.
+So det = 10584 - 6162 - 6496 = 10584 - (6162+6496)=10584 - 12658 = -2074.
+Thus M13 = -2074.
+
+Now M14 = det of:
+[-36, 39, 43]
+[-29, 29, 29]
+[38, -34, -44]
+Matrix:
+a=-36, b=39, c=43
+d=-29, e=29, f=29
+g=38, h=-34, i=-44
+
+Compute:
+ei - fh = e*i - f*h = 29*(-44) - 29*(-34) = -1276 - (-986) = -1276+986 = -290.
+di - fg = d*i - f*g = (-29)*(-44) - 29*38 = 1276 - 1102 = 174.
+dh - eg = d*h - e*g = (-29)*(-34) - 29*38 = 986 - 1102 = -116.
+Now det = a*(ei-fh) - b*(di-fg) + c*(dh-eg) = (-36)*(-290) - 39*174 + 43*(-116) = (36*290) - (39*174) - (43*116).
+Compute:
+36*290 = 36*300 - 36*10 = 10800 - 360 = 10440.
+39*174 = 39*170 + 39*4 = 6630 + 156 = 6786.
+43*116 = 43*100=4300, 43*16=688, total=4988.
+So det = 10440 - 6786 - 4988 = 10440 - (6786+4988)=10440 - 11774 = -1334.
+Thus M14 = -1334.
+
+Now we have all minors:
+M11 = -1804
+M12 = 1294
+M13 = -2074
+M14 = -1334
+
+Now compute det(N) = -45*M11 - 46*M12 + 52*M13 - 64*M14.
+
+Compute each term:
+
+-45 * M11 = -45 * (-1804) = 45 * 1804 = compute: 1804*40=72160, 1804*5=9020, sum=81180. So 81180.
+
+-46 * M12 = -46 * 1294 = - (46*1294). Compute 1294*46 = 1294*40=51760, 1294*6=7764, sum=59524. So -59524.
+
+52 * M13 = 52 * (-2074) = - (52*2074). Compute 2074*50=103700, 2074*2=4148, sum=107848. So -107848.
+
+-64 * M14 = -64 * (-1334) = 64 * 1334 = compute: 1334*60=80040, 1334*4=5336, sum=85376. So +85376.
+
+Now sum them: 
+Term1: +81180
+Term2: -59524 => 81180 - 59524 = 21656.
+Then add Term3: -107848 => 21656 - 107848 = -86192.
+Then add Term4: +85376 => -86192 + 85376 = -816.
+
+So det(N) = -816.
+
+Thus original determinant = det(N) = -816. Wait recall we earlier derived that original determinant = det(N). So original det = -816.
+
+But we need to double-check for any sign mistakes along the way. Let's recap:
+
+Original matrix A, we swapped R1 and R3, giving factor -1. Then we performed row operations eliminating below pivot (1,1) using R1 (new R1). That gave matrix with first row [1,-4,4,-4,-2,-1] and zeros below in col1. Then det(current) = 1 * det(M) where M is the 5x5 submatrix. So original det = (-1) * det(current) = - det(M). Then we performed elimination on M: first row [-1,-2,2,3,4] and zeros below after row operations, giving det(M) = (-1) * det(N). So det(M) = - det(N). Then original det = - [ - det(N) ] = det(N). Yes.
+
+Thus original det = det(N) = -816.
+
+Let's verify by computing using another method to be sure. Could compute the determinant of original matrix using software? Since it's manual, we can do a quick sanity check by reducing the matrix further or using a different approach. Perhaps we made arithmetic mistakes in the 3x3 determinants. Let's recompute them carefully.
+
+Compute M11 = det([[39,43,56],[29,29,34],[-34,-44,-50]]). We can compute using row operations on the 3x3 to simplify.
+
+Alternative: Factor common factor? We can simplify by subtracting rows. For instance, subtract row2 from row1? Let's do row1 - row2: [39-29=10, 43-29=14, 56-34=22]. So row1' = [10,14,22]; row2 = [29,29,34]; row3 = [-34,-44,-50]. But row operations change determinant unless we do combination like row1 <- row1 - row2, that's allowed (adding multiple of another row) and does not change determinant. So we can simplify M11 by doing row1 = row1 - row2. Then new matrix:
+
+R1: [10,14,22]
+R2: [29,29,34]
+R3: [-34,-44,-50]
+
+Now compute determinant. Use formula or further simplify. Also we can factor 2 from R1? [10,14,22] = 2*[5,7,11]. So factor 2 out: determinant = 2 * det([[5,7,11],[29,29,34],[-34,-44,-50]]). Also we can maybe factor something from R3: R3 = [-34,-44,-50] = 2*[-17,-22,-25]. So factor 2 from R3: so far factor 2*2=4. Then matrix becomes:
+
+[[5,7,11],[29,29,34],[-17,-22,-25]]. Then we can compute. Let's do that: det = 4 * det(3x3) of that.
+
+Now compute det of [[5,7,11],[29,29,34],[-17,-22,-25]].
+
+Compute using formula or row ops. Do R2 = R2 - 5*R1? Actually row1:5,7,11; row2:29,29,34; row3:-17,-22,-25. Could also do R2 = R2 - (29/5)R1 fractions; better use integer elimination: Let's use row reduction with integer combinations: We can subtract multiples of row1 from row2 and row3 to eliminate first column. Since 5 is small, we can do: row2 = row2 - 5*row1? 29-5*5=29-25=4, but we want to zero first entry? Actually row2 first entry=29, if we do row2 = row2 - 6*row1: 29 - 6*5 = -1, not zero. To zero it exactly, we could do row2 = 5*row2 - 29*row1, but that scales row2. Instead, we can compute directly using formula for 3x3. Let's compute directly: a=5,b=7,c=11; d=29,e=29,f=34; g=-17,h=-22,i=-25.
+
+Compute:
+ei - fh = 29*(-25) - 34*(-22) = -725 + 748 = 23.
+di - fg = 29*(-25) - 34*(-17) = -725 + 578 = -147.
+dh - eg = 29*(-22) - 29*(-17) = -638 + 493 = -145.
+Then det = a*(ei-fh) - b*(di-fg) + c*(dh-eg) = 5*23 - 7*(-147) + 11*(-145) = 115 + 1029 - 1595 = 1144 - 1595 = -451? Wait 115+1029=1144; 1144-1595 = -451. So det(3x3) = -451. Then multiplied by 4 gives -1804. That matches M11 = -1804. Good.
+
+Now M12: [[-36,43,56],[-29,29,34],[38,-44,-50]]. Let's recompute using similar simplifications. We can factor something? We can try row operations.
+
+We can subtract row2 from row1? Row1: [-36,43,56]; row2:[-29,29,34]; row3:[38,-44,-50]. Do row1 = row1 - row2: [-36+29=-7, 43-29=14, 56-34=22]. So row1 becomes [-7,14,22]; row2 unchanged [-29,29,34]; row3 unchanged. So new matrix: 
+R1: [-7,14,22]
+R2: [-29,29,34]
+R3: [38,-44,-50]
+
+We can also factor -1? But careful: row operations do not change det. So we can compute det of this matrix. We can also factor 7? R1: -7,14,22 can factor? 7? Not all divisible by 7 because 22 not divisible by 7. But 22=2*11. Not factorable. Could factor something else.
+
+Alternatively, we can compute directly using formula. Let's recalc M12 with the simplified matrix to avoid errors. Compute det of:
+[-7,14,22]
+[-29,29,34]
+[38,-44,-50]
+
+We can also do row2 = row2 - (29/7)*row1? Not integer. Instead, we can use elimination with scaling but let's just compute using formula directly.
+
+Let a=-7, b=14, c=22
+d=-29, e=29, f=34
+g=38, h=-44, i=-50
+
+Compute:
+ei - fh = e*i - f*h = 29*(-50) - 34*(-44) = -1450 + 1496 = 46.
+di - fg = d*i - f*g = (-29)*(-50) - 34*38 = 1450 - 1292 = 158.
+dh - eg = d*h - e*g = (-29)*(-44) - 29*38 = 1276 - 1102 = 174.
+Now det = a*(ei-fh) - b*(di-fg) + c*(dh-eg) = (-7)*46 - 14*158 + 22*174 = -322 - 2212 + 3828 = -322-2212 = -2534; -2534+3828 = 1294. So M12 = 1294. Good.
+
+Now M13: [[-36,39,56],[-29,29,34],[38,-34,-50]]. Do row1 = row1 - row2: [-36+29=-7, 39-29=10, 56-34=22]. So new matrix:
+R1: [-7,10,22]
+R2: [-29,29,34]
+R3: [38,-34,-50]
+
+Now compute det:
+a=-7, b=10, c=22
+d=-29, e=29, f=34
+g=38, h=-34, i=-50
+
+Compute:
+ei - fh = 29*(-50) - 34*(-34) = -1450 + 1156 = -294.
+di - fg = d*i - f*g = (-29)*(-50) - 34*38 = 1450 - 1292 = 158.
+dh - eg = d*h - e*g = (-29)*(-34) - 29*38 = 986 - 1102 = -116.
+det = (-7)*(-294) - 10*158 + 22*(-116) = 2058 - 1580 - 2552 = 2058 - 4132 = -2074. Good.
+
+Now M14: [[-36,39,43],[-29,29,29],[38,-34,-44]]. Do row1 = row1 - row2: [-36+29=-7, 39-29=10, 43-29=14]. So:
+R1: [-7,10,14]
+R2: [-29,29,29]
+R3: [38,-34,-44]
+
+Now compute:
+a=-7, b=10, c=14
+d=-29, e=29, f=29
+g=38, h=-34, i=-44
+
+Compute:
+ei - fh = 29*(-44) - 29*(-34) = -1276 + 986 = -290.
+di - fg = d*i - f*g = (-29)*(-44) - 29*38 = 1276 - 1102 = 174.
+dh - eg = d*h - e*g = (-29)*(-34) - 29*38 = 986 - 1102 = -116.
+det = (-7)*(-290) - 10*174 + 14*(-116) = 2030 - 1740 - 1624 = 2030 - 3364 = -1334. Good.
+
+So minors correct. Now compute det(N) = -45*(-1804) -46*1294 +52*(-2074) -64*(-1334) = 81180 -59524 -107848 +85376 = -816 as before.
+
+Thus original determinant = -816.
+
+But wait: We had original det = det(N) = -816. So answer is -816. However, let's double-check the sign from initial row swap. We swapped row1 and row3, which multiplies det by -1. Did we account correctly? Let's retrace the steps from the beginning to ensure no sign error.
+
+Original A. We want det(A). We performed: swap R1 and R3 → det = -det(original) for the new matrix? Actually if we swap two rows, the determinant changes sign. So if we let B be the matrix after swapping row1 and row3 of A, then det(B) = - det(A). Then we performed row operations on B: row operations of type R_i <- R_i + kR1 (with R1 being the new first row) which do not change determinant. So after those row ops, we have matrix C, with det(C) = det(B) = -det(A). Then we note that C is block triangular with first row [1, -4, 4, -4, -2, -1] and zeros below in col1, so det(C) = 1 * det(M) where M is the 5x5 submatrix (rows2-6, cols2-6). So det(C) = det(M). Hence -det(A) = det(M). So det(A) = - det(M). Then we computed M, and then we did further row ops on M to get to N. For M we had first row [-1,-2,2,3,4] and we performed row operations (adding multiples of row1 to others) to get matrix with zeros below first col. After those ops, we have M' (block triangular), with det(M') = (-1) * det(N) (since pivot -1). But these row ops did not change determinant, so det(M) = det(M') = (-1)*det(N). So det(M) = -det(N). Then plug into det(A) = - det(M) = -(-det(N)) = det(N). So indeed det(A) = det(N). So we need det(N). We computed det(N) = -816. So det(A) = -816. Thus answer is -816.
+
+We should verify with a quick check using other operations such as computing determinant by diagonal product after Gaussian elimination with fractions, maybe using an online mental check? But trust the math.
+
+Alternatively, we could compute the determinant of the original matrix by another method, like computing using row reduction to upper triangular with fractions, but let's do a quick sanity check by computing the determinant using a software-like mental approach? Since it's manual, perhaps we can also compute using the original matrix with a different elimination order to see if we get same number.
+
+Another approach: compute determinant using row reduction without row swaps, but using fractions. Let's attempt to compute det(A) directly via elimination with fractions, to confirm.
+
+Original A:
+
+R1: [4, 0, 3, -2, -4, -4]
+R2: [0, -1, -2, 2, 3, 4]
+R3: [1, -4, 4, -4, -2, -1]
+R4: [3, 1, 2, 1, -2, 1]
+R5: [3, -4, -1, 1, -1, -1]
+R6: [-3, 0, 2, 2, -2, 1]
+
+We can use pivot 4 (R1). Compute multipliers: for R3: 1/4, for R4: 3/4, for R5: 3/4, for R6: -3/4. Then perform operations: R3 -> R3 - (1/4)R1; R4 -> R4 - (3/4)R1; R5 -> R5 - (3/4)R1; R6 -> R6 - (-3/4)R1 = R6 + (3/4)R1. This will introduce fractions. Then we continue with fractional entries. Then we can compute product of pivots. But that's messy but possible if we keep rational arithmetic. Let's try to do it quickly to see if we get -816.
+
+We can also compute determinant using the fact that we already did a series of integer operations and got -816. To be thorough, let's compute the determinant via another path: Use Bareiss algorithm on the original matrix step by step, which yields exact integer. I'll try to perform Bareiss algorithm on the 6x6 matrix. But that is more work. Alternatively, we can compute using the method of eliminating with row swaps to keep pivots simple and track scaling. Since we have a potential answer, we can also compute a few numerical checks: For example, compute the product of the diagonal elements of the upper triangular matrix we would get if we use elimination with fractions, maybe using rational numbers, but we can do it systematically.
+
+Alternative: Use our earlier M and N computations, but verify that det(N) = -816, then answer is -816. I'm fairly confident.
+
+We also can cross-check by computing det(N) via row reduction on the 4x4 directly to triangular form. Let's try that as a double-check.
+
+N = 
+[ -45, 46, 52, 64 ]
+[ -36, 39, 43, 56 ]
+[ -29, 29, 29, 34 ]
+[ 38, -34, -44, -50 ]
+
+We can attempt to reduce to upper triangular using row operations that avoid fractions, but we can also use fraction elimination. For instance, pivot = -45. Divide row1 by -45? But fractions. Let's use operations that keep things integer: we can multiply rows by pivot and subtract. But let's do elimination with fractions and compute product of pivots at the end. Since we only need determinant, we can do:
+
+Let pivot p1 = -45.
+
+Eliminate column1 in rows2-4 by doing:
+Row2 = Row2 - (36/45) Row1? Actually the entry -36, to zero: multiplier = (-36)/(-45) = 36/45 = 4/5. So Row2 = Row2 - (4/5)Row1. That yields fractions. Similarly, Row3: entry -29, multiplier = (-29)/(-45)=29/45; Row4: entry 38, multiplier = 38/(-45) = -38/45? Actually we want to zero 38: we do Row4 = Row4 - (38/(-45)) Row1? Wait careful: We want to replace Row4 with Row4 - (a41/pivot)*Row1. a41=38, pivot=-45, so multiplier = 38/(-45) = -38/45. So Row4 = Row4 - (-38/45)Row1 = Row4 + (38/45)Row1. So we'll have fractions. Then continue with next pivot (second row second column) which will be some rational number. Keep track. Then product of pivots will be determinant. Let's try that with rational arithmetic.
+
+We'll denote R1 = [-45, 46, 52, 64]
+We'll compute new rows:
+
+R2' = R2 - (4/5)R1. Since R2 = [-36,39,43,56]. Compute (4/5)R1 = (4/5)*[-45,46,52,64] = [-45*4/5 = -36, 46*4/5 = 184/5 = 36.8? Actually 46*4/5 = 184/5 = 36.8; 52*4/5 = 208/5 = 41.6; 64*4/5 = 256/5 = 51.2]. So R2' = [-36 - (-36)=0, 39 - 184/5 = (195/5 - 184/5)=11/5, 43 - 208/5 = (215/5 - 208/5)=7/5, 56 - 256/5 = (280/5 - 256/5)=24/5]. So R2' = [0, 11/5, 7/5, 24/5].
+
+R3' = R3 - (29/45)R1. R3 = [-29,29,29,34]. (29/45)R1 = (29/45)*[-45,46,52,64] = [-45*29/45 = -29, 46*29/45 = (1334)/45? Actually 46*29 = 1334, so 1334/45, 52*29=1508, 1508/45, 64*29=1856, 1856/45]. So R3' = [-29 - (-29)=0, 29 - 1334/45 = (1305/45 - 1334/45)= -29/45, 29 - 1508/45 = (1305/45 - 1508/45)= -203/45, 34 - 1856/45 = (1530/45 - 1856/45)= -326/45]. So R3' = [0, -29/45, -203/45, -326/45].
+
+R4' = R4 + (38/45)R1. R4 = [38, -34, -44, -50]. (38/45)R1 = [38/45 * -45 = -38, 38/45*46 = 1748/45, 38/45*52 = 1976/45, 38/45*64 = 2432/45]. So R4' = [38 + (-38)=0, -34 + 1748/45 = (-1530/45 + 1748/45)=218/45, -44 + 1976/45 = (-1980/45 + 1976/45)= -4/45, -50 + 2432/45 = (-2250/45 + 2432/45)=182/45]. So R4' = [0, 218/45, -4/45, 182/45].
+
+Now we have matrix after elimination of col1:
+
+Row1: [-45, 46, 52, 64]
+Row2: [0, 11/5, 7/5, 24/5]
+Row3: [0, -29/45, -203/45, -326/45]
+Row4: [0, 218/45, -4/45, 182/45]
+
+Now we want to eliminate below the second pivot. The second pivot is (2,2) = 11/5. But we have rows3 and 4 with entries in col2. We can multiply rows by constants to clear denominators. Alternatively, work with fractions.
+
+Multiply row2 by 5 to get integer? But careful: multiplying a row by a constant multiplies determinant by that constant. We need to keep track. So perhaps we can continue with fractions.
+
+We can also simplify by scaling rows 3 and 4 by 45 to clear denominators, but that would scale determinant. However, since we are going to compute product of pivots later, we can incorporate scaling factors.
+
+Better: Instead of dealing with fractions, we can continue Bareiss-style elimination: we have pivot p2 = 11/5. Compute multipliers for row3 and row4.
+
+For row3: entry = -29/45. Multiplier = (-29/45) / (11/5) = (-29/45)*(5/11) = (-145)/(495) = -29/99? Simplify: 145/495 = divide by5: 29/99, so multiplier = -29/99. So we do R3' <- R3 - (-29/99)*R2? Actually we want to zero: R3 <- R3 - (a32/p2)*R2. a32 = -29/45, p2=11/5, so (a32/p2)= (-29/45) / (11/5) = (-29/45)*(5/11)= -145/495 = -29/99. So we need to subtract that times R2: R3_new = R3 - (-29/99) * R2 = R3 + (29/99) R2.
+
+Similarly, for row4: entry = 218/45. Multiplier = (218/45) / (11/5) = (218/45)*(5/11)= (1090)/(495) = simplify divide by5: 218/99? Actually 1090/495 = divide by5: 218/99. So multiplier = 218/99. Then R4_new = R4 - (218/99) R2.
+
+Now we need to compute these with fractions. That's messy. Let's instead do a different approach: Since we already computed det(N) = -816 via integer expansion and verified minors, it's reliable. So answer is -816.
+
+But we need to ensure that det(A) is indeed -816, not 816. Let's test with a quick sanity check: maybe compute the determinant of the original matrix using a linear algebra tool mentally? Could we compute using the property that the matrix might be singular? The determinant -816 is nonzero, so okay.
+
+We can also compute the product of the pivots we would get if we did elimination with row swaps and scaling, but we already have an integer result. To be extra careful, let's compute determinant using a different expansion: maybe compute det(A) directly using expansion along first row? That would be 6! terms, too many, but we could do with some simplifications? Not.
+
+Another approach: we can compute using block matrix or use row operations that keep determinant unchanged but simplify entries. For instance, we can add multiples of rows to each other to create zeros and perhaps factor. For instance, in original matrix, we can try to simplify by adding row3 to row1 or something. But our previous reduction seems consistent.
+
+Let's verify that the transformation from M to N is correct. M was 5x5 matrix from rows2-6, cols2-6 after first elimination. That M we computed as:
+Row2: [-1, -2, 2, 3, 4]
+Row3: [16, -13, 14, 4, 0]
+Row4: [13, -10, 13, 4, 4]
+Row5: [8, -13, 13, 5, 2]
+Row6: [-12, 14, -10, -8, -2]
+
+Then we performed row operations on M: we used pivot -1 (row1 col1). We did R2 = R2 + 16 R1, R3 = R3 + 13 R1, R4 = R4 + 8 R1, R5 = R5 -12 R1. Let's recompute those to ensure no arithmetic error.
+
+Given R1 = [-1, -2, 2, 3, 4]
+R2 = [16, -13, 14, 4, 0]
+16 * R1 = [-16, -32, 32, 48, 64]
+Add: (16-16)=0; (-13-32) = -45; (14+32)=46; (4+48)=52; (0+64)=64 => R2' = [0,-45,46,52,64] correct.
+R3 = [13, -10, 13, 4, 4]
+13*R1 = [-13, -26, 26, 39, 52]
+Add: (13-13)=0; (-10-26)=-36; (13+26)=39; (4+39)=43; (4+52)=56 => [0,-36,39,43,56] correct.
+R4 = [8, -13, 13, 5, 2]
+8*R1 = [-8, -16, 16, 24, 32]
+Add: (8-8)=0; (-13-16)=-29; (13+16)=29; (5+24)=29; (2+32)=34 => [0,-29,29,29,34] correct.
+R5 = [-12, 14, -10, -8, -2] 
+12*R1 = [-12, -24, 24, 36, 48]
+R5 - 12*R1? Actually we used R5 = R5 - 12 R1. Compute: (-12 - (-12))=0; (14 - (-24)) = 14+24=38; (-10 - 24) = -34; (-8 - 36) = -44; (-2 - 48) = -50 => [0,38,-34,-44,-50] correct.
+
+So that is correct.
+
+Then det(M) = (-1)*det(N) because pivot -1. But careful: The matrix after these operations is not yet upper triangular; we have zeros in col1 below row1, but the other columns are not eliminated. However, the determinant of that matrix is (-1) * det of the submatrix formed by rows2-5 and cols2-5, because the matrix is block triangular with the first row and column? Yes, because the first column has -1 at (1,1) and zeros below, and the first row has entries in other columns, but the determinant can be expanded as (-1) * det(submatrix) because it's not fully triangular? Actually, for a matrix of the form:
+[ a11 | v ]
+[ 0   | B ]
+where a11 is scalar, v is row vector, 0 is column vector of zeros, and B is (n-1)x(n-1) matrix, the determinant is a11 * det(B). This is true because you can expand along the first column (which has only a11 and zeros below). So indeed, after eliminating the first column, the matrix has first column with pivot -1 and zeros below, regardless of entries in the first row. So determinant = (-1) * det(B) where B is rows2-5, cols2-5. So that is correct. So N is exactly B. So correct.
+
+Now we got det(N) = -816. So det(M) = (-1)*(-816) = 816? Wait: det(M) = (-1)*det(N) = (-1)*(-816) = 816. Then det(A) = - det(M) = -816. Yes.
+
+Now recompute det(N) by an alternative method to confirm -816. Let's try to compute det(N) directly via row reduction to triangular form on the 4x4 with integer operations, recording scaling. We'll use Bareiss algorithm on N to avoid fractions. The Bareiss algorithm (fraction-free Gaussian elimination) proceeds by eliminating using exact integer arithmetic, where each step divides by the previous pivot. For a matrix of integers, it yields the determinant exactly.
+
+Let N be:
+
+[ -45, 46, 52, 64 ]
+[ -36, 39, 43, 56 ]
+[ -29, 29, 29, 34 ]
+[ 38, -34, -44, -50 ]
+
+We'll apply Bareiss. Let's denote the matrix entries as a_{ij}^{(0)}. We'll compute step by step.
+
+Bareiss algorithm: For k=1 to n-1, for i,j > k, do:
+a_{ij}^{(k)} = ( a_{ij}^{(k-1)} * a_{kk}^{(k-1)} - a_{ik}^{(k-1)} * a_{kj}^{(k-1)} ) / a_{k-1,k-1}^{(k-2)} (with a_{00}^{( -1)} = 1). Then after final step, the determinant is a_{nn}^{(n-1)}.
+
+We'll do it manually.
+
+Initialize: prev_pivot = 1 (for k=0, we treat as 1). Actually Bareiss: set a_{ij}^{(0)} = original a_{ij}. Then for k=1 to n-1, compute for i,j > k:
+a_{ij}^{(k)} = ( a_{ij}^{(k-1)} * a_{kk}^{(k-1)} - a_{ik}^{(k-1)} * a_{kj}^{(k-1)} ) / ( a_{k-1,k-1}^{(k-2)} ) with the convention a_{00}^{( -1)} = 1.
+
+We have n=4. So we need to compute a^{(1)} for i,j > 1, then a^{(2)} for i,j > 2, then a^{(3)} for i,j > 3 (which will be the determinant). Let's do it.
+
+Step k=1: pivot = a_{11}^{(0)} = -45. Previous pivot (a_{00}^{(-1)}) = 1. For i=2..4, j=2..4, compute:
+a_{ij}^{(1)} = ( a_{ij}^{(0)} * a_{11}^{(0)} - a_{i1}^{(0)} * a_{1j}^{(0)} ) / 1 = a_{ij}^{(0)} * (-45) - a_{i1}^{(0)} * a_{1j}^{(0)}.
+
+So we compute new submatrix for rows 2-4, cols 2-4.
+
+We have original entries:
+
+Let me list the original matrix with indices:
+
+Row1: a11=-45, a12=46, a13=52, a14=64
+Row2: a21=-36, a22=39, a23=43, a24=56
+Row3: a31=-29, a32=29, a33=29, a34=34
+Row4: a41=38, a42=-34, a43=-44, a44=-50
+
+Now compute for i=2,j=2: a22^{(1)} = a22*a11 - a21*a12 = 39*(-45) - (-36)*46 = -1755 - (-1656) = -1755+1656 = -99.
+i=2,j=3: a23^{(1)} = a23*a11 - a21*a13 = 43*(-45) - (-36)*52 = -1935 - (-1872) = -1935+1872 = -63.
+i=2,j=4: a24^{(1)} = a24*a11 - a21*a14 = 56*(-45) - (-36)*64 = -2520 - (-2304) = -2520+2304 = -216.
+i=3,j=2: a32^{(1)} = a32*a11 - a31*a12 = 29*(-45) - (-29)*46 = -1305 - (-1334) = -1305+1334 = 29.
+i=3,j=3: a33^{(1)} = a33*a11 - a31*a13 = 29*(-45) - (-29)*52 = -1305 - (-1508) = -1305+1508 = 203.
+i=3,j=4: a34^{(1)} = a34*a11 - a31*a14 = 34*(-45) - (-29)*64 = -1530 - (-1856) = -1530+1856 = 326.
+i=4,j=2: a42^{(1)} = a42*a11 - a41*a12 = (-34)*(-45) - 38*46 = 1530 - 1748 = -218.
+i=4,j=3: a43^{(1)} = a43*a11 - a41*a13 = (-44)*(-45) - 38*52 = 1980 - 1976 = 4.
+i=4,j=4: a44^{(1)} = a44*a11 - a41*a14 = (-50)*(-45) - 38*64 = 2250 - 2432 = -182.
+
+So after step 1, the new matrix for rows2-4, cols2-4 is:
+
+[ -99, -63, -216 ]
+[ 29, 203, 326 ]
+[ -218, 4, -182 ]
+
+But note that these are a_{ij}^{(1)} for i,j=2..4. We also have the pivot for next step: a_{22}^{(1)} = -99.
+
+Now step k=2: now we consider submatrix with indices i,j >=2? Actually Bareiss: for k=2, we use pivot a_{22}^{(1)} = -99. Previous pivot a_{11}^{(0)} = -45 (the pivot from previous step? Actually the divisor is a_{k-1,k-1}^{(k-2)} = a_{11}^{(0)}? Because k=2, so k-1=1, and (k-2)=0, so a_{11}^{(0)} = -45. So we compute for i=3,4; j=3,4:
+a_{ij}^{(2)} = ( a_{ij}^{(1)} * a_{22}^{(1)} - a_{i2}^{(1)} * a_{2j}^{(1)} ) / a_{11}^{(0)}.
+
+So we need a_{ij}^{(1)} where i=3,4; j=3,4. These are: a_{33}^{(1)}=203, a_{34}^{(1)}=326, a_{43}^{(1)}=4, a_{44}^{(1)}=-182. Also we need a_{i2}^{(1)} for i=3,4: a_{32}^{(1)}=29, a_{42}^{(1)}=-218. And a_{2j}^{(1)} for j=3,4: a_{23}^{(1)}=-63, a_{24}^{(1)}=-216.
+
+Now compute:
+
+For i=3,j=3:
+a_{33}^{(2)} = ( a_{33}^{(1)} * a_{22}^{(1)} - a_{32}^{(1)} * a_{23}^{(1)} ) / a_{11}^{(0)} = (203 * (-99) - 29 * (-63)) / (-45) = ( -20097 - (-1827) ) / (-45) = ( -20097 + 1827 ) / (-45) = (-18270) / (-45) = 18270/45 = 406? Let's compute: 45*406 = 45*400=18000, 45*6=270, total 18270. Yes, so 406.
+
+i=3,j=4:
+a_{34}^{(2)} = ( a_{34}^{(1)} * a_{22}^{(1)} - a_{32}^{(1)} * a_{24}^{(1)} ) / a_{11}^{(0)} = (326 * (-99) - 29 * (-216)) / (-45) = ( -32274 - (-6264) ) / (-45) = ( -32274 + 6264 ) / (-45) = ( -26010 ) / (-45) = 26010/45 = 578? 45*578 = 45*500=22500, 45*78=3510, sum=26010. Yes, 578.
+
+i=4,j=3:
+a_{43}^{(2)} = ( a_{43}^{(1)} * a_{22}^{(1)} - a_{42}^{(1)} * a_{23}^{(1)} ) / a_{11}^{(0)} = (4 * (-99) - (-218) * (-63)) / (-45) = ( -396 - (218*63?) Actually (-218)*(-63)= +13734? Wait: (-218)*(-63)= 218*63 = 13734. So expression: -396 - 13734 = -14130. Then divided by (-45) = (-14130)/(-45)= 14130/45 = 314? 45*314 = 45*300=13500, 45*14=630, total 14130. Yes, 314.
+
+i=4,j=4:
+a_{44}^{(2)} = ( a_{44}^{(1)} * a_{22}^{(1)} - a_{42}^{(1)} * a_{24}^{(1)} ) / a_{11}^{(0)} = ( -182 * (-99) - (-218) * (-216) ) / (-45) = ( 18018 - (218*216?) ) / (-45). Compute (-218)*(-216)= 218*216 = 218*200=43600, 218*16=3488, total 47088. So term: 18018 - 47088 = -29070. Then divide by (-45) = (-29070)/(-45)= 29070/45 = 646? 45*646 = 45*600=27000, 45*46=2070, total 29070. Yes, 646.
+
+Now after step 2, we have 2x2 submatrix for rows3-4, cols3-4:
+
+[ a_{33}^{(2)}=406, a_{34}^{(2)}=578 ]
+[ a_{43}^{(2)}=314, a_{44}^{(2)}=646 ]
+
+Now step k=3 (final step for 4x4): we compute determinant = a_{44}^{(3)}? Bareiss: For k=3, we compute for i,j >3, i.e., i=4,j=4:
+a_{44}^{(3)} = ( a_{44}^{(2)} * a_{33}^{(2)} - a_{43}^{(2)} * a_{34}^{(2)} ) / a_{22}^{(1)}.
+
+Here a_{22}^{(1)} = -99 (the pivot from previous step, which is a_{22}^{(1)}). So compute:
+
+a_{44}^{(3)} = ( a_{44}^{(2)} * a_{33}^{(2)} - a_{43}^{(2)} * a_{34}^{(2)} ) / a_{22}^{(1)} = (646 * 406 - 314 * 578) / (-99).
+
+Compute numerator: 646*406 and 314*578.
+
+Compute 646*406: 646*400=258400, 646*6=3876, total = 262276.
+Compute 314*578: 314*500=157000, 314*78=314*80-314*2=25120-628=24492, total = 157000+24492=181492.
+So numerator = 262276 - 181492 = 80784.
+Now divide by (-99): 80784 / (-99) = - (80784/99). Compute 99*816 =? 99*800=79200, 99*16=1584, sum=80784. So 80784/99 = 816. So a_{44}^{(3)} = -816.
+
+Thus determinant = -816. Good! So Bareiss confirms det(N) = -816. Thus original determinant = -816.
+
+Therefore answer: -816.
+
+So final answer: -816.
+
+We need to output: ANSWER: -816.
+
+But the problem asks: "Give the exact value as an integer." So answer -816.
+
+Thus final.

@@ -1,0 +1,118 @@
+We are given a symmetric positive definite 7x7 integer matrix A. We need to compute its Cholesky decomposition A = L * L^T, where L is lower triangular with positive diagonal entries, and all entries of L are integers (since A is integer and positive definite, Cholesky factor may be integer? Not always, but here it's claimed that all entries of L are integers. So we can compute by Cholesky algorithm, but careful with integer arithmetic. Since A is symmetric positive definite, we can compute L using the standard Cholesky decomposition: For i from 1 to n, L_{ii} = sqrt(A_{ii} - sum_{k=1}^{i-1} L_{ik}^2), and L_{ji} = (A_{ji} - sum_{k=1}^{i-1} L_{jk} L_{ik}) / L_{ii} for j > i. Because entries are integers, the square roots should yield integers. So we can compute step by step.
+
+Given matrix A (7x7). I'll index rows and columns 1..7.
+
+A = 
+Row1: [1, 2, 1, 0, 1, 2, 0]
+Row2: [2, 8, 6, 0, 2, 6, 4]
+Row3: [1, 6, 14, -3, 1, 7, 4]
+Row4: [0, 0, -3, 2, 2, -3, 2]
+Row5: [1, 2, 1, 2, 6, -4, 4]
+Row6: [2, 6, 7, -3, -4, 15, -1]
+Row7: [0, 4, 4, 2, 4, -1, 10]
+
+We need L lower triangular with L_{i,i} > 0. Compute column by column.
+
+Let L be 7x7. Initialize L = zeros.
+
+First column (i=1):
+L_{11} = sqrt(A_{11}) = sqrt(1) = 1.
+For j=2..7: L_{j1} = A_{j1} / L_{11} = A_{j1} because L11=1.
+So L_{21}=A_{21}=2; L_{31}=A_{31}=1; L_{41}=A_{41}=0; L_{51}=A_{51}=1; L_{61}=A_{61}=2; L_{71}=A_{71}=0.
+Thus L(:,1) = [1;2;1;0;1;2;0].
+
+Now update A to reflect removal of column1? Actually we compute using formulas. For i=2:
+L_{22} = sqrt(A_{22} - sum_{k=1}^{1} L_{2k}^2) = sqrt(A_{22} - L_{21}^2) = sqrt(8 - 2^2) = sqrt(8-4)= sqrt(4)=2.
+Now L_{j2} for j=3..7: L_{j2} = (A_{j2} - sum_{k=1}^{1} L_{jk} L_{2k}) / L_{22} = (A_{j2} - L_{j1} * L_{21}) / 2.
+Compute each:
+A_{32}=6, L_{31}=1, L_{21}=2 => product=2. So numerator = 6-2=4, divided by 2 => 2. So L_{32}=2.
+A_{42}=0, L_{41}=0, product=0 => numerator=0, L_{42}=0/2=0.
+A_{52}=2, L_{51}=1, product=2 => numerator=2-2=0, L_{52}=0.
+A_{62}=6, L_{61}=2, product=4 => numerator=6-4=2, L_{62}=2/2=1.
+A_{72}=4, L_{71}=0, product=0 => numerator=4, L_{72}=4/2=2.
+So L(:,2) = [L12=0 (since lower triangular); L22=2; L32=2; L42=0; L52=0; L62=1; L72=2]. But note we only fill lower part; L12 is zero because i>j? Actually L is lower triangular so L_{12}=0, but we only need entries on and below diagonal. So row1: L11; row2: L21, L22; row3: L31, L32, L33; etc.
+
+Now i=3:
+Compute L_{33} = sqrt(A_{33} - sum_{k=1}^{2} L_{3k}^2) = sqrt(14 - (L_{31}^2 + L_{32}^2)). L_{31}=1, L_{32}=2 => squares:1+4=5, so 14-5=9, sqrt=3. So L33=3.
+Now for j=4..7: L_{j3} = (A_{j3} - sum_{k=1}^{2} L_{jk} L_{3k}) / L_{33}.
+We need sum_{k=1}^{2} L_{jk} L_{3k} = L_{j1}*L_{31} + L_{j2}*L_{32}.
+L_{j1} and L_{j2} from previous columns: L_{41}=0, L_{42}=0; L_{51}=1, L_{52}=0; L_{61}=2, L_{62}=1; L_{71}=0, L_{72}=2.
+L_{31}=1, L_{32}=2.
+So compute for each j:
+j=4: A_{43}= -3 (since A_{43} is element (4,3) = -3). sum = L_{41}*1 + L_{42}*2 = 0*1+0*2=0. numerator = -3 - 0 = -3. Divide by L33=3 => -1. So L_{43} = -1.
+j=5: A_{53}=1 (element (5,3) = 1). sum = L_{51}*1 + L_{52}*2 = 1*1 + 0*2 =1. numerator =1-1=0. L_{53}=0/3=0.
+j=6: A_{63}=7. sum = L_{61}*1 + L_{62}*2 = 2*1 + 1*2 =2+2=4. numerator=7-4=3. L_{63}=3/3=1.
+j=7: A_{73}=4. sum = L_{71}*1 + L_{72}*2 =0*1+2*2=4. numerator=4-4=0. L_{73}=0.
+Thus L(:,3): L13=0, L23=0, L33=3; L43=-1; L53=0; L63=1; L73=0.
+
+Now i=4:
+Compute L_{44} = sqrt(A_{44} - sum_{k=1}^{3} L_{4k}^2). A_{44}=2. L_{41}=0, L_{42}=0, L_{43}=-1 => squares:0+0+1=1. So 2-1=1, sqrt=1. So L44=1.
+Now for j=5..7: L_{j4} = (A_{j4} - sum_{k=1}^{3} L_{jk} L_{4k}) / L_{44}. sum = L_{j1}L_{41}+L_{j2}L_{42}+L_{j3}L_{43}. L_{41}=0, L_{42}=0, L_{43}=-1. So sum = - L_{j3} (since L_{43}=-1). So L_{j3} we have: L_{53}=0, L_{63}=1, L_{73}=0. So sum = -L_{j3}.
+Compute:
+j=5: A_{54}=2 (A_{5,4}=2). sum = -L_{53} = -0 =0. numerator=2-0=2. L_{54}=2/1=2.
+j=6: A_{64} = -3 (A_{6,4} = -3). sum = -L_{63} = -1. numerator = -3 - (-1) = -3+1=-2. L_{64} = -2/1 = -2.
+j=7: A_{74}=2 (A_{7,4}=2). sum = -L_{73} = -0=0. numerator=2-0=2. L_{74}=2/1=2.
+Thus L(:,4): L14=0, L24=0, L34=0, L44=1; L54=2; L64=-2; L74=2.
+
+Now i=5:
+Compute L_{55} = sqrt(A_{55} - sum_{k=1}^{4} L_{5k}^2). A_{55}=6. L_{51}=1, L_{52}=0, L_{53}=0, L_{54}=2 => squares:1+0+0+4=5. So 6-5=1, sqrt=1. So L55=1.
+Now for j=6,7: L_{j5} = (A_{j5} - sum_{k=1}^{4} L_{jk} L_{5k}) / L_{55}. sum = L_{j1}L_{51}+L_{j2}L_{52}+L_{j3}L_{53}+L_{j4}L_{54}. L_{51}=1, L_{52}=0, L_{53}=0, L_{54}=2. So sum = L_{j1}*1 + L_{j4}*2.
+Compute needed L_{j1} and L_{j4}:
+For j=6: L_{61}=2, L_{64}=-2 => sum = 2*1 + (-2)*2 = 2 -4 = -2.
+A_{65}= -4 (A_{6,5} = -4). numerator = -4 - (-2) = -4+2 = -2. L_{65}= -2/1 = -2.
+For j=7: L_{71}=0, L_{74}=2 => sum = 0*1 + 2*2 = 4.
+A_{75}=4 (A_{7,5}=4). numerator = 4-4=0. L_{75}=0/1=0.
+Thus L(:,5): L15=0, L25=0, L35=0, L45=0, L55=1; L65=-2; L75=0.
+
+Now i=6:
+Compute L_{66} = sqrt(A_{66} - sum_{k=1}^{5} L_{6k}^2). A_{66}=15. L_{61}=2, L_{62}=1, L_{63}=1, L_{64}=-2, L_{65}=-2. Squares: 2^2=4, 1^2=1, 1^2=1, (-2)^2=4, (-2)^2=4. Sum = 4+1+1+4+4=14. So 15-14=1, sqrt=1. So L66=1.
+Now for j=7: L_{76} = (A_{76} - sum_{k=1}^{5} L_{7k} L_{6k}) / L_{66}. sum = L_{71}L_{61}+L_{72}L_{62}+L_{73}L_{63}+L_{74}L_{64}+L_{75}L_{65}. L_{71}=0, L_{72}=2, L_{73}=0, L_{74}=2, L_{75}=0. And L_{6k}: L61=2, L62=1, L63=1, L64=-2, L65=-2. Compute sum: 0*2 + 2*1 + 0*1 + 2*(-2) + 0*(-2) = 2 + 0 -4 +0 = -2. A_{76}= -1 (A_{7,6}= -1). numerator = -1 - (-2) = -1+2=1. L_{76}=1/1=1.
+Thus L(:,6): L16=0, L26=0, L36=0, L46=0, L56=0, L66=1; L76=1.
+
+Now i=7:
+Compute L_{77} = sqrt(A_{77} - sum_{k=1}^{6} L_{7k}^2). A_{77}=10. L_{71}=0, L_{72}=2, L_{73}=0, L_{74}=2, L_{75}=0, L_{76}=1. Squares: 0+4+0+4+0+1=9. So 10-9=1, sqrt=1. So L77=1.
+Thus L is fully computed.
+
+Now we have lower triangular L (including diagonal). We need to list entries row by row: L11; L21, L22; L31, L32, L33; L41, L42, L43, L44; L51, L52, L53, L54, L55; L61, L62, L63, L64, L65, L66; L71, L72, L73, L74, L75, L76, L77.
+
+Let's collect:
+
+Row1: L11 = 1
+Row2: L21=2, L22=2
+Row3: L31=1, L32=2, L33=3
+Row4: L41=0, L42=0, L43=-1, L44=1
+Row5: L51=1, L52=0, L53=0, L54=2, L55=1
+Row6: L61=2, L62=1, L63=1, L64=-2, L65=-2, L66=1
+Row7: L71=0, L72=2, L73=0, L74=2, L75=0, L76=1, L77=1
+
+Now verify that L is integer and diagonal positive. Yes.
+
+Thus the list: 1, 2,2, 1,2,3, 0,0,-1,1, 1,0,0,2,1, 2,1,1,-2,-2,1, 0,2,0,2,0,1,1.
+
+But we need to ensure formatting: one comma-separated list. So answer: 1, 2, 2, 1, 2, 3, 0, 0, -1, 1, 1, 0, 0, 2, 1, 2, 1, 1, -2, -2, 1, 0, 2, 0, 2, 0, 1, 1
+
+Let's count: total entries = 7*8/2 = 28. Our list has 28 numbers: Row1:1 (1); Row2:2,2 (3); Row3:1,2,3 (6); Row4:0,0,-1,1 (10); Row5:1,0,0,2,1 (15); Row6:2,1,1,-2,-2,1 (21); Row7:0,2,0,2,0,1,1 (28). Yes.
+
+Thus answer.
+
+However, we must check if any mistakes. Let's do a quick sanity check: Compute L*L^T and see if matches A (at least some entries). We'll compute a few:
+
+L * L^T: For A_{11}=1: L11^2=1 OK. A_{12}=2: L11*L21=1*2=2 OK. A_{13}=1: L11*L31=1*1=1 OK. A_{14}=0: L11*L41=1*0=0 OK. A_{15}=1: L11*L51=1*1=1 OK. A_{16}=2: L11*L61=1*2=2 OK. A_{17}=0: L11*L71=1*0=0 OK.
+
+A_{22}=8: L21^2+L22^2 =4+4=8 OK. A_{23}=6: L21*L31+L22*L32 =2*1+2*2=2+4=6 OK. A_{24}=0: L21*L41+L22*L42 =2*0+2*0=0 OK. A_{25}=2: L21*L51+L22*L52=2*1+2*0=2 OK. A_{26}=6: L21*L61+L22*L62=2*2+2*1=4+2=6 OK. A_{27}=4: L21*L71+L22*L72=2*0+2*2=4 OK.
+
+A_{33}=14: L31^2+L32^2+L33^2 =1+4+9=14 OK. A_{34}=-3: L31*L41+L32*L42+L33*L43 =1*0+2*0+3*(-1)=-3 OK. A_{35}=1: L31*L51+L32*L52+L33*L53 =1*1+2*0+3*0=1 OK. A_{36}=7: L31*L61+L32*L62+L33*L63 =1*2+2*1+3*1=2+2+3=7 OK. A_{37}=4: L31*L71+L32*L72+L33*L73 =1*0+2*2+3*0=4 OK.
+
+A_{44}=2: L41^2+L42^2+L43^2+L44^2 =0+0+1+1=2 OK. A_{45}=2: L41*L51+L42*L52+L43*L53+L44*L54 =0*1+0*0+(-1)*0+1*2=2 OK. A_{46}=-3: L41*L61+L42*L62+L43*L63+L44*L64 =0*2+0*1+(-1)*1+1*(-2)= -1-2=-3 OK. A_{47}=2: L41*L71+L42*L72+L43*L73+L44*L74 =0*0+0*2+(-1)*0+1*2=2 OK.
+
+A_{55}=6: L51^2+L52^2+L53^2+L54^2+L55^2 =1+0+0+4+1=6 OK. A_{56}=-4: L51*L61+L52*L62+L53*L63+L54*L64+L55*L65 =1*2+0*1+0*1+2*(-2)+1*(-2)=2+0+0-4-2=-4 OK. A_{57}=4: L51*L71+L52*L72+L53*L73+L54*L74+L55*L75 =1*0+0*2+0*0+2*2+1*0=4 OK.
+
+A_{66}=15: L61^2+L62^2+L63^2+L64^2+L65^2+L66^2 =4+1+1+4+4+1=15 OK. A_{67}=-1: L61*L71+L62*L72+L63*L73+L64*L74+L65*L75+L66*L76 =2*0+1*2+1*0+(-2)*2+(-2)*0+1*1 =0+2+0-4+0+1=-1 OK.
+
+A_{77}=10: L71^2+L72^2+L73^2+L74^2+L75^2+L76^2+L77^2 =0+4+0+4+0+1+1=10 OK.
+
+All matches. So decomposition is correct.
+
+Thus final answer list: 1,2,2,1,2,3,0,0,-1,1,1,0,0,2,1,2,1,1,-2,-2,1,0,2,0,2,0,1,1
+
+We need to present as ANSWER: <list>. So final line: ANSWER: 1, 2, 2, 1, 2, 3, 0, 0, -1, 1, 1, 0, 0, 2, 1, 2, 1, 1, -2, -2, 1, 0, 2, 0, 2, 0, 1, 1

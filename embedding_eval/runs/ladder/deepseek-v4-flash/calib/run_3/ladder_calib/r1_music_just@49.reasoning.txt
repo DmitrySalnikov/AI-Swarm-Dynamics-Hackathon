@@ -1,0 +1,303 @@
+We need to compute the frequency of the last note in a melody of 49 notes, starting from G4 at 392 Hz. Each note's frequency is determined by the interval (in semitones) from the previous note, using just intonation ratios given. The notes are given as note names with octave numbers. We need to parse the sequence, determine the interval in semitones between consecutive notes, then multiply or divide the previous frequency by the appropriate ratio (multiply if going up, divide if going down; if same note, ratio 1/1). The sequence is: G4 F4 D4 G4 C5 C4 G4 B4 D5 G4 E4 C4 G4 A4 D5 E5 G5 F5 E5 B4 A4 E4 E5 B4 A4 E4 C4 B3 F4 A4 F4 C5 A4 D5 G4 D4 D5 E5 F5 G5 F5 G5 E5 B4 A4 C5 D5 G4 B4
+
+We need to compute step by step. But we must be careful with octave numbers: The semitone intervals are based on the note names and octaves. Within an octave, the semitone steps: C to D: 2, D to E: 2, E to F: 1, F to G: 2, G to A: 2, A to B: 2, B to C: 1. And octave numbers increase from B to C. So we need to know the exact pitch class and octave to compute the interval in semitones (including octave changes). Essentially, we need to compute the number of semitones difference. Since we have a starting frequency, we can compute each step.
+
+We'll go through the list, note by note, computing the frequency after each step. Since ratios are rational, the final frequency will be a rational number (possibly with large numerator/denominator). We need to reduce fraction.
+
+We have 49 notes. The list: 
+1: G4
+2: F4
+3: D4
+4: G4
+5: C5
+6: C4
+7: G4
+8: B4
+9: D5
+10: G4
+11: E4
+12: C4
+13: G4
+14: A4
+15: D5
+16: E5
+17: G5
+18: F5
+19: E5
+20: B4
+21: A4
+22: E4
+23: E5
+24: B4
+25: A4
+26: E4
+27: C4
+28: B3
+29: F4
+30: A4
+31: F4
+32: C5
+33: A4
+34: D5
+35: G4
+36: D4
+37: D5
+38: E5
+39: F5
+40: G5
+41: F5
+42: G5
+43: E5
+44: B4
+45: A4
+46: C5
+47: D5
+48: G4
+49: B4
+
+We need to compute intervals between consecutive notes (from note i to note i+1). Start with f1 = 392 Hz for G4.
+
+We need to compute the semitone difference between each pair. Let's define note numbers: we can assign numbers to notes based on pitch class and octave. Standard MIDI note numbers: C4 = 60, C#4=61, etc. But we need to compute intervals: the number of semitones from previous to current. Since we have just intonation ratios per semitone, we need the exact interval as a number of semitones (mod 12 but also octave difference). Actually, the ratio for an interval of n semitones is given, where n is between 0 and 12 inclusive. For intervals larger than an octave? The melody may have intervals that are more than an octave? For example, from C4 to C5 is 12 semitones (octave). That's given. From C5 to C4 is -12 semitones (down an octave), which would be dividing by 2/1, so ratio 1/2. But the list only gives ratios for 0-12 semitones. For intervals larger than an octave, we could break into octave components, but the melody likely only uses intervals within an octave? Possibly some intervals might be more than an octave? Let's check: G4 to C5: G4 to C5 is a perfect fourth up? Actually, G4 to C5 is 5 semitones? Wait: G4 to C5: G4 (G4) to G#4 (1), A4 (2), A#4 (3), B4 (4), C5 (5). So it's 5 semitones. That's within octave. But we have moves like C4 to G4: that's up a perfect fifth? C4 to G4 is 7 semitones. G4 to B4: 4 semitones? G4 to G#4 (1), A4 (2), A#4 (3), B4 (4). Yes. D5 to E5: 2 semitones. G5 to F5: down 2 semitones? G5 to F5: G5 down to F5 is 2 semitones down (since G to F is 2 semitones down, but careful: G5 to F5 is a whole step down). So intervals within octave seem fine. But we have B3 to F4? B3 to F4: B3 to C4 is 1 semitone up, C4 to C#4? Actually, B3 to C4 is 1, C4 to F4 is 5 semitones? Let's compute: B3 to C4: 1 semitone (since B to C). Then C4 to F4: C to D 2, D to E 2, E to F 1, total 5 from C to F, but we are from C4 to F4, that's 5 semitones. So total B3 to F4 = 6 semitones up. That's within octave? B3 to F4 is a tritone? Actually, B3 to F4 is 6 semitones (diminished fifth). So still within 12. So all intervals appear to be within an octave? Possibly some might be exactly an octave: like C5 to C4 is -12 semitones, which is given as ratio 2/1 down means divide by 2. So we should handle negative intervals: if the current note is lower in pitch, then the interval in semitones is negative. We use the ratio for the absolute number of semitones? The instruction: "multiply by the ratio when the melody goes up, divide when it goes down, keep the frequency for a repeated note." So if the interval is n semitones up (n>0), multiply by ratio(n). If down n semitones (n>0), divide by ratio(n). For n=0, ratio=1. So we need the absolute number of semitones difference, and direction.
+
+So we need to compute the semitone difference (positive if up, negative if down) between consecutive notes. We'll compute using note names and octaves.
+
+Let's assign each note a numerical value: For simplicity, we can assign a chromatic number within an octave, and octave number. Let's use a mapping: C=0, C#=1, D=2, D#=3, E=4, F=5, F#=6, G=7, G#=8, A=9, A#=10, B=11. Then the note's overall pitch can be represented as (octave * 12) + chromatic. For example, C4 = 4*12 + 0 = 48, C#4=49, D4=50, etc. G4 = 4*12+7 = 55. B4 = 4*12+11 = 59. C5 = 5*12+0 = 60. D5 = 5*12+2 = 62. etc. Then the interval in semitones = new_pitch - old_pitch. That gives signed difference. Then we take absolute value and use ratio accordingly.
+
+We'll compute frequencies step by step, multiplying by ratio up or dividing by ratio down. We should keep as rational numbers to avoid floating point errors. Since the ratios are rational, we can multiply fractions. Start with f = 392 = 392/1. But 392 is 392. However, note that 392 might be expressed as fraction? 392 = 392/1. We'll keep as numerator/denominator. We'll multiply by ratios repeatedly.
+
+We need to compute each step carefully. There are 48 intervals (49 notes). We'll compute sequentially.
+
+Let's list the notes with numeric pitch:
+
+Note1: G4 -> pitch = 4*12 + 7 = 48+7=55? Actually octave 4: 4*12=48, plus 7=55. Yes.
+Note2: F4 -> 4*12 + 5 = 48+5=53.
+So interval = 53-55 = -2 semitones (down 2). Ratio for 2 semitones = 9/8. Down means divide by 9/8, i.e., multiply by 8/9.
+So f2 = f1 * (8/9) = 392 * 8/9 = (392*8)/9 = 3136/9. 3136/9 simplifies? 3136 and 9 share no factors (3136=2^6*49? Actually 3136 = 56^2? 56^2=3136. 56=7*8, so prime factors 2^6 * 7^2. 9=3^2. So no common factors. So f2 = 3136/9 Hz.
+
+Note3: D4 -> pitch = 4*12+2=48+2=50. Interval from F4 (53) to D4 (50) = -3 semitones (down 3). Ratio for 3 semitones = 6/5. Down: divide by 6/5 => multiply by 5/6.
+f3 = f2 * (5/6) = (3136/9)*(5/6) = (3136*5)/(9*6) = (15680)/(54). Simplify: divide numerator and denominator by 2: 7840/27. So f3 = 7840/27 Hz.
+
+Note4: G4 -> pitch 55. Interval from D4 (50) to G4 (55) = +5 semitones up. Ratio for 5 semitones = 4/3. Multiply by 4/3.
+f4 = f3 * (4/3) = (7840/27)*(4/3) = (7840*4)/(27*3) = 31360/81. Simplify? 31360 and 81: 31360 = 3136*10 = 2^6*7^2*2*5? Actually 31360 = 3136*10 = 2^6*7^2 *2*5 = 2^7*5*7^2. 81=3^4. No common. So f4 = 31360/81 Hz.
+
+Note5: C5 -> pitch = 5*12+0=60. Interval from G4 (55) to C5 (60) = +5 semitones up. Multiply by 4/3.
+f5 = f4 * (4/3) = (31360/81)*(4/3) = (31360*4)/(81*3) = 125440/243. Simplify? 125440/243 = maybe reduce? 125440 = 31360*4, earlier 31360=2^7*5*7^2? Actually 31360 = 2^7 *5 *7^2? Let's compute: 2^7=128, 128*5=640, 640*49=31360, yes. Then 125440 = 31360*4 = 2^2 *31360 = 2^9*5*7^2? Actually 31360 has 2^7, times 4=2^2 -> total 2^9. So 125440=2^9*5*7^2. 243=3^5. No common. So f5 = 125440/243 Hz.
+
+Note6: C4 -> pitch = 4*12+0=48. Interval from C5 (60) to C4 (48) = -12 semitones (down octave). Ratio for 12 semitones = 2/1. Down: divide by 2/1 => multiply by 1/2.
+f6 = f5 * (1/2) = (125440/243)*(1/2) = 125440/(486) = simplify divide by 2: 62720/243. So f6 = 62720/243 Hz.
+
+Note7: G4 -> pitch 55. Interval from C4 (48) to G4 (55) = +7 semitones up. Ratio for 7 semitones = 3/2. Multiply by 3/2.
+f7 = f6 * (3/2) = (62720/243)*(3/2) = (62720*3)/(243*2) = (188160)/(486). Simplify divide numerator and denominator by 2: 94080/243. Can we simplify further? 94080 and 243: 243=3^5=243. 94080 ÷ 3 = 31360, so 94080/3 = 31360, so 94080 = 3*31360. 31360 not divisible by 3. So 94080/243 = (3*31360)/(3^5) = 31360/3^4 = 31360/81. So f7 = 31360/81. That's interesting: we had f4 = 31360/81. So after these steps, we are back to that frequency? Actually f4 was 31360/81, and f7 is the same? f7 = 31360/81. So that matches: from G4 to C5 to C4 to G4, we went up 5, down 12, up 7, net effect? Actually from G4 to C5 up 5 (multiply 4/3), then down 12 (multiply 1/2), then up 7 (multiply 3/2). Net multiplier = (4/3)*(1/2)*(3/2) = (4*3)/(3*2*2) = 12/12=1. So yes, returns to same frequency. So f7 = 31360/81 Hz.
+
+Note8: B4 -> pitch = 4*12+11=59. Interval from G4 (55) to B4 (59) = +4 semitones up. Ratio for 4 semitones = 5/4. Multiply by 5/4.
+f8 = f7 * (5/4) = (31360/81)*(5/4) = (31360*5)/(81*4) = (156800)/(324). Simplify: divide numerator and denominator by 4? 156800/4 = 39200, 324/4=81. So f8 = 39200/81 Hz. Or 39200/81. We can keep as 39200/81.
+
+Note9: D5 -> pitch = 5*12+2=62. Interval from B4 (59) to D5 (62) = +3 semitones up. Ratio for 3 semitones = 6/5. Multiply by 6/5.
+f9 = f8 * (6/5) = (39200/81)*(6/5) = (39200*6)/(81*5) = (235200)/(405). Simplify: divide numerator and denominator by 15? 235200/15 = 15680, 405/15=27. So f9 = 15680/27 Hz. Or 15680/27. That's interesting: earlier f3 was 7840/27, so this is double? Actually 15680/27 = 2 * 7840/27. So f9 = 15680/27.
+
+Note10: G4 -> pitch 55. Interval from D5 (62) to G4 (55) = -7 semitones down. Ratio for 7 semitones = 3/2. Down: divide by 3/2 => multiply by 2/3.
+f10 = f9 * (2/3) = (15680/27)*(2/3) = (15680*2)/(27*3) = 31360/81. So f10 = 31360/81 again.
+
+Note11: E4 -> pitch = 4*12+4=52. Interval from G4 (55) to E4 (52) = -3 semitones down. Ratio for 3 = 6/5, down => multiply by 5/6.
+f11 = f10 * (5/6) = (31360/81)*(5/6) = (31360*5)/(81*6) = 156800/(486). Simplify: divide numerator and denominator by 2: 78400/243. So f11 = 78400/243 Hz.
+
+Note12: C4 -> pitch = 48. Interval from E4 (52) to C4 (48) = -4 semitones down. Ratio for 4 = 5/4, down => multiply by 4/5.
+f12 = f11 * (4/5) = (78400/243)*(4/5) = (78400*4)/(243*5) = 313600/(1215). Simplify? 313600 and 1215: Let's see if divisible by 5? 313600/5=62720, 1215/5=243. So f12 = 62720/243 Hz. That matches f6? f6 was 62720/243. Yes.
+
+Note13: G4 -> pitch 55. Interval from C4 (48) to G4 (55) = +7 semitones up. Multiply by 3/2.
+f13 = f12 * (3/2) = (62720/243)*(3/2) = (62720*3)/(243*2) = 188160/486 = 94080/243 = 31360/81 after simplifying as before. So f13 = 31360/81.
+
+Note14: A4 -> pitch = 4*12+9=57. Interval from G4 (55) to A4 (57) = +2 semitones up. Ratio for 2 = 9/8. Multiply by 9/8.
+f14 = f13 * (9/8) = (31360/81)*(9/8) = (31360*9)/(81*8) = (282240)/(648). Simplify: divide numerator and denominator by 72? Let's compute: 282240/648. Divide by 8: 35280/81? Actually 648/8=81, but 282240/8=35280. So f14 = 35280/81? But 35280/81 = ? Simplify more: 35280 and 81 share factor 3? 35280/3=11760, 81/3=27, so 11760/27; again /3: 3920/9. So f14 = 3920/9? Wait let's do carefully: 
+282240/648. Factor: 282240 = 28224*10? Better to simplify stepwise: 
+First, note that 31360/81 * 9/8 = (31360*9)/(81*8) = (31360/8)*(9/81) = (3920)*(1/9) = 3920/9. Because 31360/8 = 3920, and 9/81=1/9. So f14 = 3920/9 Hz. Yes! So f14 = 3920/9.
+
+Note15: D5 -> pitch = 62. Interval from A4 (57) to D5 (62) = +5 semitones up. Ratio 4/3. Multiply by 4/3.
+f15 = f14 * (4/3) = (3920/9)*(4/3) = (3920*4)/(9*3) = 15680/27. That's f9 again? Yes f9 was 15680/27.
+
+Note16: E5 -> pitch = 5*12+4=64. Interval from D5 (62) to E5 (64) = +2 semitones up. Ratio 9/8. Multiply by 9/8.
+f16 = f15 * (9/8) = (15680/27)*(9/8) = (15680*9)/(27*8) = (15680/8)*(9/27) = 1960 * (1/3) = 1960/3? Wait: 15680/8 = 1960, 9/27=1/3, so f16 = 1960/3 Hz. But let's verify: 1960/3 ≈ 653.33 Hz. That seems plausible for E5. But also note: 1960/3 = 1960/3. We can keep as fraction.
+
+Note17: G5 -> pitch = 5*12+7=67. Interval from E5 (64) to G5 (67) = +3 semitones up. Ratio 6/5. Multiply by 6/5.
+f17 = f16 * (6/5) = (1960/3)*(6/5) = (1960*6)/(3*5) = (11760)/(15) = 784? Because 11760/15 = 784. So f17 = 784 Hz. That's a nice integer. 784 Hz is G5? Actually G4 is 392, G5 is 784, yes. So f17 = 784.
+
+Note18: F5 -> pitch = 5*12+5=65. Interval from G5 (67) to F5 (65) = -2 semitones down. Ratio 9/8, down => multiply by 8/9.
+f18 = f17 * (8/9) = 784 * 8/9 = 6272/9 Hz. So f18 = 6272/9.
+
+Note19: E5 -> pitch = 64. Interval from F5 (65) to E5 (64) = -1 semitone down. Ratio for 1 = 16/15, down => multiply by 15/16.
+f19 = f18 * (15/16) = (6272/9)*(15/16) = (6272*15)/(9*16) = (6272/16)*(15/9) = 392 * (5/3) because 15/9=5/3. So f19 = 392 * 5/3 = 1960/3 Hz. Which matches f16. So f19 = 1960/3.
+
+Note20: B4 -> pitch = 59. Interval from E5 (64) to B4 (59) = -5 semitones down. Ratio for 5 = 4/3, down => multiply by 3/4.
+f20 = f19 * (3/4) = (1960/3)*(3/4) = 1960/4 = 490 Hz. So f20 = 490 Hz.
+
+Note21: A4 -> pitch = 57. Interval from B4 (59) to A4 (57) = -2 semitones down. Ratio 9/8, down => multiply by 8/9.
+f21 = f20 * (8/9) = 490 * 8/9 = 3920/9 Hz. So f21 = 3920/9. That's f14.
+
+Note22: E4 -> pitch = 52. Interval from A4 (57) to E4 (52) = -5 semitones down. Ratio 4/3, down => multiply by 3/4.
+f22 = f21 * (3/4) = (3920/9)*(3/4) = (3920*3)/(9*4) = (11760)/(36) = simplify divide by 12: 980/3? Actually 11760/36 = 11760÷12 = 980, 36÷12=3, so 980/3 Hz. So f22 = 980/3? But wait, 980/3 ≈ 326.67 Hz. But E4 should be around 329.63? Actually E4 is 329.63 in equal temperament, but just intonation might be different. However, we have 980/3 = 326.666..., maybe it's correct given the path. Alternatively, we can compute directly: 3920/9 * 3/4 = (3920*3)/(36) = 11760/36 = 980/3. Yes.
+
+Note23: E5 -> pitch = 64. Interval from E4 (52) to E5 (64) = +12 semitones up (octave). Ratio 2/1. Multiply by 2.
+f23 = f22 * 2 = (980/3)*2 = 1960/3 Hz. That's f16 again.
+
+Note24: B4 -> pitch = 59. Interval from E5 (64) to B4 (59) = -5 semitones down. Ratio 4/3, down => multiply by 3/4.
+f24 = f23 * (3/4) = (1960/3)*(3/4) = 1960/4 = 490 Hz. So f24 = 490.
+
+Note25: A4 -> pitch = 57. Interval from B4 (59) to A4 (57) = -2 semitones down. Multiply by 8/9.
+f25 = 490 * 8/9 = 3920/9 Hz.
+
+Note26: E4 -> pitch = 52. Interval from A4 (57) to E4 (52) = -5 semitones down. Multiply by 3/4.
+f26 = (3920/9)*(3/4) = 980/3 Hz.
+
+Note27: C4 -> pitch = 48. Interval from E4 (52) to C4 (48) = -4 semitones down. Ratio for 4 = 5/4, down => multiply by 4/5.
+f27 = f26 * (4/5) = (980/3)*(4/5) = (980*4)/(3*5) = 3920/15 = simplify divide by 5: 784/3? Actually 3920/15 = 784/3? Because 3920/5=784, 15/5=3, so 784/3 Hz. So f27 = 784/3 ≈ 261.33 Hz. That's C4? C4 is normally 261.63, but here 261.33 is close. Good.
+
+Note28: B3 -> pitch = 3*12+11 = 36+11=47. Interval from C4 (48) to B3 (47) = -1 semitone down. Ratio for 1 = 16/15, down => multiply by 15/16.
+f28 = f27 * (15/16) = (784/3)*(15/16) = (784*15)/(3*16) = (784/16)*(15/3) = 49 * 5 = 245? Because 784/16=49, 15/3=5, so f28 = 245 Hz. So f28 = 245.
+
+Note29: F4 -> pitch = 4*12+5=53. Interval from B3 (47) to F4 (53) = +6 semitones up. Ratio for 6 = 45/32. Multiply by 45/32.
+f29 = f28 * (45/32) = 245 * 45/32 = (245*45)/32 = (11025)/32? Because 245*45 = 245*40 + 245*5 = 9800+1225=11025. So f29 = 11025/32 Hz. Simplify? 11025 and 32 share no common factors (11025=3^2*5^2*7^2? Actually 11025=105^2= (3*5*7)^2 = 3^2*5^2*7^2). So f29 = 11025/32.
+
+Note30: A4 -> pitch = 57. Interval from F4 (53) to A4 (57) = +4 semitones up. Ratio 5/4. Multiply by 5/4.
+f30 = f29 * (5/4) = (11025/32)*(5/4) = (11025*5)/(32*4) = 55125/128 Hz. Simplify? 55125/128. 55125 = 11025*5 = 3^2*5^3*7^2? Actually 11025=3^2*5^2*7^2, times 5 gives 3^2*5^3*7^2 = 9*125*49=9*6125=55125. So f30 = 55125/128.
+
+Note31: F4 -> pitch 53. Interval from A4 (57) to F4 (53) = -4 semitones down. Ratio 5/4, down => multiply by 4/5.
+f31 = f30 * (4/5) = (55125/128)*(4/5) = (55125*4)/(128*5) = (220500)/(640) = simplify divide by 20? 220500/20=11025, 640/20=32, so f31 = 11025/32. Same as f29.
+
+Note32: C5 -> pitch = 60. Interval from F4 (53) to C5 (60) = +7 semitones up. Ratio 3/2. Multiply by 3/2.
+f32 = f31 * (3/2) = (11025/32)*(3/2) = (11025*3)/(32*2) = 33075/64 Hz. Simplify? 33075/64. 33075 = 11025*3 = 3^3*5^2*7^2 = 27*25*49=27*1225=33075. So f32 = 33075/64.
+
+Note33: A4 -> pitch = 57. Interval from C5 (60) to A4 (57) = -3 semitones down. Ratio 6/5, down => multiply by 5/6.
+f33 = f32 * (5/6) = (33075/64)*(5/6) = (33075*5)/(64*6) = 165375/(384). Simplify: divide numerator and denominator by 3? 165375/3=55125, 384/3=128, so f33 = 55125/128. That's f30.
+
+Note34: D5 -> pitch = 62. Interval from A4 (57) to D5 (62) = +5 semitones up. Ratio 4/3. Multiply by 4/3.
+f34 = f33 * (4/3) = (55125/128)*(4/3) = (55125*4)/(128*3) = (220500)/(384) = simplify divide by 12? 220500/12=18375? Actually let's do: divide numerator and denominator by 4? 220500/4=55125, 384/4=96, so 55125/96? Not simpler. Better: 220500/384 = divide by 12: 220500/12=18375, 384/12=32, so f34 = 18375/32 Hz? But 18375/32? Let's compute: 220500/384 = reduce by dividing by 4: 55125/96, then divide by 3: 18375/32. Yes because 55125/3=18375, 96/3=32. So f34 = 18375/32. But is that correct? Let's check: 55125/128 * 4/3 = (55125*4)/(128*3) = 220500/384. Simplify: gcd(220500,384)? 384=2^7*3? Actually 384=128*3, so 384=2^7*3. 220500 = 2205*100 = 2205*100 = 2205=5*441=5*21^2=5*3^2*7^2, times 100=2^2*5^2, so overall 2^2*3^2*5^3*7^2. So common factors: 2^2? Actually denominator 384 has 2^7*3, numerator has 2^2 and 3^2, so common factor 2^2*3 = 12. So 220500/12=18375, 384/12=32. So f34 = 18375/32. That's not a simple fraction we've seen before.
+
+Note35: G4 -> pitch = 55. Interval from D5 (62) to G4 (55) = -7 semitones down. Ratio 3/2, down => multiply by 2/3.
+f35 = f34 * (2/3) = (18375/32)*(2/3) = (18375*2)/(32*3) = 36750/96 = simplify: divide by 6? 36750/6=6125, 96/6=16, so f35 = 6125/16 Hz. So f35 = 6125/16? Let's simplify: 6125/16 = 6125/16, 6125=5^3*7^2? Actually 5^3=125, 125*49=6125. So f35 = 6125/16.
+
+Note36: D4 -> pitch = 50. Interval from G4 (55) to D4 (50) = -5 semitones down. Ratio 4/3, down => multiply by 3/4.
+f36 = f35 * (3/4) = (6125/16)*(3/4) = (6125*3)/(16*4) = 18375/64 Hz. So f36 = 18375/64.
+
+Note37: D5 -> pitch = 62. Interval from D4 (50) to D5 (62) = +12 semitones up. Ratio 2/1. Multiply by 2.
+f37 = f36 * 2 = (18375/64)*2 = 18375/32 Hz. That's f34 again? f34 was 18375/32. Yes.
+
+Note38: E5 -> pitch = 64. Interval from D5 (62) to E5 (64) = +2 semitones up. Ratio 9/8. Multiply by 9/8.
+f38 = f37 * (9/8) = (18375/32)*(9/8) = (18375*9)/(32*8) = 165375/256? Let's compute: 18375*9 = 165375, denominator 256. So f38 = 165375/256. Simplify? 165375 and 256: 256=2^8, numerator has factors 3^2*5^3*7^2? Actually 18375=3*5^3*7^2? Wait 18375 = earlier we had 18375 = 3*6125 = 3*5^3*7^2 = 3*125*49=3*6125=18375. So 18375*9 = 18375*9 = 165375 = 9*18375 = 3^2*18375 = 3^2*3*5^3*7^2 = 3^3*5^3*7^2 = 27*125*49 = 27*6125=165375. So numerator has no factor 2, denominator is power of 2, so fraction is reduced? Possibly. So f38 = 165375/256.
+
+Note39: F5 -> pitch = 65. Interval from E5 (64) to F5 (65) = +1 semitone up. Ratio 16/15. Multiply by 16/15.
+f39 = f38 * (16/15) = (165375/256)*(16/15) = (165375*16)/(256*15) = (165375/15)*(16/256) = (11025)*(1/16) because 165375/15 = 11025? Let's check: 165375 ÷ 15 = 11025 exactly (since 15*11025=165375). And 16/256 = 1/16. So f39 = 11025/16 Hz. So f39 = 11025/16.
+
+Note40: G5 -> pitch = 67. Interval from F5 (65) to G5 (67) = +2 semitones up. Ratio 9/8. Multiply by 9/8.
+f40 = f39 * (9/8) = (11025/16)*(9/8) = (11025*9)/(16*8) = 99225/128 Hz. So f40 = 99225/128. Simplify? 99225 = 11025*9 = 9*11025 = 99225. 11025=3^2*5^2*7^2, times 9=3^4*5^2*7^2 = 81*25*49=81*1225=99225. So f40 = 99225/128.
+
+Note41: F5 -> pitch = 65. Interval from G5 (67) to F5 (65) = -2 semitones down. Ratio 9/8, down => multiply by 8/9.
+f41 = f40 * (8/9) = (99225/128)*(8/9) = (99225*8)/(128*9) = (99225/9)*(8/128) = 11025 * (1/16) = 11025/16. So f41 = 11025/16. That's f39.
+
+Note42: G5 -> pitch = 67. Interval from F5 (65) to G5 (67) = +2 semitones up. Multiply by 9/8.
+f42 = f41 * (9/8) = (11025/16)*(9/8) = 99225/128 again. So f42 = 99225/128.
+
+Note43: E5 -> pitch = 64. Interval from G5 (67) to E5 (64) = -3 semitones down. Ratio 6/5, down => multiply by 5/6.
+f43 = f42 * (5/6) = (99225/128)*(5/6) = (99225*5)/(128*6) = 496125/(768). Simplify: divide numerator and denominator by 3? 496125/3=165375, 768/3=256, so f43 = 165375/256. That's f38! So f43 = 165375/256.
+
+Note44: B4 -> pitch = 59. Interval from E5 (64) to B4 (59) = -5 semitones down. Ratio 4/3, down => multiply by 3/4.
+f44 = f43 * (3/4) = (165375/256)*(3/4) = (165375*3)/(256*4) = 496125/1024. Simplify? 496125/1024. Check if divisible by something? 496125 = 3*165375 = 3*3^3*5^3*7^2? Actually 165375=3^3*5^3*7^2, times 3 gives 3^4*5^3*7^2 = 81*125*49 = 81*6125=496125. So numerator = 3^4*5^3*7^2, denominator=1024=2^10. No common factors, so f44 = 496125/1024.
+
+Note45: A4 -> pitch = 57. Interval from B4 (59) to A4 (57) = -2 semitones down. Ratio 9/8, down => multiply by 8/9.
+f45 = f44 * (8/9) = (496125/1024)*(8/9) = (496125*8)/(1024*9) = (496125/9)*(8/1024) = (55125)*(1/128) because 496125/9=55125? Let's check: 9*55125=496125, yes. And 8/1024=1/128. So f45 = 55125/128. That's f30? f30 was 55125/128? Yes f30 = 55125/128. So f45 = 55125/128.
+
+Note46: C5 -> pitch = 60. Interval from A4 (57) to C5 (60) = +3 semitones up. Ratio 6/5. Multiply by 6/5.
+f46 = f45 * (6/5) = (55125/128)*(6/5) = (55125*6)/(128*5) = (330750)/(640) = simplify divide by 10? 33075/64? Actually 330750/640 = divide numerator and denominator by 10: 33075/64. So f46 = 33075/64. That's f32! Yes f32 was 33075/64.
+
+Note47: D5 -> pitch = 62. Interval from C5 (60) to D5 (62) = +2 semitones up. Ratio 9/8. Multiply by 9/8.
+f47 = f46 * (9/8) = (33075/64)*(9/8) = (33075*9)/(64*8) = 297675/512? Let's compute: 33075*9 = 297675, denominator 512. So f47 = 297675/512. Simplify? 297675 = 33075*9 = 3^2? Actually 33075=3^3*5^2*7^2? Wait earlier 33075=3^3*5^2*7^2? Let's recompute: 33075 = 3*11025, and 11025=3^2*5^2*7^2, so 33075=3^3*5^2*7^2 = 27*25*49=27*1225=33075. Then times 9 gives 3^5*5^2*7^2 = 243*25*49=243*1225=297675. Denominator 512=2^9. No common factors. So f47 = 297675/512.
+
+Note48: G4 -> pitch = 55. Interval from D5 (62) to G4 (55) = -7 semitones down. Ratio 3/2, down => multiply by 2/3.
+f48 = f47 * (2/3) = (297675/512)*(2/3) = (297675*2)/(512*3) = 595350/(1536). Simplify: divide numerator and denominator by 6? 595350/6=99225, 1536/6=256, so f48 = 99225/256? Actually 99225/256? Let's check: 595350/1536 = divide by 2: 297675/768, then divide by 3: 99225/256. Yes f48 = 99225/256. But earlier we had f40 = 99225/128, so this is half that? 99225/256 = (99225/128)/2. So f48 = 99225/256.
+
+Note49: B4 -> pitch = 59. Interval from G4 (55) to B4 (59) = +4 semitones up. Ratio 5/4. Multiply by 5/4.
+f49 = f48 * (5/4) = (99225/256)*(5/4) = (99225*5)/(256*4) = 496125/1024. That's f44! So f49 = 496125/1024.
+
+Thus the frequency of the last note (B4) is 496125/1024 Hz.
+
+We should reduce this fraction? Check if numerator and denominator have any common factors. Numerator 496125, denominator 1024. 1024 = 2^10. Numerator is odd (ends with 5), so no factor 2. So fraction is already in lowest terms? But we should check if numerator divisible by any other factor that might cancel with 2? No, denominator is power of 2, numerator odd, so no cancellation. So it's reduced.
+
+Thus answer: 496125/1024 Hz.
+
+But let's verify if any simplification possible: 496125 divided by 5 = 99225, but denominator doesn't have 5. So no.
+
+We can also write as decimal if needed, but answer requires reduced fraction a/b.
+
+Thus final answer: 496125/1024.
+
+But note: The problem says "Give it as a reduced fraction a/b in Hz (or an integer if b = 1)." So it's a fraction. So answer is 496125/1024.
+
+We should double-check the entire sequence for any potential mistakes. The list is long; we can re-calc some key steps to ensure no arithmetic error.
+
+Let's verify the frequencies we got for some key notes to ensure consistency. Starting from G4=392. We computed f2=3136/9, f3=7840/27, f4=31360/81, f5=125440/243, f6=62720/243, f7=31360/81, f8=39200/81, f9=15680/27, f10=31360/81, f11=78400/243, f12=62720/243, f13=31360/81, f14=3920/9, f15=15680/27, f16=1960/3, f17=784, f18=6272/9, f19=1960/3, f20=490, f21=3920/9, f22=980/3, f23=1960/3, f24=490, f25=3920/9, f26=980/3, f27=784/3, f28=245, f29=11025/32, f30=55125/128, f31=11025/32, f32=33075/64, f33=55125/128, f34=18375/32, f35=6125/16, f36=18375/64, f37=18375/32, f38=165375/256, f39=11025/16, f40=99225/128, f41=11025/16, f42=99225/128, f43=165375/256, f44=496125/1024, f45=55125/128, f46=33075/64, f47=297675/512, f48=99225/256, f49=496125/1024.
+
+Now, we should check if any step could have been simplified differently, but the final fraction seems consistent.
+
+Another check: The last note is B4. The just intonation ratio for a major third from G4 is 5/4, so starting from G4=392, a perfect major third up would be 392*5/4 = 490 Hz. But we got 496125/1024 ≈ 484.5? Wait compute 496125/1024 = ? 1024*484 = 1024*500=512000, minus 1024*16=16384, so 512000-16384=495616, so 496125-495616=509, so about 484.5? Actually 496125/1024 = 484.5? Let's do division: 1024*484 = 1024*400=409600, 1024*84=86016, sum=495616, remainder 509, so 484 + 509/1024 ≈ 484.497. That's not 490. So why is it not 490? Because the frequency of G4 is not constant; it changed from the original G4 due to previous intervals. The last G4 (note48) is not the original G4; it's 99225/256 ≈ 387.6 Hz? Actually 99225/256 = 387.59765625 Hz. So from that G4, a major third up gives (99225/256)*(5/4)=496125/1024 ≈ 484.5 Hz. So the final B4 is about 484.5 Hz. In equal temperament, B4 is about 493.88, but just intonation major third from G is 5/4 = 1.25, and G4=392 gives 490, but since G4 is not 392 here, it's different. So seems plausible.
+
+We can also check some other consistency: For example, we had f17=784 for G5, which is exactly double G4's original 392, so that was a pure octave from original? Actually from G4 to G5 we had steps: G4->...->G5. That path ended up with exact double, so nice.
+
+Now, we should verify that the intervals we used are correct for each note transition. Let's double-check the note sequence and intervals to ensure we didn't miscompute any semitone difference. Let's list note names and pitches again:
+
+We have list as given: 
+1 G4 (55)
+2 F4 (53) -> down 2
+3 D4 (50) -> down 3 from F4? Actually F4=53 to D4=50 is down 3, correct.
+4 G4 (55) -> up 5 from D4? D4=50 to G4=55 is up 5, correct.
+5 C5 (60) -> up 5 from G4? G4=55 to C5=60 up 5, correct.
+6 C4 (48) -> down 12 from C5? 60 to 48 down 12, correct.
+7 G4 (55) -> up 7 from C4? 48 to 55 up 7, correct.
+8 B4 (59) -> up 4 from G4? 55 to 59 up 4, correct.
+9 D5 (62) -> up 3 from B4? 59 to 62 up 3, correct.
+10 G4 (55) -> down 7 from D5? 62 to 55 down 7, correct.
+11 E4 (52) -> down 3 from G4? 55 to 52 down 3, correct.
+12 C4 (48) -> down 4 from E4? 52 to 48 down 4, correct.
+13 G4 (55) -> up 7 from C4? 48 to 55 up 7, correct.
+14 A4 (57) -> up 2 from G4? 55 to 57 up 2, correct.
+15 D5 (62) -> up 5 from A4? 57 to 62 up 5, correct.
+16 E5 (64) -> up 2 from D5? 62 to 64 up 2, correct.
+17 G5 (67) -> up 3 from E5? 64 to 67 up 3, correct.
+18 F5 (65) -> down 2 from G5? 67 to 65 down 2, correct.
+19 E5 (64) -> down 1 from F5? 65 to 64 down 1, correct.
+20 B4 (59) -> down 5 from E5? 64 to 59 down 5, correct.
+21 A4 (57) -> down 2 from B4? 59 to 57 down 2, correct.
+22 E4 (52) -> down 5 from A4? 57 to 52 down 5, correct.
+23 E5 (64) -> up 12 from E4? 52 to 64 up 12, correct.
+24 B4 (59) -> down 5 from E5? 64 to 59 down 5, correct.
+25 A4 (57) -> down 2 from B4? 59 to 57 down 2, correct.
+26 E4 (52) -> down 5 from A4? 57 to 52 down 5, correct.
+27 C4 (48) -> down 4 from E4? 52 to 48 down 4, correct.
+28 B3 (47) -> down 1 from C4? 48 to 47 down 1, correct.
+29 F4 (53) -> up 6 from B3? 47 to 53 up 6, correct.
+30 A4 (57) -> up 4 from F4? 53 to 57 up 4, correct.
+31 F4 (53) -> down 4 from A4? 57 to 53 down 4, correct.
+32 C5 (60) -> up 7 from F4? 53 to 60 up 7, correct.
+33 A4 (57) -> down 3 from C5? 60 to 57 down 3, correct.
+34 D5 (62) -> up 5 from A4? 57 to 62 up 5, correct.
+35 G4 (55) -> down 7 from D5? 62 to 55 down 7, correct.
+36 D4 (50) -> down 5 from G4? 55 to 50 down 5, correct.
+37 D5 (62) -> up 12 from D4? 50 to 62 up 12, correct.
+38 E5 (64) -> up 2 from D5? 62 to 64 up 2, correct.
+39 F5 (65) -> up 1 from E5? 64 to 65 up 1, correct.
+40 G5 (67) -> up 2 from F5? 65 to 67 up 2, correct.
+41 F5 (65) -> down 2 from G5? 67 to 65 down 2, correct.
+42 G5 (67) -> up 2 from F5? 65 to 67 up 2, correct.
+43 E5 (64) -> down 3 from G5? 67 to 64 down 3, correct.
+44 B4 (59) -> down 5 from E5? 64 to 59 down 5, correct.
+45 A4 (57) -> down 2 from B4? 59 to 57 down 2, correct.
+46 C5 (60) -> up 3 from A4? 57 to 60 up 3, correct.
+47 D5 (62) -> up 2 from C5? 60 to 62 up 2, correct.
+48 G4 (55) -> down 7 from D5? 62 to 55 down 7, correct.
+49 B4 (59) -> up 4 from G4? 55 to 59 up 4, correct.
+
+All intervals correct. So the arithmetic steps should be fine.
+
+Thus final frequency = 496125/1024 Hz.
+
+We should present answer as "ANSWER: 496125/1024". Possibly they want the fraction in simplest form. Since numerator and denominator are coprime (denominator is power of 2, numerator odd), it's simplest.
+
+Therefore answer: 496125/1024.

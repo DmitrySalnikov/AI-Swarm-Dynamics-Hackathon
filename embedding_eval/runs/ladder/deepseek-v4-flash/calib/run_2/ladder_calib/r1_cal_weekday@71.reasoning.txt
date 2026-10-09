@@ -1,0 +1,1088 @@
+We need to compute the day of the week for each given date in the Gregorian calendar, extended to all years (including before 1582? The problem says "Gregorian calendar (extended to all years shown; leap years are years divisible by 4, except years divisible by 100 that are not divisible by 400)". So it's the proleptic Gregorian calendar, meaning we use the rules of the Gregorian calendar even for dates before it was adopted. So we just compute using the standard algorithm, e.g., Zeller's congruence or known formulas.
+
+We have 71 dates. I'll compute each systematically. I'll use an algorithm: For a given date (year, month, day), compute the day of the week. I'll use the following method:
+
+- For Gregorian calendar, we can use the formula: 
+  h = (d + floor(13*(m+1)/5) + K + floor(K/4) + floor(J/4) - 2*J) mod 7
+  where:
+    m = month (3=March, 4=April, ..., 14=February) -> adjust: treat January and February as months 13 and 14 of the previous year.
+    d = day
+    J = century (year/100) floor
+    K = year within century (year mod 100)
+  Then h from 0=Saturday, 1=Sunday, ..., 6=Friday? Actually Zeller's congruence gives: h = (d + floor(13(m+1)/5) + K + floor(K/4) + floor(J/4) + 5J) mod 7, but careful: There are variants. I'll use a common one: 
+    For Gregorian: 
+      h = (d + floor((13*(m+1))/5) + K + floor(K/4) + floor(J/4) + 5*J) mod 7
+    where m is month from March=3, April=4, ..., January=13, February=14, and year is adjusted: for Jan and Feb, year = year - 1.
+    Then h=0 -> Saturday, 1->Sunday, 2->Monday, 3->Tuesday, 4->Wednesday, 5->Thursday, 6->Friday. Or another mapping: h mod 7 with 0=Saturday, etc. But we can also use a simpler method: compute the number of days since a known reference (like 1 Jan 0001, but careful with Gregorian rules). Alternatively, use a known algorithm like Tomohiko Sakamoto's algorithm, which is straightforward.
+
+I'll use Tomohiko Sakamoto's algorithm, which uses an array of offsets for months (0,3,2,5,0,3,5,1,4,6,2,4) and formula: day_of_week = (y + y/4 - y/100 + y/400 + offset[m-1] + d) % 7, where y is year, m month, d day. But for Jan and Feb, we treat y = year - 1. Actually the algorithm: 
+  int day_of_week(int y, int m, int d) {
+    static int t[] = {0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4};
+    if (m < 3) y -= 1;
+    return (y + y/4 - y/100 + y/400 + t[m-1] + d) % 7;
+  }
+And result: 0=Sunday, 1=Monday, ..., 6=Saturday. I'll use that mapping: 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday. That is common. Let's verify quickly: For today? Not needed. But we can test with known dates: 1 Jan 2000 was Saturday? Actually 1 Jan 2000 was Saturday? I think 1 Jan 2000 was Saturday. Using algorithm: y=2000, m=1, d=1 -> since m<3, y=1999. t[0]=0. Then compute: 1999 + 1999/4=499 (floor) - 1999/100=19 + 1999/400=4 (floor) + t[0]=0 + d=1 => 1999+499-19+4+1 = 2484. 2484 mod 7 = 2484/7=354*7=2478 remainder 6. 6 => Saturday. Yes. So mapping: 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat.
+
+So I'll compute each date using that algorithm.
+
+We have many dates. I will compute systematically, possibly using a spreadsheet in mind, but since it's text, I'll do manual calculations. I'll write a small program in my head? Alternatively, I can compute step by step for each using the formula. Since there are 71, I'll try to be efficient: compute the year offset (y + y/4 - y/100 + y/400) for the adjusted year (if m<3 then y-1 else y), add the month offset t[m-1], add day, mod 7. Let's list the t array: month index 1-12:
+1: 0
+2: 3
+3: 2
+4: 5
+5: 0
+6: 3
+7: 5
+8: 1
+9: 4
+10: 6
+11: 2
+12: 4
+
+For month 1 (January) and 2 (February), we use year = y-1; for others, year = y.
+
+So for each date, compute adjusted year Y, then compute Y + floor(Y/4) - floor(Y/100) + floor(Y/400). That's a number. Then add t[m-1] + d. Then mod 7.
+
+I'll compute each. I'll organize by dates.
+
+I'll list each date with its number.
+
+1. 10 April 2034
+   Year=2034, month=4 (April), so m>=3 => Y=2034.
+   Compute offset = Y + Y/4 - Y/100 + Y/400.
+   Y/4 = 2034/4 = 508.5 floor=508
+   Y/100 = 2034/100 = 20.34 floor=20
+   Y/400 = 2034/400 = 5.085 floor=5
+   So offset = 2034 + 508 - 20 + 5 = 2527? Let's compute: 2034+508=2542, -20=2522, +5=2527.
+   t[3]=5 (since April is month 4, index 3). Actually t array index: m-1 = 3 => t[3]=5.
+   d=10.
+   Sum = offset + t + d = 2527 + 5 + 10 = 2542.
+   2542 mod 7: 7*363=2541, remainder 1. So 1 => Monday.
+   So 10 April 2034 is Monday.
+
+2. 13 September 1660
+   Year=1660, month=9, so Y=1660.
+   Compute offset: 1660 + floor(1660/4) - floor(1660/100) + floor(1660/400).
+   1660/4=415, exact? 4*415=1660, so 415.
+   1660/100=16.6 floor=16.
+   1660/400=4.15 floor=4.
+   Offset = 1660 + 415 - 16 + 4 = 2063? 1660+415=2075, -16=2059, +4=2063.
+   t[8]=4 (September month 9 => index 8 => t[8]=4).
+   d=13.
+   Sum = 2063+4+13=2080.
+   2080 mod 7: 7*297=2079, remainder 1 => Monday.
+   So 13 Sep 1660 is Monday.
+
+3. 6 October 1675
+   Year=1675, month=10 => Y=1675.
+   floor(1675/4)=418.75 floor=418? 4*418=1672, remainder 3, so 418.
+   floor(1675/100)=16.
+   floor(1675/400)=4 (since 400*4=1600, remainder 75).
+   Offset = 1675+418-16+4=2081? 1675+418=2093, -16=2077, +4=2081.
+   t[9]=6 (October month 10 => index 9 => t[9]=6).
+   d=6.
+   Sum = 2081+6+6=2093.
+   2093 mod 7: 7*299=2093? 7*299=2093 exactly? 7*300=2100, minus 7=2093, so remainder 0 => Sunday.
+   So 6 Oct 1675 is Sunday.
+
+4. 1 January 1607
+   Year=1607, month=1 => since m<3, Y=1606.
+   Compute offset for Y=1606:
+   floor(1606/4)=401.5 floor=401 (4*401=1604)
+   floor(1606/100)=16 (since 1606/100=16.06)
+   floor(1606/400)=4 (400*4=1600)
+   Offset = 1606+401-16+4 = 1995? 1606+401=2007, -16=1991, +4=1995.
+   t[0]=0 (January index 0).
+   d=1.
+   Sum = 1995+0+1=1996.
+   1996 mod 7: 7*285=1995, remainder 1 => Monday.
+   So 1 Jan 1607 is Monday.
+
+5. 1 July 1976
+   Year=1976, month=7 => Y=1976.
+   floor(1976/4)=494 (4*494=1976)
+   floor(1976/100)=19
+   floor(1976/400)=4 (400*4=1600, 400*5=2000 >1976)
+   Offset=1976+494-19+4=2455? 1976+494=2470, -19=2451, +4=2455.
+   t[6]=5 (July month 7 => index 6 => t[6]=5)
+   d=1.
+   Sum=2455+5+1=2461.
+   2461 mod7: 7*351=2457, remainder 4 => Thursday? 0=Sun,1=Mon,2=Tue,3=Wed,4=Thu. So Thursday.
+   So 1 July 1976 is Thursday.
+
+6. 27 November 2249
+   Year=2249, month=11 => Y=2249.
+   floor(2249/4)=562.25 floor=562 (4*562=2248)
+   floor(2249/100)=22 (since 2249/100=22.49)
+   floor(2249/400)=5 (400*5=2000, 400*6=2400 >2249)
+   Offset=2249+562-22+5=2794? 2249+562=2811, -22=2789, +5=2794.
+   t[10]=2 (November month 11 => index 10 => t[10]=2)
+   d=27.
+   Sum=2794+2+27=2823.
+   2823 mod7: 7*403=2821, remainder 2 => Tuesday.
+   So 27 Nov 2249 is Tuesday.
+
+7. 25 May 2381
+   Year=2381, month=5 => Y=2381.
+   floor(2381/4)=595.25 floor=595 (4*595=2380)
+   floor(2381/100)=23 (23.81)
+   floor(2381/400)=5 (400*5=2000, 400*6=2400 >2381)
+   Offset=2381+595-23+5=2958? 2381+595=2976, -23=2953, +5=2958.
+   t[4]=0 (May month 5 => index 4 => t[4]=0)
+   d=25.
+   Sum=2958+0+25=2983.
+   2983 mod7: 7*426=2982, remainder 1 => Monday.
+   So 25 May 2381 is Monday.
+
+8. 1 January 2184
+   Year=2184, month=1 => Y=2183 (since m<3).
+   Compute for Y=2183:
+   floor(2183/4)=545.75 floor=545 (4*545=2180)
+   floor(2183/100)=21 (21.83)
+   floor(2183/400)=5 (400*5=2000)
+   Offset=2183+545-21+5=2712? 2183+545=2728, -21=2707, +5=2712.
+   t[0]=0
+   d=1
+   Sum=2712+0+1=2713.
+   2713 mod7: 7*387=2709, remainder 4 => Thursday.
+   So 1 Jan 2184 is Thursday.
+
+9. 21 December 2358
+   Year=2358, month=12 => Y=2358.
+   floor(2358/4)=589.5 floor=589 (4*589=2356)
+   floor(2358/100)=23 (23.58)
+   floor(2358/400)=5 (400*5=2000, 400*6=2400 >2358)
+   Offset=2358+589-23+5=2929? 2358+589=2947, -23=2924, +5=2929.
+   t[11]=4 (December month 12 => index 11 => t[11]=4)
+   d=21
+   Sum=2929+4+21=2954.
+   2954 mod7: 7*422=2954 exactly? 7*422=2954 (7*400=2800, 7*22=154, total 2954), so remainder 0 => Sunday.
+   So 21 Dec 2358 is Sunday.
+
+10. 26 December 2390
+    Year=2390, month=12 => Y=2390.
+    floor(2390/4)=597.5 floor=597 (4*597=2388)
+    floor(2390/100)=23 (23.9)
+    floor(2390/400)=5 (400*5=2000, 400*6=2400 >2390)
+    Offset=2390+597-23+5=2969? 2390+597=2987, -23=2964, +5=2969.
+    t[11]=4
+    d=26
+    Sum=2969+4+26=2999.
+    2999 mod7: 7*428=2996, remainder 3 => Wednesday.
+    So 26 Dec 2390 is Wednesday.
+
+11. 7 October 2191
+    Year=2191, month=10 => Y=2191.
+    floor(2191/4)=547.75 floor=547 (4*547=2188)
+    floor(2191/100)=21 (21.91)
+    floor(2191/400)=5 (400*5=2000)
+    Offset=2191+547-21+5=2722? 2191+547=2738, -21=2717, +5=2722.
+    t[9]=6
+    d=7
+    Sum=2722+6+7=2735.
+    2735 mod7: 7*390=2730, remainder 5 => Friday.
+    So 7 Oct 2191 is Friday.
+
+12. 18 June 1681
+    Year=1681, month=6 => Y=1681.
+    floor(1681/4)=420.25 floor=420 (4*420=1680)
+    floor(1681/100)=16 (16.81)
+    floor(1681/400)=4 (400*4=1600)
+    Offset=1681+420-16+4=2089? 1681+420=2101, -16=2085, +4=2089.
+    t[5]=3 (June month 6 => index 5 => t[5]=3)
+    d=18
+    Sum=2089+3+18=2110.
+    2110 mod7: 7*301=2107, remainder 3 => Wednesday.
+    So 18 June 1681 is Wednesday.
+
+13. 3 August 2010
+    Year=2010, month=8 => Y=2010.
+    floor(2010/4)=502.5 floor=502
+    floor(2010/100)=20
+    floor(2010/400)=5 (400*5=2000)
+    Offset=2010+502-20+5=2497? 2010+502=2512, -20=2492, +5=2497.
+    t[7]=1 (August month 8 => index 7 => t[7]=1)
+    d=3
+    Sum=2497+1+3=2501.
+    2501 mod7: 7*357=2499, remainder 2 => Tuesday.
+    So 3 Aug 2010 is Tuesday.
+
+14. 24 September 2087
+    Year=2087, month=9 => Y=2087.
+    floor(2087/4)=521.75 floor=521
+    floor(2087/100)=20 (20.87)
+    floor(2087/400)=5 (400*5=2000)
+    Offset=2087+521-20+5=2593? 2087+521=2608, -20=2588, +5=2593.
+    t[8]=4
+    d=24
+    Sum=2593+4+24=2621.
+    2621 mod7: 7*374=2618, remainder 3 => Wednesday.
+    So 24 Sep 2087 is Wednesday.
+
+15. 20 June 1973
+    Year=1973, month=6 => Y=1973.
+    floor(1973/4)=493.25 floor=493
+    floor(1973/100)=19 (19.73)
+    floor(1973/400)=4 (400*4=1600)
+    Offset=1973+493-19+4=2451? 1973+493=2466, -19=2447, +4=2451.
+    t[5]=3
+    d=20
+    Sum=2451+3+20=2474.
+    2474 mod7: 7*353=2471, remainder 3 => Wednesday.
+    So 20 June 1973 is Wednesday.
+
+16. 5 November 1753
+    Year=1753, month=11 => Y=1753.
+    floor(1753/4)=438.25 floor=438
+    floor(1753/100)=17 (17.53)
+    floor(1753/400)=4 (400*4=1600)
+    Offset=1753+438-17+4=2178? 1753+438=2191, -17=2174, +4=2178.
+    t[10]=2
+    d=5
+    Sum=2178+2+5=2185.
+    2185 mod7: 7*312=2184, remainder 1 => Monday.
+    So 5 Nov 1753 is Monday.
+
+17. 13 June 1786
+    Year=1786, month=6 => Y=1786.
+    floor(1786/4)=446.5 floor=446
+    floor(1786/100)=17 (17.86)
+    floor(1786/400)=4 (400*4=1600)
+    Offset=1786+446-17+4=2219? 1786+446=2232, -17=2215, +4=2219.
+    t[5]=3
+    d=13
+    Sum=2219+3+13=2235.
+    2235 mod7: 7*319=2233, remainder 2 => Tuesday.
+    So 13 June 1786 is Tuesday.
+
+18. 13 March 1752
+    Year=1752, month=3 => Y=1752 (since m>=3).
+    floor(1752/4)=438 exactly (4*438=1752)
+    floor(1752/100)=17 (17.52)
+    floor(1752/400)=4 (400*4=1600)
+    Offset=1752+438-17+4=2177? 1752+438=2190, -17=2173, +4=2177.
+    t[2]=2 (March month 3 => index 2 => t[2]=2)
+    d=13
+    Sum=2177+2+13=2192.
+    2192 mod7: 7*313=2191, remainder 1 => Monday.
+    So 13 Mar 1752 is Monday.
+
+19. 7 January 1851
+    Year=1851, month=1 => Y=1850 (since m<3).
+    floor(1850/4)=462.5 floor=462
+    floor(1850/100)=18 (18.5)
+    floor(1850/400)=4 (400*4=1600)
+    Offset=1850+462-18+4=2298? 1850+462=2312, -18=2294, +4=2298.
+    t[0]=0
+    d=7
+    Sum=2298+0+7=2305.
+    2305 mod7: 7*329=2303, remainder 2 => Tuesday.
+    So 7 Jan 1851 is Tuesday.
+
+20. 26 January 1703
+    Year=1703, month=1 => Y=1702.
+    floor(1702/4)=425.5 floor=425
+    floor(1702/100)=17 (17.02)
+    floor(1702/400)=4 (400*4=1600)
+    Offset=1702+425-17+4=2114? 1702+425=2127, -17=2110, +4=2114.
+    t[0]=0
+    d=26
+    Sum=2114+0+26=2140.
+    2140 mod7: 7*305=2135, remainder 5 => Friday.
+    So 26 Jan 1703 is Friday.
+
+21. 10 May 1997
+    Year=1997, month=5 => Y=1997.
+    floor(1997/4)=499.25 floor=499
+    floor(1997/100)=19
+    floor(1997/400)=4 (400*4=1600)
+    Offset=1997+499-19+4=2481? 1997+499=2496, -19=2477, +4=2481.
+    t[4]=0
+    d=10
+    Sum=2481+0+10=2491.
+    2491 mod7: 7*355=2485, remainder 6 => Saturday.
+    So 10 May 1997 is Saturday.
+
+22. 23 January 2373
+    Year=2373, month=1 => Y=2372.
+    floor(2372/4)=593 (4*593=2372)
+    floor(2372/100)=23 (23.72)
+    floor(2372/400)=5 (400*5=2000, 400*6=2400 >2372)
+    Offset=2372+593-23+5=2947? 2372+593=2965, -23=2942, +5=2947.
+    t[0]=0
+    d=23
+    Sum=2947+0+23=2970.
+    2970 mod7: 7*424=2968, remainder 2 => Tuesday.
+    So 23 Jan 2373 is Tuesday.
+
+23. 27 September 2000
+    Year=2000, month=9 => Y=2000.
+    floor(2000/4)=500
+    floor(2000/100)=20
+    floor(2000/400)=5 (since 2000/400=5)
+    Offset=2000+500-20+5=2485.
+    t[8]=4
+    d=27
+    Sum=2485+4+27=2516.
+    2516 mod7: 7*359=2513, remainder 3 => Wednesday.
+    So 27 Sep 2000 is Wednesday.
+
+24. 4 September 1953
+    Year=1953, month=9 => Y=1953.
+    floor(1953/4)=488.25 floor=488
+    floor(1953/100)=19 (19.53)
+    floor(1953/400)=4 (400*4=1600)
+    Offset=1953+488-19+4=2426? 1953+488=2441, -19=2422, +4=2426.
+    t[8]=4
+    d=4
+    Sum=2426+4+4=2434.
+    2434 mod7: 7*347=2429, remainder 5 => Friday.
+    So 4 Sep 1953 is Friday.
+
+25. 18 September 1984
+    Year=1984, month=9 => Y=1984.
+    floor(1984/4)=496 (4*496=1984)
+    floor(1984/100)=19
+    floor(1984/400)=4 (400*4=1600)
+    Offset=1984+496-19+4=2465? 1984+496=2480, -19=2461, +4=2465.
+    t[8]=4
+    d=18
+    Sum=2465+4+18=2487.
+    2487 mod7: 7*355=2485, remainder 2 => Tuesday.
+    So 18 Sep 1984 is Tuesday.
+
+26. 26 July 2027
+    Year=2027, month=7 => Y=2027.
+    floor(2027/4)=506.75 floor=506
+    floor(2027/100)=20 (20.27)
+    floor(2027/400)=5 (400*5=2000)
+    Offset=2027+506-20+5=2518? 2027+506=2533, -20=2513, +5=2518.
+    t[6]=5
+    d=26
+    Sum=2518+5+26=2549.
+    2549 mod7: 7*364=2548, remainder 1 => Monday.
+    So 26 Jul 2027 is Monday.
+
+27. 23 August 1640
+    Year=1640, month=8 => Y=1640.
+    floor(1640/4)=410 (4*410=1640)
+    floor(1640/100)=16 (16.4)
+    floor(1640/400)=4 (400*4=1600)
+    Offset=1640+410-16+4=2038? 1640+410=2050, -16=2034, +4=2038.
+    t[7]=1
+    d=23
+    Sum=2038+1+23=2062.
+    2062 mod7: 7*294=2058, remainder 4 => Thursday.
+    So 23 Aug 1640 is Thursday.
+
+28. 29 October 2345
+    Year=2345, month=10 => Y=2345.
+    floor(2345/4)=586.25 floor=586
+    floor(2345/100)=23 (23.45)
+    floor(2345/400)=5 (400*5=2000)
+    Offset=2345+586-23+5=2913? 2345+586=2931, -23=2908, +5=2913.
+    t[9]=6
+    d=29
+    Sum=2913+6+29=2948.
+    2948 mod7: 7*421=2947, remainder 1 => Monday.
+    So 29 Oct 2345 is Monday.
+
+29. 9 May 2109
+    Year=2109, month=5 => Y=2109.
+    floor(2109/4)=527.25 floor=527
+    floor(2109/100)=21 (21.09)
+    floor(2109/400)=5 (400*5=2000)
+    Offset=2109+527-21+5=2620? 2109+527=2636, -21=2615, +5=2620.
+    t[4]=0
+    d=9
+    Sum=2620+0+9=2629.
+    2629 mod7: 7*375=2625, remainder 4 => Thursday.
+    So 9 May 2109 is Thursday.
+
+30. 25 April 1776
+    Year=1776, month=4 => Y=1776.
+    floor(1776/4)=444 (4*444=1776)
+    floor(1776/100)=17 (17.76)
+    floor(1776/400)=4 (400*4=1600)
+    Offset=1776+444-17+4=2207? 1776+444=2220, -17=2203, +4=2207.
+    t[3]=5 (April index 3)
+    d=25
+    Sum=2207+5+25=2237.
+    2237 mod7: 7*319=2233, remainder 4 => Thursday.
+    So 25 Apr 1776 is Thursday.
+
+31. 3 April 2095
+    Year=2095, month=4 => Y=2095.
+    floor(2095/4)=523.75 floor=523
+    floor(2095/100)=20 (20.95)
+    floor(2095/400)=5 (400*5=2000)
+    Offset=2095+523-20+5=2603? 2095+523=2618, -20=2598, +5=2603.
+    t[3]=5
+    d=3
+    Sum=2603+5+3=2611.
+    2611 mod7: 7*373=2611 exactly? 7*373=2611 (7*300=2100, 7*73=511, sum 2611), so remainder 0 => Sunday.
+    So 3 Apr 2095 is Sunday.
+
+32. 10 May 2329
+    Year=2329, month=5 => Y=2329.
+    floor(2329/4)=582.25 floor=582
+    floor(2329/100)=23 (23.29)
+    floor(2329/400)=5 (400*5=2000)
+    Offset=2329+582-23+5=2893? 2329+582=2911, -23=2888, +5=2893.
+    t[4]=0
+    d=10
+    Sum=2893+0+10=2903.
+    2903 mod7: 7*414=2898, remainder 5 => Friday.
+    So 10 May 2329 is Friday.
+
+33. 18 September 1852
+    Year=1852, month=9 => Y=1852.
+    floor(1852/4)=463 (4*463=1852)
+    floor(1852/100)=18 (18.52)
+    floor(1852/400)=4 (400*4=1600)
+    Offset=1852+463-18+4=2301? 1852+463=2315, -18=2297, +4=2301.
+    t[8]=4
+    d=18
+    Sum=2301+4+18=2323.
+    2323 mod7: 7*331=2317, remainder 6 => Saturday.
+    So 18 Sep 1852 is Saturday.
+
+34. 7 September 2055
+    Year=2055, month=9 => Y=2055.
+    floor(2055/4)=513.75 floor=513
+    floor(2055/100)=20 (20.55)
+    floor(2055/400)=5 (400*5=2000)
+    Offset=2055+513-20+5=2553? 2055+513=2568, -20=2548, +5=2553.
+    t[8]=4
+    d=7
+    Sum=2553+4+7=2564.
+    2564 mod7: 7*366=2562, remainder 2 => Tuesday.
+    So 7 Sep 2055 is Tuesday.
+
+35. 19 November 1970
+    Year=1970, month=11 => Y=1970.
+    floor(1970/4)=492.5 floor=492
+    floor(1970/100)=19 (19.7)
+    floor(1970/400)=4 (400*4=1600)
+    Offset=1970+492-19+4=2447? 1970+492=2462, -19=2443, +4=2447.
+    t[10]=2
+    d=19
+    Sum=2447+2+19=2468.
+    2468 mod7: 7*352=2464, remainder 4 => Thursday.
+    So 19 Nov 1970 is Thursday.
+
+36. 27 January 1637
+    Year=1637, month=1 => Y=1636.
+    floor(1636/4)=409 (4*409=1636)
+    floor(1636/100)=16 (16.36)
+    floor(1636/400)=4 (400*4=1600)
+    Offset=1636+409-16+4=2033? 1636+409=2045, -16=2029, +4=2033.
+    t[0]=0
+    d=27
+    Sum=2033+0+27=2060.
+    2060 mod7: 7*294=2058, remainder 2 => Tuesday.
+    So 27 Jan 1637 is Tuesday.
+
+37. 12 August 2056
+    Year=2056, month=8 => Y=2056.
+    floor(2056/4)=514 (4*514=2056)
+    floor(2056/100)=20 (20.56)
+    floor(2056/400)=5 (400*5=2000)
+    Offset=2056+514-20+5=2555? 2056+514=2570, -20=2550, +5=2555.
+    t[7]=1
+    d=12
+    Sum=2555+1+12=2568.
+    2568 mod7: 7*366=2562, remainder 6 => Saturday.
+    So 12 Aug 2056 is Saturday.
+
+38. 12 February 2219
+    Year=2219, month=2 => Since m<3, Y=2218.
+    Compute for Y=2218:
+    floor(2218/4)=554.5 floor=554
+    floor(2218/100)=22 (22.18)
+    floor(2218/400)=5 (400*5=2000)
+    Offset=2218+554-22+5=2755? 2218+554=2772, -22=2750, +5=2755.
+    t[1]=3 (February index 1 => t[1]=3)
+    d=12
+    Sum=2755+3+12=2770.
+    2770 mod7: 7*395=2765, remainder 5 => Friday.
+    So 12 Feb 2219 is Friday.
+
+39. 1 December 1796
+    Year=1796, month=12 => Y=1796.
+    floor(1796/4)=449 (4*449=1796)
+    floor(1796/100)=17 (17.96)
+    floor(1796/400)=4 (400*4=1600)
+    Offset=1796+449-17+4=2232? 1796+449=2245, -17=2228, +4=2232.
+    t[11]=4
+    d=1
+    Sum=2232+4+1=2237.
+    2237 mod7: 7*319=2233, remainder 4 => Thursday.
+    So 1 Dec 1796 is Thursday.
+
+40. 4 June 1697
+    Year=1697, month=6 => Y=1697.
+    floor(1697/4)=424.25 floor=424
+    floor(1697/100)=16 (16.97)
+    floor(1697/400)=4 (400*4=1600)
+    Offset=1697+424-16+4=2109? 1697+424=2121, -16=2105, +4=2109.
+    t[5]=3
+    d=4
+    Sum=2109+3+4=2116.
+    2116 mod7: 7*302=2114, remainder 2 => Tuesday.
+    So 4 Jun 1697 is Tuesday.
+
+41. 29 November 1858
+    Year=1858, month=11 => Y=1858.
+    floor(1858/4)=464.5 floor=464
+    floor(1858/100)=18 (18.58)
+    floor(1858/400)=4 (400*4=1600)
+    Offset=1858+464-18+4=2308? 1858+464=2322, -18=2304, +4=2308.
+    t[10]=2
+    d=29
+    Sum=2308+2+29=2339.
+    2339 mod7: 7*334=2338, remainder 1 => Monday.
+    So 29 Nov 1858 is Monday.
+
+42. 14 June 1620
+    Year=1620, month=6 => Y=1620.
+    floor(1620/4)=405 (4*405=1620)
+    floor(1620/100)=16 (16.2)
+    floor(1620/400)=4 (400*4=1600)
+    Offset=1620+405-16+4=2013? 1620+405=2025, -16=2009, +4=2013.
+    t[5]=3
+    d=14
+    Sum=2013+3+14=2030.
+    2030 mod7: 7*290=2030 exactly, remainder 0 => Sunday.
+    So 14 Jun 1620 is Sunday.
+
+43. 17 January 1873
+    Year=1873, month=1 => Y=1872.
+    floor(1872/4)=468 (4*468=1872)
+    floor(1872/100)=18 (18.72)
+    floor(1872/400)=4 (400*4=1600)
+    Offset=1872+468-18+4=2326? 1872+468=2340, -18=2322, +4=2326.
+    t[0]=0
+    d=17
+    Sum=2326+0+17=2343.
+    2343 mod7: 7*334=2338, remainder 5 => Friday.
+    So 17 Jan 1873 is Friday.
+
+44. 26 January 2094
+    Year=2094, month=1 => Y=2093.
+    floor(2093/4)=523.25 floor=523
+    floor(2093/100)=20 (20.93)
+    floor(2093/400)=5 (400*5=2000)
+    Offset=2093+523-20+5=2601? 2093+523=2616, -20=2596, +5=2601.
+    t[0]=0
+    d=26
+    Sum=2601+0+26=2627.
+    2627 mod7: 7*375=2625, remainder 2 => Tuesday.
+    So 26 Jan 2094 is Tuesday.
+
+45. 26 September 2065
+    Year=2065, month=9 => Y=2065.
+    floor(2065/4)=516.25 floor=516
+    floor(2065/100)=20 (20.65)
+    floor(2065/400)=5 (400*5=2000)
+    Offset=2065+516-20+5=2566? 2065+516=2581, -20=2561, +5=2566.
+    t[8]=4
+    d=26
+    Sum=2566+4+26=2596.
+    2596 mod7: 7*370=2590, remainder 6 => Saturday.
+    So 26 Sep 2065 is Saturday.
+
+46. 26 July 1692
+    Year=1692, month=7 => Y=1692.
+    floor(1692/4)=423 (4*423=1692)
+    floor(1692/100)=16 (16.92)
+    floor(1692/400)=4 (400*4=1600)
+    Offset=1692+423-16+4=2103? 1692+423=2115, -16=2099, +4=2103.
+    t[6]=5
+    d=26
+    Sum=2103+5+26=2134.
+    2134 mod7: 7*304=2128, remainder 6 => Saturday.
+    So 26 Jul 1692 is Saturday.
+
+47. 2 October 1990
+    Year=1990, month=10 => Y=1990.
+    floor(1990/4)=497.5 floor=497
+    floor(1990/100)=19 (19.9)
+    floor(1990/400)=4 (400*4=1600)
+    Offset=1990+497-19+4=2472? 1990+497=2487, -19=2468, +4=2472.
+    t[9]=6
+    d=2
+    Sum=2472+6+2=2480.
+    2480 mod7: 7*354=2478, remainder 2 => Tuesday.
+    So 2 Oct 1990 is Tuesday.
+
+48. 4 September 1901
+    Year=1901, month=9 => Y=1901.
+    floor(1901/4)=475.25 floor=475
+    floor(1901/100)=19 (19.01)
+    floor(1901/400)=4 (400*4=1600)
+    Offset=1901+475-19+4=2361? 1901+475=2376, -19=2357, +4=2361.
+    t[8]=4
+    d=4
+    Sum=2361+4+4=2369.
+    2369 mod7: 7*338=2366, remainder 3 => Wednesday.
+    So 4 Sep 1901 is Wednesday.
+
+49. 6 November 2256
+    Year=2256, month=11 => Y=2256.
+    floor(2256/4)=564 (4*564=2256)
+    floor(2256/100)=22 (22.56)
+    floor(2256/400)=5 (400*5=2000, 400*6=2400 >2256)
+    Offset=2256+564-22+5=2803? 2256+564=2820, -22=2798, +5=2803.
+    t[10]=2
+    d=6
+    Sum=2803+2+6=2811.
+    2811 mod7: 7*401=2807, remainder 4 => Thursday.
+    So 6 Nov 2256 is Thursday.
+
+50. 19 March 2016
+    Year=2016, month=3 => Y=2016.
+    floor(2016/4)=504 (4*504=2016)
+    floor(2016/100)=20 (20.16)
+    floor(2016/400)=5 (400*5=2000)
+    Offset=2016+504-20+5=2505? 2016+504=2520, -20=2500, +5=2505.
+    t[2]=2 (March index 2)
+    d=19
+    Sum=2505+2+19=2526.
+    2526 mod7: 7*360=2520, remainder 6 => Saturday.
+    So 19 Mar 2016 is Saturday.
+
+51. 18 May 2335
+    Year=2335, month=5 => Y=2335.
+    floor(2335/4)=583.75 floor=583
+    floor(2335/100)=23 (23.35)
+    floor(2335/400)=5 (400*5=2000)
+    Offset=2335+583-23+5=2900? 2335+583=2918, -23=2895, +5=2900.
+    t[4]=0
+    d=18
+    Sum=2900+0+18=2918.
+    2918 mod7: 7*416=2912, remainder 6 => Saturday.
+    So 18 May 2335 is Saturday.
+
+52. 6 November 1713
+    Year=1713, month=11 => Y=1713.
+    floor(1713/4)=428.25 floor=428
+    floor(1713/100)=17 (17.13)
+    floor(1713/400)=4 (400*4=1600)
+    Offset=1713+428-17+4=2128? 1713+428=2141, -17=2124, +4=2128.
+    t[10]=2
+    d=6
+    Sum=2128+2+6=2136.
+    2136 mod7: 7*305=2135, remainder 1 => Monday.
+    So 6 Nov 1713 is Monday.
+
+53. 15 February 2021
+    Year=2021, month=2 => Y=2020 (since m<3).
+    floor(2020/4)=505 (4*505=2020)
+    floor(2020/100)=20 (20.2)
+    floor(2020/400)=5 (400*5=2000)
+    Offset=2020+505-20+5=2510? 2020+505=2525, -20=2505, +5=2510.
+    t[1]=3
+    d=15
+    Sum=2510+3+15=2528.
+    2528 mod7: 7*361=2527, remainder 1 => Monday.
+    So 15 Feb 2021 is Monday.
+
+54. 1 November 1725
+    Year=1725, month=11 => Y=1725.
+    floor(1725/4)=431.25 floor=431
+    floor(1725/100)=17 (17.25)
+    floor(1725/400)=4 (400*4=1600)
+    Offset=1725+431-17+4=2143? 1725+431=2156, -17=2139, +4=2143.
+    t[10]=2
+    d=1
+    Sum=2143+2+1=2146.
+    2146 mod7: 7*306=2142, remainder 4 => Thursday.
+    So 1 Nov 1725 is Thursday.
+
+55. 10 August 1710
+    Year=1710, month=8 => Y=1710.
+    floor(1710/4)=427.5 floor=427
+    floor(1710/100)=17 (17.1)
+    floor(1710/400)=4 (400*4=1600)
+    Offset=1710+427-17+4=2124? 1710+427=2137, -17=2120, +4=2124.
+    t[7]=1
+    d=10
+    Sum=2124+1+10=2135.
+    2135 mod7: 7*305=2135 exactly, remainder 0 => Sunday.
+    So 10 Aug 1710 is Sunday.
+
+56. 9 December 1822
+    Year=1822, month=12 => Y=1822.
+    floor(1822/4)=455.5 floor=455
+    floor(1822/100)=18 (18.22)
+    floor(1822/400)=4 (400*4=1600)
+    Offset=1822+455-18+4=2263? 1822+455=2277, -18=2259, +4=2263.
+    t[11]=4
+    d=9
+    Sum=2263+4+9=2276.
+    2276 mod7: 7*325=2275, remainder 1 => Monday.
+    So 9 Dec 1822 is Monday.
+
+57. 27 June 1694
+    Year=1694, month=6 => Y=1694.
+    floor(1694/4)=423.5 floor=423
+    floor(1694/100)=16 (16.94)
+    floor(1694/400)=4 (400*4=1600)
+    Offset=1694+423-16+4=2105? 1694+423=2117, -16=2101, +4=2105.
+    t[5]=3
+    d=27
+    Sum=2105+3+27=2135.
+    2135 mod7=0 => Sunday.
+    So 27 Jun 1694 is Sunday.
+
+58. 12 October 2293
+    Year=2293, month=10 => Y=2293.
+    floor(2293/4)=573.25 floor=573
+    floor(2293/100)=22 (22.93)
+    floor(2293/400)=5 (400*5=2000, 400*6=2400 >2293)
+    Offset=2293+573-22+5=2849? 2293+573=2866, -22=2844, +5=2849.
+    t[9]=6
+    d=12
+    Sum=2849+6+12=2867.
+    2867 mod7: 7*409=2863, remainder 4 => Thursday.
+    So 12 Oct 2293 is Thursday.
+
+59. 17 September 1917
+    Year=1917, month=9 => Y=1917.
+    floor(1917/4)=479.25 floor=479
+    floor(1917/100)=19 (19.17)
+    floor(1917/400)=4 (400*4=1600)
+    Offset=1917+479-19+4=2381? 1917+479=2396, -19=2377, +4=2381.
+    t[8]=4
+    d=17
+    Sum=2381+4+17=2402.
+    2402 mod7: 7*343=2401, remainder 1 => Monday.
+    So 17 Sep 1917 is Monday.
+
+60. 2 April 2011
+    Year=2011, month=4 => Y=2011.
+    floor(2011/4)=502.75 floor=502
+    floor(2011/100)=20
+    floor(2011/400)=5 (400*5=2000)
+    Offset=2011+502-20+5=2498? 2011+502=2513, -20=2493, +5=2498.
+    t[3]=5
+    d=2
+    Sum=2498+5+2=2505.
+    2505 mod7: 7*357=2499, remainder 6 => Saturday.
+    So 2 Apr 2011 is Saturday.
+
+61. 28 September 2117
+    Year=2117, month=9 => Y=2117.
+    floor(2117/4)=529.25 floor=529
+    floor(2117/100)=21 (21.17)
+    floor(2117/400)=5 (400*5=2000)
+    Offset=2117+529-21+5=2630? 2117+529=2646, -21=2625, +5=2630.
+    t[8]=4
+    d=28
+    Sum=2630+4+28=2662.
+    2662 mod7: 7*380=2660, remainder 2 => Tuesday.
+    So 28 Sep 2117 is Tuesday.
+
+62. 4 December 2289
+    Year=2289, month=12 => Y=2289.
+    floor(2289/4)=572.25 floor=572
+    floor(2289/100)=22 (22.89)
+    floor(2289/400)=5 (400*5=2000)
+    Offset=2289+572-22+5=2844? 2289+572=2861, -22=2839, +5=2844.
+    t[11]=4
+    d=4
+    Sum=2844+4+4=2852.
+    2852 mod7: 7*407=2849, remainder 3 => Wednesday.
+    So 4 Dec 2289 is Wednesday.
+
+63. 19 February 1828
+    Year=1828, month=2 => Y=1827 (since m<3).
+    floor(1827/4)=456.75 floor=456
+    floor(1827/100)=18 (18.27)
+    floor(1827/400)=4 (400*4=1600)
+    Offset=1827+456-18+4=2269? 1827+456=2283, -18=2265, +4=2269.
+    t[1]=3
+    d=19
+    Sum=2269+3+19=2291.
+    2291 mod7: 7*327=2289, remainder 2 => Tuesday.
+    So 19 Feb 1828 is Tuesday.
+
+64. 10 November 1844
+    Year=1844, month=11 => Y=1844.
+    floor(1844/4)=461 (4*461=1844)
+    floor(1844/100)=18 (18.44)
+    floor(1844/400)=4 (400*4=1600)
+    Offset=1844+461-18+4=2291? 1844+461=2305, -18=2287, +4=2291.
+    t[10]=2
+    d=10
+    Sum=2291+2+10=2303.
+    2303 mod7: 7*329=2303 exactly, remainder 0 => Sunday.
+    So 10 Nov 1844 is Sunday.
+
+65. 5 June 2186
+    Year=2186, month=6 => Y=2186.
+    floor(2186/4)=546.5 floor=546
+    floor(2186/100)=21 (21.86)
+    floor(2186/400)=5 (400*5=2000)
+    Offset=2186+546-21+5=2716? 2186+546=2732, -21=2711, +5=2716.
+    t[5]=3
+    d=5
+    Sum=2716+3+5=2724.
+    2724 mod7: 7*389=2723, remainder 1 => Monday.
+    So 5 Jun 2186 is Monday.
+
+66. 9 June 1639
+    Year=1639, month=6 => Y=1639.
+    floor(1639/4)=409.75 floor=409
+    floor(1639/100)=16 (16.39)
+    floor(1639/400)=4 (400*4=1600)
+    Offset=1639+409-16+4=2036? 1639+409=2048, -16=2032, +4=2036.
+    t[5]=3
+    d=9
+    Sum=2036+3+9=2048.
+    2048 mod7: 7*292=2044, remainder 4 => Thursday.
+    So 9 Jun 1639 is Thursday.
+
+67. 12 December 2036
+    Year=2036, month=12 => Y=2036.
+    floor(2036/4)=509 (4*509=2036)
+    floor(2036/100)=20 (20.36)
+    floor(2036/400)=5 (400*5=2000)
+    Offset=2036+509-20+5=2530? 2036+509=2545, -20=2525, +5=2530.
+    t[11]=4
+    d=12
+    Sum=2530+4+12=2546.
+    2546 mod7: 7*363=2541, remainder 5 => Friday.
+    So 12 Dec 2036 is Friday.
+
+68. 28 October 2242
+    Year=2242, month=10 => Y=2242.
+    floor(2242/4)=560.5 floor=560
+    floor(2242/100)=22 (22.42)
+    floor(2242/400)=5 (400*5=2000)
+    Offset=2242+560-22+5=2785? 2242+560=2802, -22=2780, +5=2785.
+    t[9]=6
+    d=28
+    Sum=2785+6+28=2819.
+    2819 mod7: 7*402=2814, remainder 5 => Friday.
+    So 28 Oct 2242 is Friday.
+
+69. 21 June 2347
+    Year=2347, month=6 => Y=2347.
+    floor(2347/4)=586.75 floor=586
+    floor(2347/100)=23 (23.47)
+    floor(2347/400)=5 (400*5=2000)
+    Offset=2347+586-23+5=2915? 2347+586=2933, -23=2910, +5=2915.
+    t[5]=3
+    d=21
+    Sum=2915+3+21=2939.
+    2939 mod7: 7*419=2933, remainder 6 => Saturday.
+    So 21 Jun 2347 is Saturday.
+
+70. 27 April 1853
+    Year=1853, month=4 => Y=1853.
+    floor(1853/4)=463.25 floor=463
+    floor(1853/100)=18 (18.53)
+    floor(1853/400)=4 (400*4=1600)
+    Offset=1853+463-18+4=2302? 1853+463=2316, -18=2298, +4=2302.
+    t[3]=5
+    d=27
+    Sum=2302+5+27=2334.
+    2334 mod7: 7*333=2331, remainder 3 => Wednesday.
+    So 27 Apr 1853 is Wednesday.
+
+71. 7 March 2004
+    Year=2004, month=3 => Y=2004.
+    floor(2004/4)=501 (4*501=2004)
+    floor(2004/100)=20 (20.04)
+    floor(2004/400)=5 (400*5=2000)
+    Offset=2004+501-20+5=2490? 2004+501=2505, -20=2485, +5=2490.
+    t[2]=2
+    d=7
+    Sum=2490+2+7=2499.
+    2499 mod7: 7*357=2499 exactly, remainder 0 => Sunday.
+    So 7 Mar 2004 is Sunday.
+
+Now we have all results. Let's list them in order:
+
+1. Monday
+2. Monday
+3. Sunday
+4. Monday
+5. Thursday
+6. Tuesday
+7. Monday
+8. Thursday
+9. Sunday
+10. Wednesday
+11. Friday
+12. Wednesday
+13. Tuesday
+14. Wednesday
+15. Wednesday
+16. Monday
+17. Tuesday
+18. Monday
+19. Tuesday
+20. Friday
+21. Saturday
+22. Tuesday
+23. Wednesday
+24. Friday
+25. Tuesday
+26. Monday
+27. Thursday
+28. Monday
+29. Thursday
+30. Thursday
+31. Sunday
+32. Friday
+33. Saturday
+34. Tuesday
+35. Thursday
+36. Tuesday
+37. Saturday
+38. Friday
+39. Thursday
+40. Tuesday
+41. Monday
+42. Sunday
+43. Friday
+44. Tuesday
+45. Saturday
+46. Saturday
+47. Tuesday
+48. Wednesday
+49. Thursday
+50. Saturday
+51. Saturday
+52. Monday
+53. Monday
+54. Thursday
+55. Sunday
+56. Monday
+57. Sunday
+58. Thursday
+59. Monday
+60. Saturday
+61. Tuesday
+62. Wednesday
+63. Tuesday
+64. Sunday
+65. Monday
+66. Thursday
+67. Friday
+68. Friday
+69. Saturday
+70. Wednesday
+71. Sunday
+
+Now we need to output the weekday names in English, separated by commas, in order. Let's list them exactly as computed:
+
+1: Monday
+2: Monday
+3: Sunday
+4: Monday
+5: Thursday
+6: Tuesday
+7: Monday
+8: Thursday
+9: Sunday
+10: Wednesday
+11: Friday
+12: Wednesday
+13: Tuesday
+14: Wednesday
+15: Wednesday
+16: Monday
+17: Tuesday
+18: Monday
+19: Tuesday
+20: Friday
+21: Saturday
+22: Tuesday
+23: Wednesday
+24: Friday
+25: Tuesday
+26: Monday
+27: Thursday
+28: Monday
+29: Thursday
+30: Thursday
+31: Sunday
+32: Friday
+33: Saturday
+34: Tuesday
+35: Thursday
+36: Tuesday
+37: Saturday
+38: Friday
+39: Thursday
+40: Tuesday
+41: Monday
+42: Sunday
+43: Friday
+44: Tuesday
+45: Saturday
+46: Saturday
+47: Tuesday
+48: Wednesday
+49: Thursday
+50: Saturday
+51: Saturday
+52: Monday
+53: Monday
+54: Thursday
+55: Sunday
+56: Monday
+57: Sunday
+58: Thursday
+59: Monday
+60: Saturday
+61: Tuesday
+62: Wednesday
+63: Tuesday
+64: Sunday
+65: Monday
+66: Thursday
+67: Friday
+68: Friday
+69: Saturday
+70: Wednesday
+71: Sunday
+
+Double-check a few random ones to ensure no errors:
+
+- #5: 1 July 1976: I recall 1976 was a leap year, and July 1 1976 was indeed Thursday? I think July 4 1976 was Sunday, so July 1 was Thursday, correct.
+- #21: 10 May 1997: I think it was a Saturday? May 10, 1997: I recall maybe it was Saturday? Actually I think May 10, 1997 was a Saturday? Let's verify: I know that May 1 1997 was Thursday? Not sure. But we can check with known: May 10, 1997: using algorithm, we got Saturday. Let's quickly compute with another method: 1997-05-10: Using Zeller: year=1997, month=5 (March=3? Actually Zeller: treat Jan/Feb as 13,14 of previous year. May is month 5, so not adjusted. Then d=10, m=5, K=97, J=19. Formula: h = (d + floor(13(m+1)/5) + K + floor(K/4) + floor(J/4) + 5J) mod 7. floor(13*6/5)=floor(78/5)=15, K=97, floor(97/4)=24, floor(19/4)=4, 5J=95. Sum=10+15+97+24+4+95=245, 245 mod7=0, which is Saturday (since 0=Saturday in Zeller). So Saturday, correct.
+- #50: 19 March 2016: 2016 is leap, March 19, 2016 was a Saturday? I think March 19, 2016 was a Saturday? Actually I recall March 20, 2016 was the spring equinox, and I think it was a Sunday? Let's check: March 19, 2016 - I can think: March 1, 2016 was Tuesday? Actually 2016: Jan 1 was Friday, Feb 1 was Monday? Not sure. Quick check: Using algorithm we got Saturday. Zeller: 2016, month=3 (March, so m=3 in Zeller? Actually Zeller uses March=3, so m=3, d=19, K=16, J=20. floor(13*(3+1)/5)=floor(13*4/5)=floor(52/5)=10, K=16, floor(16/4)=4, floor(20/4)=5, 5J=100. Sum=19+10+16+4+5+100=154, 154 mod7=0, Saturday. So correct.
+- #71: 7 March 2004: 2004 is leap, March 7, 2004? I think it was a Sunday? Actually March 7, 2004: I recall March 2004: March 1 was Monday? Let's check: 2004-03-07: Using algorithm: we got Sunday. Zeller: 2004, m=3, d=7, K=4 (since 2004 mod 100 = 4), J=20. floor(13*4/5)=10, K=4, floor(4/4)=1, floor(20/4)=5, 5J=100. Sum=7+10+4+1+5+100=127, 127 mod7=1? Wait 127/7=18*7=126 remainder 1. In Zeller, 0=Saturday, 1=Sunday? Actually some variations: If we use formula h = (d + floor(13(m+1)/5) + K + floor(K/4) + floor(J/4) + 5J) mod 7, the mapping is: 0=Saturday, 1=Sunday, 2=Monday, 3=Tuesday, 4=Wednesday, 5=Thursday, 6=Friday. So remainder 1 gives Sunday. So correct. So our mapping is consistent.
+
+Thus the list is correct.
+
+Now output as comma-separated weekday names in order.
+
+Let's write them:
+
+Monday, Monday, Sunday, Monday, Thursday, Tuesday, Monday, Thursday, Sunday, Wednesday, Friday, Wednesday, Tuesday, Wednesday, Wednesday, Monday, Tuesday, Monday, Tuesday, Friday, Saturday, Tuesday, Wednesday, Friday, Tuesday, Monday, Thursday, Monday, Thursday, Thursday, Sunday, Friday, Saturday, Tuesday, Thursday, Tuesday, Saturday, Friday, Thursday, Tuesday, Monday, Sunday, Friday, Tuesday, Saturday, Saturday, Tuesday, Wednesday, Thursday, Saturday, Saturday, Monday, Monday, Thursday, Sunday, Monday, Sunday, Thursday, Monday, Saturday, Tuesday, Wednesday, Tuesday, Sunday, Monday, Thursday, Friday, Friday, Saturday, Wednesday, Sunday
+
+Now we need to list them in the order of the dates, exactly 71 entries.
+
+I'll compile the final answer.
+
+But before finalizing, double-check some of the ones that might be tricky, especially around century years that are not leap years (like 1900, 2100, etc.). But we have a few such years: 1752 is a leap year? 1752 is divisible by 4? 1752/4=438, so yes, leap year. 1600 is leap, 1700, 1800, 1900 are not leap but we have years like 1703, 1710, etc. So careful: For years like 1700, our algorithm automatically handles leap year because the formula includes the Gregorian leap year rule via y/400 and y/100. So it's correct.
+
+One check: #18: 13 March 1752. 1752 is a leap year, so March 13 should be? Let's see: We got Monday. For 1752, we can compute: 1 March 1752? Actually using Zeller: y=1752, m=3, d=13. K=52, J=17. floor(13*4/5)=10, K=52, floor(52/4)=13, floor(17/4)=4, 5J=85. Sum=13+10+52+13+4+85=177, mod7=177-7*25=177-175=2, which is Monday? Wait 2 maps to? In Zeller, 0=Sat,1=Sun,2=Mon. So Monday. Correct.
+
+#48: 4 September 1901: 1901 is not a leap year, but that's fine. We got Wednesday. Check: 1901-09-04: Zeller: y=1901, m=9, d=4, K=1, J=19. floor(13*(9+1)/5)=floor(130/5)=26, K=1, floor(1/4)=0, floor(19/4)=4, 5J=95. Sum=4+26+1+0+4+95=130, mod7=4 (since 126 is 18*7, remainder 4). 4 -> Wednesday? 0=Sat,1=Sun,2=Mon,3=Tue,4=Wed. So Wednesday. Good.
+
+#49: 6 Nov 2256: 2256 is a leap year? 2256/4=564, yes leap. We got Thursday. Check: Possibly correct.
+
+Now all looks consistent.
+
+Thus final answer.
+
+I'll format as: ANSWER: Monday, Monday, Sunday, Monday, Thursday, Tuesday, Monday, Thursday, Sunday, Wednesday, Friday, Wednesday, Tuesday, Wednesday, Wednesday, Monday, Tuesday, Monday, Tuesday, Friday, Saturday, Tuesday, Wednesday, Friday, Tuesday, Monday, Thursday, Monday, Thursday, Thursday, Sunday, Friday, Saturday, Tuesday, Thursday, Tuesday, Saturday, Friday, Thursday, Tuesday, Monday, Sunday, Friday, Tuesday, Saturday, Saturday, Tuesday, Wednesday, Thursday, Saturday, Saturday, Monday, Monday, Thursday, Sunday, Monday, Sunday, Thursday, Monday, Saturday, Tuesday, Wednesday, Tuesday, Sunday, Monday, Thursday, Friday, Friday, Saturday, Wednesday, Sunday
+
+Now I'll produce the final output.

@@ -1,0 +1,586 @@
+We need QR decomposition of given 7x7 integer matrix A via Gram-Schmidt on columns left to right, resulting in Q orthogonal (real) and R upper triangular with positive diagonal entries. We need squares of diagonal entries of R: R11^2, ..., R77^2. These are the squared lengths of projection vectors? In Gram-Schmidt, we have columns of A: a1,...,a7. Then we compute orthonormal vectors q1,...,q7 such that span(q1,...,qk)=span(a1,...,ak). The R entries: R_{ij} = q_i^T a_j for i<=j, and R_{ii} = ||a_i - projection onto previous|| = the norm of the orthogonal component. Actually during Gram-Schmidt, we compute u1 = a1, then q1 = u1/||u1||, and R11 = ||u1||. Then for i>1, u_i = a_i - sum_{j=1}^{i-1} (q_j^T a_i) q_j, then q_i = u_i/||u_i||, and R_{ii}=||u_i||. So squares of diagonal entries are squared lengths of these u_i. Since A is invertible, all u_i nonzero.
+
+Thus we need to compute u1 = a1, u2 = a2 - proj_{q1} a2, u3 = a3 - proj_{q1,q2} a3, ... and compute their squared norms.
+
+Given A with integer entries, but Q will involve irrationals (square roots). However R diagonal squared might be rational numbers? Possibly integers? Since A has integer entries, Gram-Schmidt yields that R_{ii}^2 are rational? Through process, we will compute squared lengths as integers? Actually given that A is integer matrix, the Gram-Schmidt process yields R_{ii}^2 = det( A_i^T A_i ) / det( A_{i-1}^T A_{i-1}) where A_i is the submatrix of first i columns. Indeed the QR decomposition (with R having positive diagonal) satisfies R_{ii}^2 = (det(G_i)/det(G_{i-1})) where G_i = A_i^T A_i (Gram matrix). And since A has integer entries, G_i are integer matrices, and determinants are integers. So R_{ii}^2 are rational numbers, specifically ratios of determinants. And since R_{ii}>0, we can compute these determinants. Indeed given A, we can compute the Gram matrix of the first i columns, compute its determinant, then R_{11}^2 = det(A_1^T A_1) because det(G_0)=1 by convention. Actually for i=1: R11^2 = ||a1||^2 = a1^T a1 = det(G_1). For i=2: R22^2 = det(G_2)/det(G_1). For i=3: det(G_3)/det(G_2), etc. So squares are ratios of successive determinants of Gram matrices. Since A integers, these are rational numbers, likely fractions? But can be integers if determinants divide. We can compute them exactly by calculating these determinants.
+
+Alternatively we can do Gram-Schmidt directly with exact rational arithmetic, but easier to compute determinants. However note that the columns of A are given. We need R_{11}^2,...,R_{77}^2. So compute G_i = A_i^T A_i, for i=1..7, compute det(G_i), then R_{ii}^2 = det(G_i)/det(G_{i-1}), with det(G_0)=1.
+
+Hence we need det(G_1), det(G_2), ..., det(G_7). Since A is 7x7 and invertible, det(G_7)=det(A^T A)= (det A)^2, which is integer. So R_{77}^2 = det(G_7)/det(G_6). So we can compute all.
+
+Given the matrix A, we can compute the Gram matrices manually? Might be heavy but we can do systematically using linear algebra. Since it's 7x7, we can compute each determinant by row operations or using software? But we are to compute manually? We have to simulate? We can try to compute step by step using rational arithmetic. Probably the numbers are nice. Let's write A explicitly:
+
+A = 
+[1, -1, 1, 1, 1, -1, -1;
+ 1, -1, 0, 1, -1, -1, 0;
+ -1, 2, -1, 0, -1, 0, 0;
+ 0, -1, -1, -2, -1, 1, 1;
+ 1, 1, 0, 1, 0, -2, -1;
+ -2, -1, -1, -2, -1, 3, 3;
+ -1, 2, -1, 0, -1, 1, 0]
+
+I'll label columns as c1..c7.
+
+c1 = (1,1,-1,0,1,-2,-1)^T
+c2 = (-1,-1,2,-1,1,-1,2)^T? Let's check row5: row5 = [1,1,0,1,0,-2,-1] so c2 entry row5 = 1; row6: -1; row7:2. Yes.
+c3 = (1,0,-1,-1,0,-1,-1)^T
+c4 = (1,1,0,-2,1,-2,0)^T? Row1:1; row2:1; row3:0; row4:-2; row5:1; row6:-2; row7:0.
+c5 = (1,-1,-1,-1,0,-1,-1)^T? Row1:1; row2:-1; row3:-1; row4:-1; row5:0; row6:-1; row7:-1.
+c6 = (-1,-1,0,1,-2,3,1)^T? Row1:-1; row2:-1; row3:0; row4:1; row5:-2; row6:3; row7:1.
+c7 = (-1,0,0,1,-1,3,0)^T? Row1:-1; row2:0; row3:0; row4:1; row5:-1; row6:3; row7:0.
+
+Better to write columns as vectors:
+
+c1 = [1, 1, -1, 0, 1, -2, -1]^T
+c2 = [-1, -1, 2, -1, 1, -1, 2]^T
+c3 = [1, 0, -1, -1, 0, -1, -1]^T
+c4 = [1, 1, 0, -2, 1, -2, 0]^T
+c5 = [1, -1, -1, -1, 0, -1, -1]^T
+c6 = [-1, -1, 0, 1, -2, 3, 1]^T
+c7 = [-1, 0, 0, 1, -1, 3, 0]^T
+
+Now compute Gram matrices G_i = (c_k·c_l) for k,l=1..i.
+
+Let's compute inner products between columns.
+
+First compute dot products manually. Use careful arithmetic.
+
+Define vectors:
+
+c1: (1,1,-1,0,1,-2,-1)
+c2: (-1,-1,2,-1,1,-1,2)
+c3: (1,0,-1,-1,0,-1,-1)
+c4: (1,1,0,-2,1,-2,0)
+c5: (1,-1,-1,-1,0,-1,-1)
+c6: (-1,-1,0,1,-2,3,1)
+c7: (-1,0,0,1,-1,3,0)
+
+Compute squared norms:
+
+||c1||^2 = 1^2+1^2+(-1)^2+0^2+1^2+(-2)^2+(-1)^2 = 1+1+1+0+1+4+1 = 9.
+||c2||^2 = (-1)^2+(-1)^2+2^2+(-1)^2+1^2+(-1)^2+2^2 = 1+1+4+1+1+1+4 = 13.
+||c3||^2 = 1^2+0^2+(-1)^2+(-1)^2+0^2+(-1)^2+(-1)^2 = 1+0+1+1+0+1+1 =5.
+||c4||^2 = 1^2+1^2+0^2+(-2)^2+1^2+(-2)^2+0^2 = 1+1+0+4+1+4+0 =11.
+||c5||^2 = 1^2+(-1)^2+(-1)^2+(-1)^2+0^2+(-1)^2+(-1)^2 = 1+1+1+1+0+1+1 =6.
+||c6||^2 = (-1)^2+(-1)^2+0^2+1^2+(-2)^2+3^2+1^2 = 1+1+0+1+4+9+1 =17.
+||c7||^2 = (-1)^2+0^2+0^2+1^2+(-1)^2+3^2+0^2 = 1+0+0+1+1+9+0 =12.
+
+Now dot products between different columns:
+
+Compute c1·c2:
+(1)(-1)+(1)(-1)+(-1)(2)+0(-1)+(1)(1)+(-2)(-1)+(-1)(2) = -1-1-2+0+1+2-2 = -3? Let's compute: -1-1=-2; -2-2=-4; +1=-3; +2=-1; -2=-3. Yes -3.
+c1·c3: 1*1 +1*0 +(-1)*(-1)+0*(-1)+1*0+(-2)*(-1)+(-1)*(-1)=1+0+1+0+0+2+1=5.
+c1·c4: 1*1+1*1+(-1)*0+0*(-2)+1*1+(-2)*(-2)+(-1)*0 =1+1+0+0+1+4+0=7.
+c1·c5: 1*1+1*(-1)+(-1)*(-1)+0*(-1)+1*0+(-2)*(-1)+(-1)*(-1)=1-1+1+0+0+2+1=4.
+c1·c6: 1*(-1)+1*(-1)+(-1)*0+0*1+1*(-2)+(-2)*3+(-1)*1 = -1-1+0+0-2-6-1 = -11.
+c1·c7: 1*(-1)+1*0+(-1)*0+0*1+1*(-1)+(-2)*3+(-1)*0 = -1+0+0+0-1-6+0 = -8.
+
+c2·c3: (-1)*1+(-1)*0+2*(-1)+(-1)*(-1)+1*0+(-1)*(-1)+2*(-1) = -1+0-2+1+0+1-2 = -3? Compute: -1-2=-3; +1=-2; +1=-1; -2=-3. So -3.
+c2·c4: (-1)*1+(-1)*1+2*0+(-1)*(-2)+1*1+(-1)*(-2)+2*0 = -1-1+0+2+1+2+0 = 3.
+c2·c5: (-1)*1+(-1)*(-1)+2*(-1)+(-1)*(-1)+1*0+(-1)*(-1)+2*(-1) = -1+1-2+1+0+1-2 = -2? Compute: -1+1=0; 0-2=-2; +1=-1; +1=0; -2=-2. So -2.
+c2·c6: (-1)*(-1)+(-1)*(-1)+2*0+(-1)*1+1*(-2)+(-1)*3+2*1 = 1+1+0-1-2-3+2 = -2? Compute:1+1=2; 2-1=1; 1-2=-1; -1-3=-4; -4+2=-2. So -2.
+c2·c7: (-1)*(-1)+(-1)*0+2*0+(-1)*1+1*(-1)+(-1)*3+2*0 = 1+0+0-1-1-3+0 = -4.
+
+c3·c4: 1*1+0*1+(-1)*0+(-1)*(-2)+0*1+(-1)*(-2)+(-1)*0 = 1+0+0+2+0+2+0=5.
+c3·c5: 1*1+0*(-1)+(-1)*(-1)+(-1)*(-1)+0*0+(-1)*(-1)+(-1)*(-1)=1+0+1+1+0+1+1=5.
+c3·c6: 1*(-1)+0*(-1)+(-1)*0+(-1)*1+0*(-2)+(-1)*3+(-1)*1 = -1+0+0-1+0-3-1 = -6.
+c3·c7: 1*(-1)+0*0+(-1)*0+(-1)*1+0*(-1)+(-1)*3+(-1)*0 = -1+0+0-1+0-3+0 = -5.
+
+c4·c5: 1*1+1*(-1)+0*(-1)+(-2)*(-1)+1*0+(-2)*(-1)+0*(-1)=1-1+0+2+0+2+0=4.
+c4·c6: 1*(-1)+1*(-1)+0*0+(-2)*1+1*(-2)+(-2)*3+0*1 = -1-1+0-2-2-6+0 = -12.
+c4·c7: 1*(-1)+1*0+0*0+(-2)*1+1*(-1)+(-2)*3+0*0 = -1+0+0-2-1-6+0 = -10.
+
+c5·c6: 1*(-1)+(-1)*(-1)+(-1)*0+(-1)*1+0*(-2)+(-1)*3+(-1)*1 = -1+1+0-1+0-3-1 = -5.
+c5·c7: 1*(-1)+(-1)*0+(-1)*0+(-1)*1+0*(-1)+(-1)*3+(-1)*0 = -1+0+0-1+0-3+0 = -5.
+
+c6·c7: (-1)*(-1)+(-1)*0+0*0+1*1+(-2)*(-1)+3*3+1*0 = 1+0+0+1+2+9+0 =13.
+
+Now we have the Gram matrix entries for any subset.
+
+We need G1 = [c1·c1] = [9]. So det(G1)=9. Then R11^2 = 9.
+
+G2 = [[c1·c1, c1·c2], [c2·c1, c2·c2]] = [[9, -3],[-3,13]]. det = 9*13 - (-3)*(-3)=117 - 9=108. So det(G2)=108. Then R22^2 = det(G2)/det(G1) = 108/9 = 12.
+
+G3: includes c1,c2,c3. Compute Gram matrix 3x3:
+Entries:
+c1·c1=9, c1·c2=-3, c1·c3=5
+c2·c1=-3, c2·c2=13, c2·c3=-3
+c3·c1=5, c3·c2=-3, c3·c3=5
+So matrix M3 = [[9, -3, 5],[-3,13,-3],[5,-3,5]]. Compute det.
+
+We'll compute determinant. Use formula or row operations.
+
+det = 9 * det([[13,-3],[-3,5]]) - (-3)*det([[-3,-3],[5,5]]) + 5*det([[-3,13],[5,-3]]).
+
+Compute each:
+
+det1 = 13*5 - (-3)*(-3) = 65 - 9 = 56.
+det2 = det([[-3,-3],[5,5]]) = (-3)*5 - (-3)*5 = -15 +15 =0.
+det3 = det([[-3,13],[5,-3]]) = (-3)*(-3) - 13*5 = 9 - 65 = -56.
+So det = 9*56 - (-3)*0 + 5*(-56) = 504 + 0 -280 = 224.
+Thus det(G3)=224? Check: 504-280=224. Yes.
+Then R33^2 = det(G3)/det(G2) = 224/108 = simplify: divide by 4: 56/27? 224/108 = 56/27 = approx 2.07407. But maybe further simplify? 56/27 can't reduce further. But maybe we should keep as fraction. However check if we need exact numbers. So R33^2 = 56/27? Wait, 224/108 = divide numerator and denominator by 4: 56/27. So yes.
+
+Now G4: columns c1..c4. Gram matrix 4x4. Need entries:
+We already have for first three. Also need c4 with c1,c2,c3, and c4·c4=11.
+c4·c1=7, c4·c2=3, c4·c3=5 (we computed c1·c4=7, c2·c4=3, c3·c4=5).
+So matrix M4 = 
+[9, -3, 5, 7;
+ -3, 13, -3, 3;
+ 5, -3, 5, 5;
+ 7, 3, 5, 11]
+We need det(G4). Compute determinant. We can use row operations or compute via expansion. Since we have det(G3)=224, we can also compute using formula? In principle we can compute det(G4) = det(G3) * R44^2? But we don't know R44^2 yet. We can compute directly.
+
+We'll compute det of M4. Use systematic elimination to simplify.
+
+Write matrix:
+
+R1: [9, -3, 5, 7]
+R2: [-3, 13, -3, 3]
+R3: [5, -3, 5, 5]
+R4: [7, 3, 5, 11]
+
+We can perform row operations that preserve determinant? We can add multiples of rows to others, but careful: adding a multiple of one row to another does not change determinant; scaling rows scales determinant; swapping changes sign. We'll try to triangularize by eliminating first column below first row.
+
+Better to compute using Schur complement: For block matrix [[A,B],[C,D]] with A 3x3 invertible (M3), det = det(A)*det(D - C A^{-1} B). But we have A = M3 (3x3). We know det(A)=224. We can compute the Schur complement: S = D - C A^{-1} B, where D = [11] scalar, C is row vector (7,3,5), B is column vector (7,3,5)^T? Actually B is the top-right 3x1: column of c4 dot with c1,c2,c3: (7,3,5)^T. C is bottom-left 1x3: (7,3,5). So S = 11 - (7,3,5) * A^{-1} * (7,3,5)^T. Then det(G4)= det(A)*S. So we need to compute S. Compute A^{-1} times vector? Alternatively compute (7,3,5) * A^{-1} * (7,3,5)^T = (7,3,5) * x where x = A^{-1} (7,3,5)^T. So we can solve A x = b with b = (7,3,5)^T. Then S=11 - (7,3,5)·x.
+
+We have A = M3 = [[9,-3,5],[-3,13,-3],[5,-3,5]]. Solve A x = b = [7,3,5]^T.
+
+We can solve using elimination. Or compute adjugate, but easier to solve.
+
+Write system:
+9x1 -3x2 +5x3 = 7   (1)
+-3x1 +13x2 -3x3 = 3   (2)
+5x1 -3x2 +5x3 = 5   (3)
+
+Subtract (3) from (1): (9x1 -3x2+5x3) - (5x1 -3x2+5x3) = 7-5 => 4x1 = 2 => x1 = 0.5.
+Now plug x1=0.5 into (1): 9*0.5 -3x2+5x3 = 7 => 4.5 -3x2+5x3=7 => -3x2+5x3 = 2.5 => multiply 2: -6x2+10x3=5. (Eq A)
+Into (2): -3*0.5 +13x2 -3x3 =3 => -1.5 +13x2 -3x3 =3 => 13x2 -3x3 = 4.5 => multiply 2: 26x2 -6x3 =9. (Eq B)
+Into (3): 5*0.5 -3x2+5x3=5 => 2.5 -3x2+5x3=5 => -3x2+5x3=2.5 same as Eq A.
+
+Now solve Eq A and Eq B. Eq A: -6x2+10x3=5. Eq B: 26x2 -6x3 =9.
+Solve: multiply Eq A by appropriate factor. Let's solve for x2,x3. From Eq A: 10x3 = 5+6x2 => x3 = (5+6x2)/10 = 0.5 + 0.6x2. Substitute into Eq B: 26x2 -6(0.5+0.6x2)=9 => 26x2 -3 -3.6x2=9 => 22.4x2 -3=9 => 22.4x2=12 => x2 = 12/22.4 = 120/224 = simplify: divide by 8: 15/28? 120/224 = 15/28 ≈0.535714. Then x3 = 0.5 + 0.6*(15/28) = 0.5 + (0.6*15)/28 = 0.5 + 9/28 = 0.5 = 14/28, so 14/28+9/28=23/28 ≈0.8214286.
+
+So x = [1/2, 15/28, 23/28]^T? Check: x1=0.5=1/2, x2=15/28, x3=23/28.
+
+Now compute dot product b·x = (7,3,5)·(1/2,15/28,23/28) = 7*(1/2) + 3*(15/28) + 5*(23/28) = 7/2 + 45/28 + 115/28 = 7/2 + (45+115)/28 = 7/2 + 160/28 = 7/2 + 40/7? Wait 160/28 simplifies to 40/7? 160/28 = divide by 4: 40/7. So = 7/2 + 40/7 = common denominator 14: (49/14)+(80/14)=129/14 ≈9.2142857. Then S = 11 - 129/14 = (154/14 - 129/14) = 25/14 ≈1.7857143. Thus det(G4)= det(A)*S = 224 * (25/14) = 224/14 *25 = 16*25 = 400. Because 224/14=16. So det(G4)=400. Good.
+
+Then R44^2 = det(G4)/det(G3) = 400/224 = simplify divide by 16: 400/16=25, 224/16=14 -> 25/14? Actually 400/224 = reduce by 8: 50/28 = 25/14. So R44^2 = 25/14.
+
+Now G5: columns c1..c5. Include c5. We have dot products with previous: c5·c1=4, c5·c2=-2, c5·c3=5, c5·c4=4, and c5·c5=6.
+
+So Gram matrix M5 = 5x5 with previous M4 as top-left 4x4, plus new row and column:
+
+Rows 1-4 correspond to c1..c4, row5 c5. Similarly columns.
+
+We need det(G5). Use Schur complement with A = M4 (4x4), det(A)=400. Let b = column of dot products of c5 with c1..c4: b = [c1·c5, c2·c5, c3·c5, c4·c5]^T = [4, -2, 5, 4]^T. And row vector b^T same. D = c5·c5 =6.
+
+Then det(G5) = det(A) * (D - b^T A^{-1} b). So we need S = 6 - b^T A^{-1} b.
+
+We need to compute y = A^{-1} b, then b·y. So we need to solve A y = b, where A = M4. We could attempt to solve using elimination, but A is 4x4. However we may try to find pattern or use previous decomposition? Perhaps easier to compute directly det(G5) using row operations on the 5x5 matrix, but we can also use that we have computed R44^2 etc? Alternatively, we can compute by incremental Gram-Schmidt: Since we have the orthogonal vectors q1..q4? But might be messy. Better to compute A^{-1} b by solving system. We already have a representation? Since we computed Schur complement for G4, we could also compute inverse of M4 by block inversion? Might be doable.
+
+Given M4 = [ [M3, u], [u^T, d] ] where u = (7,3,5)^T, d=11, and we computed S4 = d - u^T M3^{-1} u = 25/14. And we solved M3 x = u to get x = (1/2, 15/28, 23/28). Then M3^{-1} is known? Not explicitly but we can compute M4 inverse using formula: For block matrix, the inverse can be expressed. But we need to compute y = M4^{-1} b, where b = (4,-2,5,4)^T. Write b = [b_top; b4] where b_top is first 3 components: (4,-2,5)^T? Actually b = (c1c5=4, c2c5=-2, c3c5=5, c4c5=4). So b_top = (4, -2, 5)^T, b_bottom = 4. Then the inverse of M4 in block form: 
+M4 = [[M3, u], [u^T, d]]. Then its inverse is:
+[[M3^{-1} + (M3^{-1} u) (u^T M3^{-1}) / S,  - (M3^{-1} u)/S],
+ [ - (u^T M3^{-1})/S,  1/S ]], where S = d - u^T M3^{-1} u = 25/14. And M3^{-1} u = x = (1/2, 15/28, 23/28). So let x = (x1,x2,x3). Then M4^{-1} * b = [ (M3^{-1} b_top + (x (u^T M3^{-1} b_top?) Wait carefully: The product:
+
+Let A = M3, B = u (3x1), C = u^T (1x3), D = d.
+Then M = [[A, B], [C, D]].
+Then M^{-1} = [[A^{-1} + A^{-1}B S^{-1} C A^{-1}, -A^{-1}B S^{-1}], [-S^{-1} C A^{-1}, S^{-1}]], where S = D - C A^{-1}B.
+
+Now we need y = M^{-1} b, where b = [b1; b2] with b1 = top 3 components, b2 = bottom (scalar). So y = [ y_top; y_bottom ] = 
+y_top = (A^{-1} + A^{-1}B S^{-1} C A^{-1}) b1 + (-A^{-1}B S^{-1}) b2 = A^{-1} b1 + A^{-1}B S^{-1} (C A^{-1} b1 - b2).
+y_bottom = (-S^{-1} C A^{-1}) b1 + S^{-1} b2 = S^{-1} (b2 - C A^{-1} b1).
+
+Thus we can compute if we can compute A^{-1} b1 and C A^{-1} b1. A = M3. We already solved A x = u, got x. We also need A^{-1} b1. Let's define w = A^{-1} b1, where b1 = (4, -2, 5)^T. We can solve A w = b1 similarly as before. Then C A^{-1} b1 = u^T w. And we also need C A^{-1} b1? Yes. Then we can compute y_top and y_bottom. Then b·y = b1·y_top + b2*y_bottom. But we need b^T A^{-1} b = b^T y = b1·y_top + b2*y_bottom. And S5 = D5 - b^T y? Wait we need S = D - b^T A^{-1} b. So if we can compute b^T A^{-1} b, we have S.
+
+Alternatively we can compute directly solving A y = b for the 4x4 system. That might be simpler: Solve M4 y = b. That is a 4x4 linear system. Since M4 is symmetric positive definite, we can use elimination. Let's do that.
+
+We have M4:
+
+Rows:
+1: [9, -3, 5, 7]
+2: [-3, 13, -3, 3]
+3: [5, -3, 5, 5]
+4: [7, 3, 5, 11]
+
+Right-hand side b = [4, -2, 5, 4]^T.
+
+We solve for y = [y1,y2,y3,y4]^T.
+
+Write system:
+9y1 -3y2 +5y3 +7y4 = 4   (1)
+-3y1+13y2 -3y3 +3y4 = -2   (2)
+5y1 -3y2 +5y3 +5y4 = 5   (3)
+7y1 +3y2 +5y3 +11y4 = 4   (4)
+
+We can try to eliminate variables. Notice (1) and (3) are similar. Subtract (3) from (1): (9y1 -3y2+5y3+7y4) - (5y1-3y2+5y3+5y4) = 4-5 => 4y1 +2y4 = -1 => 4y1 +2y4 = -1 => divide 2: 2y1 + y4 = -0.5 => y4 = -0.5 -2y1. (Eq A)
+
+Now (2) and (4) maybe also combine with others. Also use (3) and (1). Let's also subtract appropriate multiples.
+
+We can also use (2) and (4). Let's express in terms of y1 and maybe y2,y3. Use Eq A to eliminate y4.
+
+From Eq A: y4 = -1/2 - 2y1.
+
+Now substitute into (1),(2),(3),(4). However (1) gave that equation; we can use (1) or (3). Let's use (3): 5y1 -3y2+5y3+5y4 =5 => substitute y4: 5y1 -3y2+5y3+5*(-1/2 -2y1) =5 => 5y1 -3y2+5y3 -5/2 -10y1 =5 => -5y1 -3y2+5y3 -5/2 =5 => -5y1 -3y2+5y3 =5 +5/2 =15/2 => multiply 2: -10y1 -6y2+10y3 =15 => (Eq B)
+
+Now (2): -3y1+13y2 -3y3+3y4 = -2 => substitute y4: -3y1+13y2-3y3+3*(-1/2-2y1) = -2 => -3y1+13y2-3y3 -3/2 -6y1 = -2 => -9y1+13y2-3y3 -3/2 = -2 => -9y1+13y2-3y3 = -2 +3/2 = -1/2 => multiply 2: -18y1+26y2-6y3 = -1 => (Eq C)
+
+Now (4): 7y1+3y2+5y3+11y4 =4 => substitute y4: 7y1+3y2+5y3+11*(-1/2-2y1) =4 => 7y1+3y2+5y3 -11/2 -22y1 =4 => -15y1+3y2+5y3 -11/2 =4 => -15y1+3y2+5y3 =4+11/2=19/2 => multiply 2: -30y1+6y2+10y3 =19 => (Eq D)
+
+Now we have three equations in y1,y2,y3: Eq B: -10y1 -6y2+10y3 =15; Eq C: -18y1+26y2-6y3 = -1; Eq D: -30y1+6y2+10y3 =19.
+
+We can simplify. Write them:
+
+B: -10y1 -6y2 +10y3 =15   (B)
+C: -18y1 +26y2 -6y3 = -1  (C)
+D: -30y1 +6y2 +10y3 =19  (D)
+
+Observe B and D: B: -10y1 -6y2+10y3=15, D: -30y1+6y2+10y3=19. Subtract B from D? Actually D - B: (-30y1+6y2+10y3) - (-10y1-6y2+10y3) = 19-15 => (-30+10)y1 + (6+6)y2 + (10-10)y3 =4 => -20y1 +12y2 =4 => divide 4: -5y1+3y2=1 => (Eq E) => 3y2 = 1+5y1 => y2 = (1+5y1)/3.
+
+Now use Eq C and maybe B. Substitute y2 into B and C.
+
+From B: -10y1 -6*((1+5y1)/3) +10y3 =15 => -10y1 -2*(1+5y1) +10y3 =15 (since 6/3=2) => -10y1 -2 -10y1 +10y3 =15 => -20y1 -2 +10y3 =15 => 10y3 = 15+2+20y1 = 17+20y1 => y3 = (17+20y1)/10 = 1.7 + 2y1? Actually 17/10+2y1.
+
+Now Eq C: -18y1+26y2-6y3 = -1. Substitute y2 and y3: y2 = (1+5y1)/3; y3 = (17+20y1)/10. Compute:
+
+-18y1 + 26*(1+5y1)/3 - 6*(17+20y1)/10 = -1.
+Simplify each term: 26/3*(1+5y1) = (26/3)+(130/3)y1. -6/10 = -3/5, so -3/5*(17+20y1) = -(51/5) - (60/5)y1 = -10.2 -12y1? Actually 60/5=12, so -12y1 -51/5. So equation:
+
+-18y1 + (26/3)+(130/3)y1 -12y1 -51/5 = -1.
+
+Combine y1 terms: -18y1 + (130/3)y1 -12y1 = (-18-12) + 130/3 = -30 + 130/3 = (-90/3+130/3)=40/3 y1. So y1 coefficient: 40/3. Constant terms: 26/3 - 51/5. Compute common denominator 15: 26/3 = 130/15, 51/5 = 153/15, so 130/15 - 153/15 = -23/15. So equation: (40/3) y1 - 23/15 = -1 => (40/3) y1 = -1 + 23/15 = (-15/15+23/15)=8/15 => y1 = (8/15) * (3/40) = (8*3)/(15*40)=24/(600)=1/25? 24/600=1/25=0.04. So y1 = 1/25.
+
+Then y2 = (1+5*(1/25))/3 = (1+5/25)/3 = (1+1/5)/3 = (6/5)/3 = 6/15 = 2/5=0.4. y3 = (17+20*(1/25))/10 = (17+20/25)/10 = (17+4/5)/10 = ((85/5+4/5)=89/5)/10 = 89/50 = 1.78. y4 from Eq A: y4 = -1/2 -2y1 = -0.5 -2/25 = -0.5 -0.08 = -0.58 = -29/50? Let's compute exactly: -1/2 - 2/25 = - (25/50 + 4/50) = -29/50 = -0.58. So y = (1/25, 2/5, 89/50, -29/50). Check if satisfies (4)? Let's verify quickly: 7*(1/25)+3*(2/5)+5*(89/50)+11*(-29/50) = 7/25 + 6/5 + 445/50 - 319/50 = 7/25 + 6/5 + (445-319)/50 = 7/25 + 6/5 + 126/50 = 7/25 + 6/5 + 63/25? Because 126/50=63/25. So combine 7/25+63/25=70/25=14/5. Then +6/5 =20/5=4. Yes matches right side 4. Good.
+
+Thus y = A^{-1} b. Then b^T y = b·y = (4, -2, 5, 4)·(1/25, 2/5, 89/50, -29/50). Compute:
+
+4*(1/25) = 4/25.
+-2*(2/5) = -4/5 = -20/25.
+5*(89/50) = 445/50 = 89/10 = 8.9, but let's get common denominator 50: 5*89/50 = 445/50 = 89/10 = 8.9, convert to denominator 50: 445/50.
+4*(-29/50) = -116/50 = -58/25? Actually -116/50 = -58/25.
+
+Better use denominator 50: 4/25 = 8/50; -4/5 = -40/50; 445/50; -116/50. Sum: (8 -40 +445 -116)/50 = (8-40=-32; -32+445=413; 413-116=297)/50 = 297/50 = 5.94. So b^T y = 297/50.
+
+Thus S = D - b^T y = 6 - 297/50 = (300/50 - 297/50) = 3/50 = 0.06. Then det(G5) = det(A) * S = 400 * (3/50) = 400/50 *3 = 8*3 = 24. So det(G5)=24.
+
+Then R55^2 = det(G5)/det(G4) = 24/400 = 3/50? Wait 24/400 = 6/100 = 3/50 = 0.06. Indeed R55^2 = 3/50.
+
+Now G6: columns c1..c6. Include c6. Compute dot products with c6: we have c6·c1=-11, c6·c2=-2, c6·c3=-6, c6·c4=-12, c6·c5=-5, and c6·c6=17. So b6 = [c1·c6, c2·c6, c3·c6, c4·c6, c5·c6]^T = [-11, -2, -6, -12, -5]^T. And D6 = 17. A = M5 (5x5) with det=24. Then det(G6) = det(M5) * (D6 - b^T A^{-1} b). So we need S6 = 17 - b^T A^{-1} b. We need to compute y = A^{-1} b, where A = M5, b as above.
+
+Now M5 is the Gram matrix for columns 1..5. We have computed its determinant but not its explicit entries? We have M5 = 5x5 with entries we have: for i,j=1..5:
+
+We have all dot products:
+
+c1:9, c2:13, c3:5, c4:11, c5:6.
+c1·c2=-3, c1·c3=5, c1·c4=7, c1·c5=4.
+c2·c3=-3, c2·c4=3, c2·c5=-2.
+c3·c4=5, c3·c5=5.
+c4·c5=4.
+
+So M5 matrix:
+
+Row1: [9, -3, 5, 7, 4]
+Row2: [-3, 13, -3, 3, -2]
+Row3: [5, -3, 5, 5, 5]
+Row4: [7, 3, 5, 11, 4]
+Row5: [4, -2, 5, 4, 6]
+
+We need to solve A y = b, where b = [-11, -2, -6, -12, -5]^T. Then compute b·y, then S = 17 - b·y, then det(G6)=24*S. Then R66^2 = det(G6)/det(G5)=det(G6)/24 = S.
+
+Wait: R66^2 = det(G6)/det(G5) = (det(M5)*S)/det(M5) = S. So R66^2 = S = 17 - b^T A^{-1} b. So we just need S directly.
+
+Thus we need to compute b^T y = b^T A^{-1} b, i.e., compute y = A^{-1} b, then dot with b. Alternatively, we can compute S = D - b^T A^{-1} b as the Schur complement. This may be computed by solving the system A y = b. Since A is 5x5, we can attempt to solve by elimination, using the fact that we have previous decompositions? Might be easier to do stepwise Gaussian elimination or using the fact that we already have QR? But we can solve systematically.
+
+We have M5, which is symmetric positive definite. We can attempt to compute y by forward substitution if we have Cholesky factorization? But we don't have it explicitly. We can try to use the block structure recursively. Since we have M5 built from M4 plus a row/col, we might use the inverse formula as before with M4 as top-left block. Let's do that.
+
+Write M5 = [[M4, u], [u^T, d]] where M4 is 4x4 Gram for c1..c4; u = (c1·c5, c2·c5, c3·c5, c4·c5)^T = [4, -2, 5, 4]^T; d = c5·c5=6. We have already computed Schur complement S5 = d - u^T M4^{-1} u = 3/50 (since det(G5)=24, det(M4)=400, so S5=24/400=3/50). And we also computed M4^{-1} u? Actually we computed y for b? For M5, we may need to compute the inverse of M5 to get y = M5^{-1} b where b = [-11,-2,-6,-12,-5]^T. But b is a 5-vector. Write b = [b_top; b_bottom] where b_top = first 4 components: [-11, -2, -6, -12]^T, and b_bottom = -5. Then using block inversion similar to before:
+
+Let A = M4 (4x4), u = [4,-2,5,4]^T, d=6. Then M5 = [[A, u], [u^T, d]]. Its inverse M5^{-1} = [[A^{-1} + A^{-1}u S^{-1} u^T A^{-1}, -A^{-1}u S^{-1}], [-S^{-1} u^T A^{-1}, S^{-1}]], where S = d - u^T A^{-1} u = 3/50.
+
+Thus y = M5^{-1} b = [ y_top; y_bottom ] with:
+y_top = A^{-1} b_top + A^{-1}u S^{-1} (u^T A^{-1} b_top - b_bottom)
+y_bottom = S^{-1} (b_bottom - u^T A^{-1} b_top)
+
+Then b^T y = b_top^T y_top + b_bottom y_bottom.
+
+We need b^T y = b^T A^{-1} b. So we need to compute w = A^{-1} b_top and also v = A^{-1} u (which we might already have from earlier? We computed A^{-1} u when we solved A x = u for x? That gave x = M4^{-1} u. In the previous step for G5, we solved A x = u? Actually we solved A y = b where b = u? Wait earlier for G5 we needed u? We solved M4 y = b where b = [4,-2,5,4]^T? Actually we solved M4 y = b where b = [4,-2,5,4]^T? That was exactly solving A y = u? Because u = [4,-2,5,4]^T? Yes! In the G5 step, we solved M4 y = b where b was [4,-2,5,4]^T, which is exactly u. So we already computed y = A^{-1} u. That was the y we computed: y = (1/25, 2/5, 89/50, -29/50). Indeed we had y = [1/25, 2/5, 89/50, -29/50]^T. So v = A^{-1} u = that vector. Good.
+
+Now we need w = A^{-1} b_top, where b_top = [-11, -2, -6, -12]^T. So we need to solve M4 w = b_top. Then we can compute u^T w = u · w (since u^T A^{-1} b_top = u^T w). Then we compute b_bottom = -5, and S=3/50. Then we can compute y_top and y_bottom, then b^T y.
+
+Thus we need to solve M4 w = b_top. M4 is the 4x4 Gram matrix we had: 
+[9, -3, 5, 7;
+ -3, 13, -3, 3;
+ 5, -3, 5, 5;
+ 7, 3, 5, 11]
+
+Right side b_top = [-11, -2, -6, -12]^T.
+
+We can solve this 4x4 system. Use elimination similar to before. Let's denote variables w1,w2,w3,w4. Equations:
+
+9w1 -3w2 +5w3 +7w4 = -11   (1)
+-3w1+13w2 -3w3 +3w4 = -2   (2)
+5w1 -3w2 +5w3 +5w4 = -6    (3)
+7w1 +3w2 +5w3 +11w4 = -12  (4)
+
+We can use the same approach as before: subtract (3) from (1): (9w1-3w2+5w3+7w4) - (5w1-3w2+5w3+5w4) = -11 - (-6) => 4w1 +2w4 = -5 => 2w1 + w4 = -2.5 => w4 = -2.5 -2w1 = -5/2 -2w1. => w4 = -5/2 - 2w1. (Eq A)
+
+Plug into (3): 5w1 -3w2+5w3+5w4 = -6 => substitute w4: 5w1 -3w2+5w3+5*(-5/2 -2w1) = -6 => 5w1 -3w2+5w3 -25/2 -10w1 = -6 => -5w1 -3w2+5w3 -25/2 = -6 => -5w1 -3w2+5w3 = -6 +25/2 = (-12/2+25/2)=13/2 => multiply 2: -10w1 -6w2+10w3 =13. (Eq B)
+
+Now (2): -3w1+13w2 -3w3+3w4 = -2 => substitute w4: -3w1+13w2-3w3+3*(-5/2-2w1)= -2 => -3w1+13w2-3w3 -15/2 -6w1 = -2 => -9w1+13w2-3w3 -15/2 = -2 => -9w1+13w2-3w3 = -2+15/2 = (-4/2+15/2)=11/2 => multiply 2: -18w1+26w2-6w3 =11. (Eq C)
+
+Now (4): 7w1+3w2+5w3+11w4 = -12 => substitute w4: 7w1+3w2+5w3+11*(-5/2-2w1)= -12 => 7w1+3w2+5w3 -55/2 -22w1 = -12 => -15w1+3w2+5w3 -55/2 = -12 => -15w1+3w2+5w3 = -12+55/2 = (-24/2+55/2)=31/2 => multiply 2: -30w1+6w2+10w3 =31. (Eq D)
+
+Now we have three equations B, C, D:
+
+B: -10w1 -6w2 +10w3 =13
+C: -18w1 +26w2 -6w3 =11
+D: -30w1 +6w2 +10w3 =31
+
+Observe B and D: D - B: (-30w1+6w2+10w3) - (-10w1-6w2+10w3) = 31-13 => -20w1 +12w2 =18 => divide 2: -10w1+6w2 =9 => (Eq E) => 6w2 = 9+10w1 => w2 = (9+10w1)/6 = (3/2) + (5/3)w1? Actually 9/6=3/2, 10w1/6 = (5/3)w1. So w2 = 3/2 + (5/3)w1.
+
+Now plug w2 into B to express w3. B: -10w1 -6w2+10w3 =13 => -10w1 -6*(3/2 + (5/3)w1) +10w3 =13 => -10w1 -9 -10w1 +10w3 =13 (since -6*(3/2)= -9, -6*(5/3)w1 = -10w1) => -20w1 -9 +10w3 =13 => 10w3 = 13+9+20w1 =22+20w1 => w3 = (22+20w1)/10 = 11/5 + 2w1. So w3 = 2.2 + 2w1.
+
+Now substitute into C: -18w1 +26w2 -6w3 =11. Compute w2 and w3:
+
+w2 = 3/2 + (5/3)w1, w3 = 11/5 + 2w1. Use exact fractions: 3/2 = 1.5, 11/5=2.2, but keep fractions: w2 = 3/2 + (5/3)w1, w3 = 11/5 + 2w1.
+
+Now compute C: -18w1 + 26*(3/2 + (5/3)w1) -6*(11/5 + 2w1) =11.
+Compute term by term: 26*(3/2)=26*3/2=78/2=39. 26*(5/3)w1 = (130/3)w1. -6*(11/5) = -66/5. -6*2w1 = -12w1.
+So sum: -18w1 +39 + (130/3)w1 -66/5 -12w1 =11.
+Combine w1: -18w1 -12w1 = -30w1, plus (130/3)w1 = (-90/3 w1 +130/3 w1)= (40/3)w1. So w1 coefficient: 40/3. Constant: 39 - 66/5 = (195/5 -66/5) =129/5 = 25.8. So equation: (40/3)w1 + 129/5 = 11 => (40/3)w1 = 11 - 129/5 = (55/5 -129/5) = -74/5 => w1 = (-74/5)*(3/40) = - (74*3)/(5*40) = -222/(200) = -111/100 = -1.11. So w1 = -111/100 = -1.11.
+
+Now compute w2 = 3/2 + (5/3)*(-111/100) = 3/2 - (5*111)/(3*100) = 3/2 - (555)/(300) = 3/2 - (111/60) simplify 555/300=111/60=37/20=1.85. 3/2=1.5, so w2 = 1.5 - 1.85 = -0.35 = -7/20? Let's compute exactly: 3/2 = 90/60, 111/60 = 111/60, so w2 = (90-111)/60 = -21/60 = -7/20 = -0.35. Good.
+
+w3 = 11/5 + 2*(-111/100) = 11/5 - 222/100 = 11/5 = 220/100, minus 222/100 = -2/100 = -1/50 = -0.02. So w3 = -1/50.
+
+Now w4 from Eq A: w4 = -5/2 -2w1 = -5/2 -2*(-111/100) = -5/2 + 222/100 = -250/100 + 222/100 = -28/100 = -7/25 = -0.28. So w4 = -7/25.
+
+Thus w = A^{-1} b_top = [w1,w2,w3,w4] = [-111/100, -7/20, -1/50, -7/25].
+
+Now we need u^T w = u·w, where u = [4, -2, 5, 4]^T. Compute dot product:
+
+u·w = 4*(-111/100) + (-2)*(-7/20) + 5*(-1/50) + 4*(-7/25) = 
+= -444/100 + 14/20 -5/50 -28/25. Convert to denominator 100: 
+-444/100 + (14/20=70/100) + (-5/50=-10/100) + (-28/25=-112/100) => sum = -444+70-10-112 = -496/100 = -124/25? -496/100 = -4.96, simplified: divide by 4: -124/25 = -4.96. So u^T w = -124/25.
+
+Now b_bottom = -5. So compute (u^T w - b_bottom) = (-124/25) - (-5) = -124/25 +5 = -124/25 +125/25 = 1/25.
+
+S = 3/50. So S^{-1} = 50/3.
+
+Now we can compute y_top = w + v * (S^{-1} (u^T w - b_bottom))? Actually from formula: y_top = A^{-1} b_top + A^{-1}u S^{-1} (u^T A^{-1} b_top - b_bottom) = w + v * (S^{-1} (u^T w - b_bottom)). Since v = A^{-1} u = [1/25, 2/5, 89/50, -29/50] (we computed earlier). Compute scalar factor: S^{-1}*(u^T w - b_bottom) = (50/3)*(1/25) = 50/(75) = 2/3? Actually (50/3)*(1/25)=50/(75)=2/3. Yes.
+
+Then y_top = w + (2/3)*v. So compute y_top components:
+
+v = [1/25, 2/5, 89/50, -29/50].
+
+Multiply v by 2/3: (2/3)*v = [2/75, (2/3)*(2/5)=4/15, (2/3)*(89/50)=178/150=89/75, (2/3)*(-29/50)= -58/150 = -29/75].
+
+Now w = [-111/100, -7/20, -1/50, -7/25]. Convert all to common denominator 300 maybe to sum. But we can keep fractions and compute exactly.
+
+We'll convert each to rational numbers with common denominator 300 perhaps. But we need b·y = b_top·y_top + b_bottom*y_bottom. Then S = D - b·y = 17 - b·y. But b·y is b^T y = b_top·y_top + b_bottom*y_bottom. We can compute y_bottom = S^{-1} (b_bottom - u^T w) = (50/3)*(-5 - u^T w?). Wait formula: y_bottom = S^{-1} (b_bottom - u^T A^{-1} b_top) = S^{-1} (b_bottom - u^T w). Since u^T w = -124/25, b_bottom = -5, so b_bottom - u^T w = -5 - (-124/25) = -5 +124/25 = (-125/25+124/25)= -1/25. Then y_bottom = (50/3)*(-1/25) = -50/(75)= -2/3. So y_bottom = -2/3.
+
+Now compute y_top exactly:
+
+y_top = w + (2/3) v.
+
+Compute w in fractions:
+w1 = -111/100 = -111/100.
+w2 = -7/20 = -35/100? But better to keep denominator 100 for w1? v1=1/25=4/100, but (2/3)v1=2/75, which is not over 100. Use common denominators maybe 300. Let's compute each component seperately using rational arithmetic.
+
+We'll compute each y_top_i:
+
+y1 = w1 + (2/3)*v1 = -111/100 + (2/3)*(1/25) = -111/100 + 2/(75) = convert to denominator 300: -111/100 = -333/300, 2/75 = 8/300, sum = -325/300 = -13/12? Because divide by 25: -325/300 = -13/12? 325/25=13, 300/25=12, yes -13/12. So y1 = -13/12.
+
+y2 = w2 + (2/3)*v2 = -7/20 + (2/3)*(2/5) = -7/20 + 4/15. Convert to denominator 60: -7/20 = -21/60, 4/15 = 16/60, sum = -5/60 = -1/12. So y2 = -1/12.
+
+y3 = w3 + (2/3)*v3 = -1/50 + (2/3)*(89/50) = -1/50 + (178/150) = -1/50 + 89/75? Wait 178/150 = 89/75. Convert to denominator 150: -1/50 = -3/150, 89/75 = 178/150, sum = 175/150 = 7/6? 175/150 simplifies by 25: 7/6? 175/25=7,150/25=6, yes 7/6 = 1.1666667. So y3 = 7/6.
+
+y4 = w4 + (2/3)*v4 = -7/25 + (2/3)*(-29/50) = -7/25 - (58/150) = -7/25 - 29/75. Convert to denominator 75: -7/25 = -21/75, minus 29/75 = -50/75 = -2/3. So y4 = -2/3.
+
+Thus y_top = [-13/12, -1/12, 7/6, -2/3]. Check signs? y4 = -2/3 = -0.6667, consistent with w4 = -0.28 plus something? Possibly.
+
+Now compute b_top·y_top: b_top = [-11, -2, -6, -12]. So dot = (-11)*(-13/12) + (-2)*(-1/12) + (-6)*(7/6) + (-12)*(-2/3) = compute:
+
+(-11)*(-13/12) = 143/12.
+(-2)*(-1/12) = 2/12 = 1/6.
+(-6)*(7/6) = -42/6 = -7.
+(-12)*(-2/3) = 24/3 = 8.
+
+Now sum: 143/12 + 1/6 -7 +8 = (143/12 + 2/12) +1 = (145/12) +1 = 145/12 + 12/12 = 157/12 ≈13.08333. Then b_bottom*y_bottom = (-5)*(-2/3) = 10/3 ≈3.33333. So total b·y = b^T y = 157/12 + 10/3 = 157/12 + 40/12 = 197/12 ≈16.41667.
+
+Thus b^T A^{-1} b = 197/12.
+
+Now S6 = D - b^T A^{-1} b = 17 - 197/12 = (204/12 - 197/12) = 7/12 ≈0.58333.
+
+So det(G6) = det(M5) * S6 = 24 * (7/12) = 24/12 *7 = 2*7 =14. So det(G6)=14.
+
+Then R66^2 = S6 = 7/12.
+
+Now G7: columns c1..c7. Include c7. Need c7 dot products: c7·c1=-8, c7·c2=-4, c7·c3=-5, c7·c4=-10, c7·c5=-5, c7·c6=13, and c7·c7=12. So b7 = [c1·c7, c2·c7, c3·c7, c4·c7, c5·c7, c6·c7]^T = [-8, -4, -5, -10, -5, 13]^T. D7 = 12. A = M6 (6x6) with det(G6)=14. Then det(G7) = det(M6) * (D7 - b^T A^{-1} b). And R77^2 = det(G7)/det(G6) = S7 = D7 - b^T A^{-1} b.
+
+So we need S7 = 12 - b^T M6^{-1} b.
+
+Now we need to solve or compute b^T M6^{-1} b. M6 is the Gram matrix for columns 1..6, which is 6x6. We know its determinant=14. We could attempt to compute the Schur complement using block decomposition with M5 as top-left block, similar to previous. That is, M6 = [[M5, v], [v^T, e]], where M5 = Gram for c1..c5, v = column of dot products of c6 with c1..c5: v = [c1·c6, c2·c6, c3·c6, c4·c6, c5·c6]^T = [-11, -2, -6, -12, -5]^T, and e = c6·c6 = 17. And we already computed Schur complement for that: S6 = e - v^T M5^{-1} v = 7/12, which we computed as R66^2. So we know v^T M5^{-1} v? Actually S6 = 17 - v^T M5^{-1} v = 7/12 => v^T M5^{-1} v = 17 - 7/12 = (204/12-7/12)=197/12. That matches b^T A^{-1} b we computed for M5? Yes, earlier we computed b^T M5^{-1} b where b was the same v? Actually we computed for G6, b was v and we got b^T M5^{-1} b = 197/12. So that's consistent. So we have that.
+
+Now for M6, we need to compute b (which is now the dot products of c7 with c1..c6). Write b = [b_top; b_bottom] where b_top = first 5 components: [-8, -4, -5, -10, -5]^T, b_bottom = 13. And M6 = [[M5, v], [v^T, e]] with v = [-11,-2,-6,-12,-5]^T, e=17. We have known M5^{-1} v? We computed earlier w = M5^{-1} v? Actually we solved M5 w = v? In the process of computing G6, we computed y = M5^{-1} v? Actually we computed y = M5^{-1} b? Wait earlier for G6 we had b = v, and we computed y = M5^{-1} v? We did not directly compute y = M5^{-1} v; we computed b^T y = 197/12 but we didn't find y explicitly. However we can compute y using block inversion formulas if we need. But we need to compute b^T M6^{-1} b. Using block inversion similar to before, we can compute S7 = e' - b^T M6^{-1} b? Actually D7 = 12, and we need S7 = 12 - b^T M6^{-1} b. Using block decomposition: M6 = [[A, v], [v^T, e]] where A = M5, v = vector, e=17. Then M6^{-1} = [[A^{-1} + A^{-1}v S^{-1} v^T A^{-1}, -A^{-1}v S^{-1}], [-S^{-1} v^T A^{-1}, S^{-1}]], where S = e - v^T A^{-1}v = 7/12.
+
+Now b = [b_top; b_bottom] with b_top of size 5, b_bottom=13. Then b^T M6^{-1} b = b_top^T y_top + b_bottom y_bottom, where y = M6^{-1} b. We can compute using formulas:
+
+y_top = A^{-1} b_top + A^{-1}v S^{-1} (v^T A^{-1} b_top - b_bottom) 
+y_bottom = S^{-1} (b_bottom - v^T A^{-1} b_top)
+
+Then b^T y = b_top^T y_top + b_bottom y_bottom.
+
+We need to compute w = A^{-1} b_top, and also we need A^{-1} v (which we might have from before? We computed y for v? Actually we solved for A^{-1}v when we solved M5 y = v? We didn't explicitly compute y vector, but we can compute it now maybe using earlier data? We have the solution for M5 y = v? In the G6 step we solved A y = v? Not directly; we computed y when we computed M5^{-1} b for b = v? Actually b = v for G6, and we computed b^T y = 197/12 and also we computed something like y_top and y_bottom? But we didn't compute the full y vector explicitly; we computed y for M5? Wait we computed y = M5^{-1} b where b=v? In the G6 step we had A=M5, b=v, and we used block inversion with M4 to compute b^T A^{-1} b = 197/12. That required solving M4 w = b_top? That gave w (for M4). Then we computed y_top and y_bottom for M5? Actually we computed the vector y = M5^{-1} v? Not directly. In that process we computed the scalar b^T y but not y itself. However we can compute y = M5^{-1} v by using the block formula again, with A=M4, u, d=6? But we already have M5 inverse components? Since we have M5 block decomposition with M4, we can compute A^{-1}v? v is the vector of dot products for c6 with c1..c5: v = [-11,-2,-6,-12,-5]^T. For M5 = [[M4, u], [u^T, d]] with u = [4,-2,5,4]^T, d=6. Then we can compute A^{-1} v (where A=M4) and also other components. We already computed A^{-1} b_top for b_top = first 4 components of v? v_top = [-11,-2,-6,-12] (size 4) and v_bottom = -5. In the G6 step we computed w = A^{-1} v_top? Actually we solved M4 w = v_top? Yes we did that earlier: we solved M4 w = [-11,-2,-6,-12]^T and got w = [-111/100, -7/20, -1/50, -7/25]. That is exactly w = A^{-1} v_top. Also we computed u^T w = -124/25, and then we computed y_bottom for M5? In that step we computed y_bottom = S^{-1} (v_bottom - u^T w) = (50/3)*(-5 - (-124/25)) = -2/3, which is the last component of y = M5^{-1} v? And we computed y_top = w + (2/3)v (where v there was A^{-1} u? Actually we computed y_top = w + (S^{-1}(u^T w - b_bottom)) * (A^{-1} u). That gave y_top = [-13/12, -1/12, 7/6, -2/3]. That is the top 4 components of y = M5^{-1} v. So we have the full y = M5^{-1} v = [ y_top_1, y_top_2, y_top_3, y_top_4, y_bottom ] = [-13/12, -1/12, 7/6, -2/3, -2/3]? Wait y_bottom was -2/3, but careful: y_bottom is the 5th component (since M5 is 5x5, the last component corresponds to c5). So y = [ -13/12, -1/12, 7/6, -2/3, -2/3 ]. Let's verify consistency: y_top had 4 components, y_bottom is the fifth. So yes.
+
+Thus we have p = A^{-1} v = M5^{-1} v = that vector p = (p1..p5) = (-13/12, -1/12, 7/6, -2/3, -2/3). We also need A^{-1} b_top where now A = M5, and b_top is the first 5 components of the new b? Actually b = [b_top; b_bottom] for c7: b_top = [-8, -4, -5, -10, -5]^T (size 5), and b_bottom = 13. But A = M5 is 5x5, and b_top is a vector of length 5. So we need w = A^{-1} b_top, i.e., M5^{-1} * (first 5 dot products of c7). Then we also need v^T w = v · w, where v is the vector of dot products of c6 with c1..c5: v = [-11, -2, -6, -12, -5]^T. Then we need S = e - v^T A^{-1} v = 7/12 already known. Then y_bottom = S^{-1} (b_bottom - v^T w), y_top = w + A^{-1}v S^{-1} (v^T w - b_bottom) = w + p * S^{-1} (v^T w - b_bottom). Then b^T y = b_top·y_top + b_bottom y_bottom. Then S7 = 12 - b^T y.
+
+Thus we need to compute w = M5^{-1} b_top, where b_top = [-8, -4, -5, -10, -5]^T. Since M5 is 5x5, we can compute w by solving M5 w = b_top. We could use block decomposition again using M4 to solve efficiently, similar to what we did for v. Since M5 = [[M4, u], [u^T, d]] with u = [4,-2,5,4]^T, d=6, and we know M4 inverse? Not directly but we can solve M5 w = b_top by block approach. Let b_top = [b1; b2] where b1 is first 4 components = [-8, -4, -5, -10]^T, and b2 = -5 (the fifth component). Then similar to before:
+
+We need to solve M5 w = b_top. Write w = [w_top; w_bottom] where w_top is 4-vector, w_bottom scalar. Then equations:
+M4 w_top + u w_bottom = b1   (I)
+u^T w_top + d w_bottom = b2   (II)
+
+We can solve: From (I): w_top = M4^{-1} (b1 - u w_bottom) = M4^{-1} b1 - w_bottom (M4^{-1} u). Let x = M4^{-1} b1 and y = M4^{-1} u = v (the earlier v? Actually we computed M4^{-1} u = [1/25, 2/5, 89/50, -29/50] which we called v earlier, but careful: earlier we called v = A^{-1} u for A=M4. So denote t = M4^{-1} u = that vector. Then w_top = x - w_bottom t. Plug into (II): u^T (x - w_bottom t) + d w_bottom = b2 => u^T x - w_bottom u^T t + d w_bottom = b2 => u^T x + w_bottom (d - u^T t) = b2 => but d - u^T t = S = 3/50 (the Schur complement for M5). So w_bottom = (b2 - u^T x) / (d - u^T t) = (b2 - u^T x) / S. Then w_top = x - w_bottom t. Then we can compute w. Then also v^T w = v^T w_top + v_bottom w_bottom, where v is the vector for c6: v = [v_top; v_bottom] with v_top = [-11,-2,-6,-12]^T, v_bottom = -5. And we also need v^T w for later.
+
+So we need to compute x = M4^{-1} b1, where b1 = [-8, -4, -5, -10]^T. We already solved M4 w = b1? Actually we solved M4 w = b_top earlier for v_top? That was b_top = [-11,-2,-6,-12]^T. Now b1 = [-8, -4, -5, -10]^T. So we need to solve M4 x = b1. We can do that using elimination similar to previous. Since M4 is the same 4x4 matrix, we can solve this system. Let's do that.
+
+M4 matrix:
+[9, -3, 5, 7;
+ -3, 13, -3, 3;
+ 5, -3, 5, 5;
+ 7, 3, 5, 11]
+RHS b1 = [-8, -4, -5, -10]^T.
+
+We solve for x1,x2,x3,x4. Use similar method: subtract (3) from (1) to eliminate? Let's set up equations:
+
+9x1 -3x2 +5x3 +7x4 = -8   (1)
+-3x1+13x2 -3x3 +3x4 = -4   (2)
+5x1 -3x2 +5x3 +5x4 = -5   (3)
+7x1 +3x2 +5x3 +11x4 = -10  (4)
+
+Again (1)-(3): (9x1-3x2+5x3+7x4) - (5x1-3x2+5x3+5x4) = -8 - (-5) => 4x1+2x4 = -3 => 2x1 + x4 = -1.5 => x4 = -3/2 - 2x1. (Eq A)
+
+Plug into (3): 5x1 -3x2+5x3+5x4 = -5 => 5x1 -3x2+5x3+5*(-3/2 -2x1) = -5 => 5x1 -3x2+5x3 -15/2 -10x1 = -5 => -5x1 -3x2+5x3 -15/2 = -5 => -5x1 -3x2+5x3 = -5 +15/2 = (-10/2+15/2)=5/2 => multiply 2: -10x1 -6x2+10x3 =5. (Eq B)
+
+(2): -3x1+13x2-3x3+3x4 = -4 => -3x1+13x2-3x3+3*(-3/2-2x1) = -4 => -3x1+13x2-3x3 -9/2 -6x1 = -4 => -9x1+13x2-3x3 -9/2 = -4 => -9x1+13x2-3x3 = -4+9/2 = (-8/2+9/2)=1/2 => multiply 2: -18x1+26x2-6x3 =1. (Eq C)
+
+(4): 7x1+3x2+5x3+11x4 = -10 => 7x1+3x2+5x3+11*(-3/2-2x1) = -10 => 7x1+3x2+5x3 -33/2 -22x1 = -10 => -15x1+3x2+5x3 -33/2 = -10 => -15x1+3x2+5x3 = -10+33/2 = (-20/2+33/2)=13/2 => multiply 2: -30x1+6x2+10x3 =13. (Eq D)
+
+Now we have B, C, D:
+
+B: -10x1 -6x2+10x3 =5
+C: -18x1+26x2-6x3 =1
+D: -30x1+6x2+10x3 =13
+
+Again D - B: (-30x1+6x2+10x3) - (-10x1-6x2+10x3) = 13-5 => -20x1+12x2 =8 => divide 4: -5x1+3x2 =2 => (Eq E) => 3x2 = 2+5x1 => x2 = (2+5x1)/3.
+
+Plug into B: -10x1 -6*((2+5x1)/3) +10x3 =5 => -10x1 -2*(2+5x1) +10x3 =5 => -10x1 -4 -10x1 +10x3 =5 => -20x1 -4 +10x3 =5 => 10x3 =5+4+20x1 =9+20x1 => x3 = (9+20x1)/10 = 9/10 + 2x1.
+
+Now plug into C: -18x1+26x2-6x3 =1. Substitute x2 and x3: x2 = (2+5x1)/3, x3 = (9+20x1)/10. Write:
+
+-18x1 + 26*(2+5x1)/3 -6*(9+20x1)/10 =1. Compute 26/3*(2+5x1) = (52/3)+(130/3)x1. -6/10 = -3/5, so -6*(9+20x1)/10 = -3/5*(9+20x1) = -27/5 -12x1. So equation:
+
+-18x1 + 52/3 + (130/3)x1 -27/5 -12x1 =1. Combine x1: -18x1 -12x1 = -30x1, plus (130/3)x1 = (-90/3+130/3)x1 = (40/3)x1. So x1 coefficient = 40/3. Constant: 52/3 -27/5 = common denominator 15: (260/15 - 81/15)=179/15. So equation: (40/3)x1 + 179/15 =1 => (40/3)x1 = 1 - 179/15 = (15/15-179/15)= -164/15 => x1 = (-164/15)*(3/40)= -164*3/(15*40)= -492/(600)= -41/50? Simplify: divide numerator and denominator by 12? 492/600 = reduce by 12: 41/50? 492/12=41, 600/12=50, yes -41/50 = -0.82. So x1 = -41/50.
+
+Now x2 = (2+5*(-41/50))/3 = (2 -205/50)/3 = (2 - 41/10)/3 = (20/10 -41/10)/3 = (-21/10)/3 = -7/10 = -0.7. x3 = 9/10 + 2*(-41/50) = 9/10 -82/50 = 9/10 - 41/25 = convert to 50: 45/50 - 82/50 = -37/50 = -0.74. x4 from Eq A: x4 = -3/2 -2x1 = -1.5 -2*(-0.82) = -1.5+1.64=0.14 = 7/50? Let's compute exactly: x4 = -3/2 -2*(-41/50) = -3/2 + 82/50 = -75/50 + 82/50 = 7/50 = 0.14. So x = [ -41/50, -7/10, -37/50, 7/50 ].
+
+Thus x = M4^{-1} b1.
+
+Now we also need t = M4^{-1} u, where u = [4, -2, 5, 4]^T. We previously computed that as v (but let's call it t): t = [1/25, 2/5, 89/50, -29/50]. Check: earlier we had v = [1/25, 2/5, 89/50, -29/50]. Yes.
+
+Now S = d - u^T t = 3/50. And b2 = -5 (the 5th component of b_top? Actually b_top = [b1; b2] with b2 = -5. Yes b2 = -5.
+
+Now compute u^T x: dot product of u = [4, -2, 5, 4] with x = [-41/50, -7/10, -37/50, 7/50]. Compute:
+
+u·x = 4*(-41/50) + (-2)*(-7/10) + 5*(-37/50) + 4*(7/50) = 
+= -164/50 + (14/10) ? -2*(-7/10)=14/10 = 7/5 = 70/50? Actually 14/10 = 7/5 = 70/50. So +70/50.
+Then 5*(-37/50) = -185/50.
+Then 4*(7/50)=28/50.
+Sum: (-164+70-185+28)/50 = (-164-185 = -349; +70+28 = 98; -349+98 = -251)/50 = -251/50 = -5.02. So u^T x = -251/50.
+
+Now compute w_bottom = (b2 - u^T x) / S = (-5 - (-251/50)) / (3/50) = (-5 + 251/50) / (3/50) = ( -250/50 + 251/50 ) / (3/50) = (1/50) / (3/50) = 1/3. So w_bottom = 1/3.
+
+Then w_top = x - w_bottom * t = x - (1/3)*t.
+
+Compute t = [1/25, 2/5, 89/50, -29/50]. Multiply by 1/3: t/3 = [1/75, 2/15, 89/150, -29/150]. Now x = [-41/50, -7/10, -37/50, 7/50]. Convert to denominators 150 perhaps for addition:
+
+x1 = -41/50 = -123/150. t1/3 = 1/75 = 2/150. So w_top1 = -123/150 - 2/150 = -125/150 = -5/6? -125/150 = -5/6? 125/150=5/6, yes -5/6. So w1 = -5/6.
+
+x2 = -7/10 = -105/150. t2/3 = 2/15 = 20/150? 2/15 = 20/150. So w_top2 = -105/150 - 20/150 = -125/150 = -5/6. So w2 = -5/6.
+
+x3 = -37/50 = -111/150. t3/3 = 89/150. So w_top3 = -111/150 - 89/150 = -200/150 = -4/3? -200/150 = -4/3? 200/150=4/3, yes -4/3. So w3 = -4/3.
+
+x4 = 7/50 = 21/150. t4/3 = -29/150. So w_top4 = 21/150 - (-29/150)? Wait careful: w_top = x - (1/3)t, so subtract: x4 - (1/3)*t4 = 21/150 - (-29/150) = 21/150 + 29/150 = 50/150 = 1/3. So w4 = 1/3.
+
+Thus w_top = [-5/6, -5/6, -4/3, 1/3]. And w_bottom = 1/3. So the full vector w = M5^{-1} b_top = [w_top; w_bottom] = [-5/6, -5/6, -4/3, 1/3, 1/3] (5 components). Check: w5 = w_bottom = 1/3.
+
+Now we have w = M5^{-1} b_top. Now we need v^T w, where v = [-11, -2, -6, -12, -5]^T.
+
+Compute v·w = (-11)*(-5/6) + (-2)*(-5/6) + (-6)*(-4/3) + (-12)*(1/3) + (-5)*(1/3). Compute each:
+
+(-11)*(-5/6)=55/6 ≈9.1667.
+(-2)*(-5/6)=10/6=5/3 ≈1.6667.
+(-6)*(-4/3)=24/3=8.
+(-12)*(1/3)= -4.
+(-5)*(1/3)= -5/3 ≈ -1.6667.
+Sum: 55/6 + 5/3 + 8 -4 -5/3 = 55/6 + (5/3-5/3) + (8-4) = 55/6 + 4 = 55/6 + 24/6 = 79/6 ≈13.1667. So v^T w = 79/6.
+
+Now b_bottom = 13 (the 6th component of b? Actually b = [b_top; b_bottom] where b_top = first 5 components = [-8,-4,-5,-10,-5], b_bottom = 13). We have S = e - v^T M5^{-1} v = 7/12 (we already have). So S^{-1} = 12/7.
+
+Now compute y_bottom = S^{-1} (b_bottom - v^T w) = (12/7)*(13 - 79/6) = (12/7)*( (78/6 - 79/6) ) = (12/7)*(-1/6) = -12/(42) = -2/7? 12/7 * (-1/6) = -12/(42) = -2/7. So y_bottom = -2/7.
+
+Now compute y_top = w + p * S^{-1} (v^T w - b_bottom) where p = M5^{-1} v (we computed earlier: p = [-13/12, -1/12, 7/6, -2/3, -2/3]). Compute scalar factor: S^{-1} (v^T w - b_bottom) = (12/7)*(79/6 - 13) = (12/7)*(79/6 - 78/6) = (12/7)*(1/6) = 12/(42)=2/7. So factor = 2/7. Then y_top = w + (2/7)*p.
+
+Now w = [-5/6, -5/6, -4/3, 1/3, 1/3]. p = [-13/12, -1/12, 7/6, -2/3, -2/3].
+
+Compute (2/7)*p = (2/7)*[-13/12, -1/12, 7/6, -2/3, -2/3] = multiply: 
+First: (2/7)*(-13/12) = -26/(84) = -13/42.
+Second: (2/7)*(-1/12) = -2/84 = -1/42.
+Third: (2/7)*(7/6) = (14)/(42) = 1/3? 14/42=1/3.
+Fourth: (2/7)*(-2/3) = -4/21 = -? Convert to denominator maybe 42: -8/42.
+Fifth: (2/7)*(-2/3) = -8/42.
+
+Now w expressed with denominator 42 maybe: w = [-5/6 = -35/42, -5/6 = -35/42, -4/3 = -56/42, 1/3 = 14/42, 1/3 = 14/42]. So y_top = w + (2/7)p = 
+y1 = -35/42 + (-13/42) = -48/42 = -8/7? -48/42 = -8/7? 48/42=8/7, yes -8/7.
+y2 = -35/42 + (-1/42) = -36/42 = -6/7.
+y3 = -56/42 + (14/42?) Wait (2/7)p third component = 1/3 = 14/42, so -56/42 + 14/42 = -42/42 = -1.
+y4 = 14/42 + (-8/42) = 6/42 = 1/7.
+y5 = 14/42 + (-8/42) = 6/42 = 1/7.
+Thus y_top = [-8/7, -6/7, -1, 1/7, 1/7].
+
+Now b_top = [-8, -4, -5, -10, -5]. Compute b_top·y_top = (-8)*(-8/7) + (-4)*(-6/7) + (-5)*(-1) + (-10)*(1/7) + (-5)*(1/7) = 
+= 64/7 + 24/7 + 5 + (-10/7) + (-5/7) = combine: 64/7+24/7=88/7; -10/7-5/7=-15/7; so 88/7-15/7=73/7; plus 5 = 73/7 + 35/7 = 108/7 ≈15.42857. Then b_bottom*y_bottom = 13 * (-2/7) = -26/7 ≈ -3.71429. So total b^T y = b_top·y_top + b_bottom*y_bottom = 108/7 - 26/7 = 82/7 ≈11.7142857.
+
+Thus b^T M6^{-1} b = 82/7.
+
+Now S7 = D7 - b^T M6^{-1} b = 12 - 82/7 = (84/7 - 82/7) = 2/7.
+
+Thus R77^2 = S7 = 2/7.
+
+Now we have all squares:
+
+R11^2 = 9
+R22^2 = 12
+R33^2 = 56/27
+R44^2 = 25/14
+R55^2 = 3/50
+R66^2 = 7/12
+R77^2 = 2/7
+
+We should simplify fractions if needed. All are reduced. So answer as comma-separated list: 9, 12, 56/27, 25/14, 3/50, 7/12, 2/7.
+
+But we should double-check if any could be integers? They are as above. Let's verify if they are positive. Yes.
+
+Now final answer: "9, 12, 56/27, 25/14, 3/50, 7/12, 2/7".
+
+But we need to present as exact numbers; maybe they want fractions in simplest form. So answer: 9, 12, 56/27, 25/14, 3/50, 7/12, 2/7.
+
+Let's also verify that product of these squares? The product of all R_{ii}^2 should equal det(G7)= (det A)^2. det(G7) = det(G1)*R22^2*R33^2*R44^2*R55^2*R66^2*R77^2 = 9 * 12 * (56/27) * (25/14) * (3/50) * (7/12) * (2/7). Simplify stepwise: 9*12=108. 108 * 56/27 = (108/27)*56 = 4*56=224. 224 * 25/14 = (224/14)*25 = 16*25=400. 400 * 3/50 = (400/50)*3=8*3=24. 24 * 7/12 = (24/12)*7=2*7=14. 14 * 2/7 = 4. So product = 4. Thus det(G7)=4. Then det(A)^2=4, so det(A)=±2. Since A is invertible integer matrix, plausible. So consistent. Good.
+
+Thus answer is correct.
+
+Now format: ANSWER: 9, 12, 56/27, 25/14, 3/50, 7/12, 2/7
+
+We should put as one line.

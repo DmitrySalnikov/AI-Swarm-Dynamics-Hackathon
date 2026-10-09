@@ -1,0 +1,389 @@
+We are given a large resistor network with 116 resistors. The notation is: an integer is a resistor with that resistance in ohms. S(x, y, ...) means series connection, P(x, y, ...) means parallel connection. The entire network is given as a nested expression. We need to compute the equivalent resistance between the two terminals. The answer must be a reduced fraction or integer.
+
+We'll need to parse the expression and compute recursively. Since it's large, we need to do it carefully. Let's write the full network expression:
+
+Network = S(P(S(P(6, 6), 15), 18, S(10, P(24, 24, 24))), P(S(P(S(P(2, 2), P(S(1, 1), S(P(2, 2), P(2, 2)))), S(1, 1)), P(10, 5, 2, 5)), S(P(S(28, 1, 31), 30, S(2, 55, 3)), P(S(P(S(4, P(4, 4)), S(4, 2)), P(S(P(2, 2), P(21, 14, 42)), 2, 4, S(1, 1, 3, 3))), S(P(2, 2), P(4, 4, 2), 1, 1))), S(P(2, 4, 4), P(S(11, 7), 6, 18, S(8, 5, 5))), S(6, 16)), P(S(30, 26), S(P(4, S(3, 9), S(1, 2, 1, 2)), P(S(P(4, 4), 4), S(8, 4), 4), P(S(41, 19), S(P(16, 16), P(44, 44)), 20)), S(6, P(2, 2), P(4, 4), 19), S(P(S(28, 4), S(21, 11)), 19, P(10, 10), P(32, 32))), P(S(P(S(8, 6), S(9, 5)), P(18, S(16, 2), S(13, 5), 6)), S(8, P(6, 4, S(2, 10)))))
+
+This is huge. But we can break it down into smaller parts.
+
+Let's denote the entire network as N = S(A, B) where A and B are sub-networks? Actually the outermost is S( ... , ... )? Wait: The expression starts with "S(P(S(P(6,6),15),18,S(10,P(24,24,24))), P( ... ) ... )". So it's S( something1, something2 )? But the parentheses: Network = S(P(S(P(6,6),15),18,S(10,P(24,24,24))), P(...). It seems there is a comma after the first argument, then a huge second argument. Let's parse carefully.
+
+Let me try to indent to see the structure.
+
+Network = S(
+    P(S(P(6,6),15),18,S(10,P(24,24,24))),
+    P(
+        S(
+            P(
+                S(P(2,2), P(S(1,1), S(P(2,2), P(2,2)))),
+                S(1,1)
+            ),
+            P(10,5,2,5)
+        ),
+        S(
+            P(S(28,1,31),30,S(2,55,3)),
+            P(
+                S(
+                    P(S(4,P(4,4)), S(4,2)),
+                    P(S(P(2,2), P(21,14,42)),2,4,S(1,1,3,3))
+                ),
+                S(P(2,2), P(4,4,2),1,1)
+            )
+        ),
+        S(P(2,4,4), P(S(11,7),6,18,S(8,5,5))),
+        S(6,16)
+    ),
+    P(
+        S(30,26),
+        S(
+            P(4, S(3,9), S(1,2,1,2)),
+            P(S(P(4,4),4), S(8,4),4),
+            P(S(41,19), S(P(16,16), P(44,44)),20)
+        ),
+        S(6, P(2,2), P(4,4), 19),
+        S(P(S(28,4), S(21,11)),19, P(10,10), P(32,32))
+    ),
+    P(
+        S(P(S(8,6), S(9,5)), P(18, S(16,2), S(13,5),6)),
+        S(8, P(6,4, S(2,10)))
+    )
+)
+
+Wait, that seems like S has more than two arguments? In the notation, S(x, y, ...) means series connection of the sub-networks. So S can have multiple arguments. Similarly P can have multiple arguments. The outermost is S(...), so it's a series combination of multiple sub-networks. Let's count the arguments: The first argument is "P(S(P(6,6),15),18,S(10,P(24,24,24)))", then after a comma, we have a big chunk, but then there appear to be additional commas? Actually the given string: Network = S(P(S(P(6, 6), 15), 18, S(10, P(24, 24, 24))), P(S(...), ...), ... Wait, there are multiple commas after that? Let's write the original string:
+
+"Network = S(P(S(P(6, 6), 15), 18, S(10, P(24, 24, 24))), P(S(P(S(P(2, 2), P(S(1, 1), S(P(2, 2), P(2, 2)))), S(1, 1)), P(10, 5, 2, 5)), S(P(S(28, 1, 31), 30, S(2, 55, 3)), P(S(P(S(4, P(4, 4)), S(4, 2)), P(S(P(2, 2), P(21, 14, 42)), 2, 4, S(1, 1, 3, 3))), S(P(2, 2), P(4, 4, 2), 1, 1))), S(P(2, 4, 4), P(S(11, 7), 6, 18, S(8, 5, 5))), S(6, 16)), P(S(30, 26), S(P(4, S(3, 9), S(1, 2, 1, 2)), P(S(P(4, 4), 4), S(8, 4), 4), P(S(41, 19), S(P(16, 16), P(44, 44)), 20)), S(6, P(2, 2), P(4, 4), 19), S(P(S(28, 4), S(21, 11)), 19, P(10, 10), P(32, 32))), P(S(P(S(8, 6), S(9, 5)), P(18, S(16, 2), S(13, 5), 6)), S(8, P(6, 4, S(2, 10)))))"
+
+We need to count parentheses to see how many arguments the outermost S has. Let's parse by hand. The outermost S starts with "S(" and ends with "))" at the end. There are parentheses within. I'll try to split by commas at the top level. This is tricky. I'll write the expression with indentation and track parentheses.
+
+Let me denote the entire string as:
+
+S( 
+    P(S(P(6, 6), 15), 18, S(10, P(24, 24, 24))), 
+    P( 
+        S( 
+            P( 
+                S(P(2, 2), P(S(1, 1), S(P(2, 2), P(2, 2)))), 
+                S(1, 1)
+            ), 
+            P(10, 5, 2, 5)
+        ), 
+        S( 
+            P(S(28, 1, 31), 30, S(2, 55, 3)), 
+            P( 
+                S( 
+                    P(S(4, P(4, 4)), S(4, 2)), 
+                    P(S(P(2, 2), P(21, 14, 42)), 2, 4, S(1, 1, 3, 3))
+                ), 
+                S(P(2, 2), P(4, 4, 2), 1, 1)
+            )
+        ), 
+        S(P(2, 4, 4), P(S(11, 7), 6, 18, S(8, 5, 5))), 
+        S(6, 16)
+    ), 
+    P( 
+        S(30, 26), 
+        S( 
+            P(4, S(3, 9), S(1, 2, 1, 2)), 
+            P(S(P(4, 4), 4), S(8, 4), 4), 
+            P(S(41, 19), S(P(16, 16), P(44, 44)), 20)
+        ), 
+        S(6, P(2, 2), P(4, 4), 19), 
+        S(P(S(28, 4), S(21, 11)), 19, P(10, 10), P(32, 32))
+    ), 
+    P( 
+        S(P(S(8, 6), S(9, 5)), P(18, S(16, 2), S(13, 5), 6)), 
+        S(8, P(6, 4, S(2, 10)))
+    )
+)
+
+Thus the outermost S has four arguments: 
+Arg1 = P(S(P(6,6),15),18,S(10,P(24,24,24)))
+Arg2 = P( ... )  (the big one with many sub-arguments)
+Arg3 = P( S(30,26), ... ) (another big P)
+Arg4 = P( S(P(S(8,6),S(9,5)), P(18,S(16,2),S(13,5),6)), S(8, P(6,4,S(2,10))) )
+
+So the network is a series combination of four blocks. So total equivalent resistance R_total = R1 + R2 + R3 + R4, where each Ri is the equivalent resistance of the respective block.
+
+Now we need to compute each block's resistance.
+
+Let's denote:
+
+Block A = Arg1: P(S(P(6,6),15),18,S(10,P(24,24,24))) 
+Block B = Arg2: P( S(P(S(P(2,2), P(S(1,1), S(P(2,2), P(2,2)))), S(1,1)), P(10,5,2,5)), S( P(S(28,1,31),30,S(2,55,3)), P(...)), S(P(2,4,4), P(S(11,7),6,18,S(8,5,5))), S(6,16) )
+Block C = Arg3: P( S(30,26), S(P(4,S(3,9),S(1,2,1,2)), P(S(P(4,4),4), S(8,4),4), P(S(41,19), S(P(16,16), P(44,44)),20)), S(6,P(2,2),P(4,4),19), S(P(S(28,4),S(21,11)),19,P(10,10),P(32,32)) )
+Block D = Arg4: P( S(P(S(8,6),S(9,5)), P(18,S(16,2),S(13,5),6)), S(8, P(6,4,S(2,10))) )
+
+Each block is a P(...) meaning a parallel combination of several sub-networks. So each block's equivalent resistance is given by 1/R = sum(1/R_i) where R_i are the resistances of the sub-networks in parallel.
+
+Thus we need to compute each sub-network's resistance for each block.
+
+Let's start with Block A: P(S(P(6,6),15), 18, S(10, P(24,24,24))). So it's three branches in parallel: 
+Branch A1 = S(P(6,6),15) 
+Branch A2 = 18 (a single 18 ohm resistor)
+Branch A3 = S(10, P(24,24,24))
+
+Compute each:
+
+Branch A1: S(P(6,6),15). First compute inner P(6,6): two 6 ohm resistors in parallel gives 6/2=3 ohms. Then series with 15 gives 3+15=18 ohms.
+
+Branch A2: 18 ohms.
+
+Branch A3: S(10, P(24,24,24)). P(24,24,24): three 24 ohm resistors in parallel gives 24/3=8 ohms. Then series with 10 gives 10+8=18 ohms.
+
+So all three branches are 18 ohms each. So three 18 ohm resistors in parallel: equivalent resistance = 18/3 = 6 ohms. So Block A = 6 ohms.
+
+Great start.
+
+Now Block B: This is a parallel combination of several sub-networks. The arguments within the P(...) are: 
+B1 = S( P(S(P(2,2), P(S(1,1), S(P(2,2), P(2,2)))), S(1,1)), P(10,5,2,5) )
+B2 = S( P(S(28,1,31),30,S(2,55,3)), P( S(P(S(4,P(4,4)), S(4,2)), P(S(P(2,2), P(21,14,42)), 2,4,S(1,1,3,3))), S(P(2,2), P(4,4,2),1,1) ) )
+B3 = S(P(2,4,4), P(S(11,7),6,18,S(8,5,5)))
+B4 = S(6,16)
+
+But careful: actually the P in Block B has four arguments? Let's check: In the outer structure, Arg2 = P( S(P(S(P(2,2), ...), ...), P(10,5,2,5)), S(P(S(28,1,31), ...), P(...)), S(P(2,4,4), P(...)), S(6,16) ). Yes, there are four branches: B1, B2, B3, B4.
+
+Wait, the P(...) after the first S and before the second S? Actually the expression: P( S(P(S(P(2,2), P(S(1,1), S(P(2,2), P(2,2)))), S(1,1)), P(10,5,2,5)), S(P(S(28,1,31),30,S(2,55,3)), P(S(...), S(...))), S(P(2,4,4), P(S(11,7),6,18,S(8,5,5))), S(6,16) ). So yes, four branches.
+
+We need to compute each branch's equivalent resistance.
+
+Let's start with B1 = S( X, Y ) where X = P( S(P(2,2), P(S(1,1), S(P(2,2), P(2,2)))), S(1,1) ) and Y = P(10,5,2,5). So B1 is a series combination of X and Y.
+
+So compute X first: X = P( A, B ) where A = S(P(2,2), P(S(1,1), S(P(2,2), P(2,2)))) and B = S(1,1). So X is parallel combination of A and B.
+
+Compute A: A = S( P(2,2), P(S(1,1), S(P(2,2), P(2,2))) ). So A is series combination of two sub-networks: A1 = P(2,2) and A2 = P(S(1,1), S(P(2,2), P(2,2))).
+
+First compute A1 = P(2,2): two 2 ohm resistors in parallel gives 1 ohm.
+
+Now compute inner part for A2: P(S(1,1), S(P(2,2), P(2,2))). So A2 is parallel combination of two sub-networks: A2a = S(1,1) and A2b = S(P(2,2), P(2,2)).
+
+Compute A2a = S(1,1): two 1 ohm in series gives 2 ohms.
+
+Compute A2b: S(P(2,2), P(2,2)). First P(2,2) = 1 ohm each. So series of two 1 ohm resistors gives 2 ohms.
+
+So A2 = P(2, 2) = two 2 ohm resistors in parallel gives 1 ohm. Wait careful: A2a = 2 ohms, A2b = 2 ohms, so parallel combination gives 1 ohm.
+
+Thus A = series of A1=1 ohm and A2=1 ohm gives 2 ohms.
+
+Now B = S(1,1) = two 1 ohm in series = 2 ohms.
+
+Thus X = P(A=2, B=2) = two 2 ohm resistors in parallel = 1 ohm.
+
+So X = 1 ohm.
+
+Now Y = P(10,5,2,5): four resistors in parallel: 10,5,2,5 ohms. Compute total conductance: 1/10 + 1/5 + 1/2 + 1/5 = 0.1 + 0.2 + 0.5 + 0.2 = 1.0 S. So equivalent resistance = 1 ohm.
+
+Thus B1 = series of X (1 ohm) and Y (1 ohm) = 2 ohms.
+
+So B1 = 2 ohms.
+
+Now B2 = S( P(S(28,1,31),30,S(2,55,3)), P( something1, something2 ) ), where something1 = S(P(S(4,P(4,4)), S(4,2)), P(S(P(2,2),P(21,14,42)),2,4,S(1,1,3,3))) and something2 = S(P(2,2), P(4,4,2), 1, 1). So B2 is a series combination of two parts: C = P(S(28,1,31),30,S(2,55,3)) and D = P(something1, something2). So B2 = C + D (series).
+
+Compute C = P(S(28,1,31),30,S(2,55,3)). So three branches in parallel: 
+C1 = S(28,1,31): series of 28,1,31 = 28+1+31 = 60 ohms.
+C2 = 30 ohms.
+C3 = S(2,55,3): series of 2,55,3 = 60 ohms.
+So three resistors: 60, 30, 60 in parallel. Compute conductance: 1/60 + 1/30 + 1/60 = (1+2+1)/60 = 4/60 = 1/15. So equivalent resistance = 15 ohms.
+
+Thus C = 15 ohms.
+
+Now D = P(something1, something2). So D is the parallel combination of E and F, where E = something1 and F = something2.
+
+Compute E = S(P(S(4,P(4,4)), S(4,2)), P(S(P(2,2), P(21,14,42)), 2, 4, S(1,1,3,3))). So E is series of two sub-networks: E1 = P(S(4,P(4,4)), S(4,2)) and E2 = P(S(P(2,2), P(21,14,42)), 2, 4, S(1,1,3,3)). So E = E1 + E2 (series).
+
+Compute E1 = P( A, B ) where A = S(4, P(4,4)) and B = S(4,2). So E1 = parallel of A and B.
+
+First compute A = S(4, P(4,4)). P(4,4) = two 4 in parallel = 2 ohms. Then series with 4: 4+2=6 ohms.
+B = S(4,2) = 4+2=6 ohms.
+So E1 = P(6,6) = 3 ohms.
+
+Now compute E2 = P( X, Y, Z, W )? Actually E2 = P(S(P(2,2), P(21,14,42)), 2, 4, S(1,1,3,3)). So it is a parallel combination of four sub-networks: 
+E2a = S(P(2,2), P(21,14,42))
+E2b = 2 (single resistor 2 ohms)
+E2c = 4 (single resistor 4 ohms)
+E2d = S(1,1,3,3)
+
+Compute each:
+
+E2a: S(P(2,2), P(21,14,42)). First P(2,2)=1 ohm. Next P(21,14,42): three resistors in parallel. Compute conductance: 1/21 + 1/14 + 1/42. Common denominator 42: 2/42 + 3/42 + 1/42 = 6/42 = 1/7. So resistance = 7 ohms. So series: 1+7=8 ohms. So E2a = 8 ohms.
+
+E2b = 2 ohms.
+E2c = 4 ohms.
+E2d = S(1,1,3,3) = 1+1+3+3 = 8 ohms.
+
+So E2 = parallel of 8,2,4,8. Compute conductances: 1/8 + 1/2 + 1/4 + 1/8 = 0.125 + 0.5 + 0.25 + 0.125 = 1.0 S. So equivalent = 1 ohm.
+
+Thus E = E1 + E2 = 3 + 1 = 4 ohms.
+
+Now compute F = something2 = S(P(2,2), P(4,4,2), 1, 1). So F is series combination of four sub-networks: 
+F1 = P(2,2) = 1 ohm.
+F2 = P(4,4,2): three resistors in parallel: 4,4,2. Compute conductance: 1/4+1/4+1/2 = 0.25+0.25+0.5=1.0 S -> 1 ohm.
+F3 = 1 ohm.
+F4 = 1 ohm.
+So series: 1+1+1+1 = 4 ohms.
+
+Thus D = P(E=4, F=4) = two 4 ohm resistors in parallel = 2 ohms.
+
+So B2 = C + D = 15 + 2 = 17 ohms.
+
+Thus B2 = 17 ohms.
+
+Now B3 = S(P(2,4,4), P(S(11,7),6,18,S(8,5,5))). So series of two parts: G = P(2,4,4) and H = P(S(11,7),6,18,S(8,5,5)). So B3 = G + H.
+
+Compute G = P(2,4,4): three resistors: 2,4,4 in parallel. Conductance: 1/2 + 1/4 + 1/4 = 0.5 + 0.25 + 0.25 = 1.0 S -> 1 ohm. So G = 1 ohm.
+
+Compute H = P(S(11,7),6,18,S(8,5,5)). So four branches in parallel: 
+H1 = S(11,7) = 18 ohms.
+H2 = 6 ohms.
+H3 = 18 ohms.
+H4 = S(8,5,5) = 8+5+5=18 ohms.
+So we have four resistors: 18,6,18,18. Conductances: 1/18+1/6+1/18+1/18 = (1+3+1+1)/18 = 6/18 = 1/3 => resistance = 3 ohms. So H = 3 ohms.
+
+Thus B3 = 1 + 3 = 4 ohms.
+
+Now B4 = S(6,16) = 6+16=22 ohms.
+
+So Block B is a parallel combination of four branches: B1=2, B2=17, B3=4, B4=22. Compute equivalent resistance: 1/R_B = 1/2 + 1/17 + 1/4 + 1/22. Compute common denominator or decimal: 
+1/2 = 0.5
+1/17 ≈ 0.0588235
+1/4 = 0.25
+1/22 ≈ 0.0454545
+Sum = 0.5+0.0588235=0.5588235; +0.25=0.8088235; +0.0454545=0.854278. So R_B ≈ 1/0.854278 = 1.1706? But we need exact fraction. Let's compute exact rational sum.
+
+Compute sum of fractions: 1/2 + 1/17 + 1/4 + 1/22. Find common denominator. LCM of 2,17,4,22. 2=2, 17 prime, 4=2^2, 22=2*11. LCM = 2^2 * 11 * 17 = 4*11*17 = 748. So:
+1/2 = 374/748
+1/17 = 44/748 (since 748/17=44)
+1/4 = 187/748
+1/22 = 34/748 (since 748/22=34)
+Sum = (374+44+187+34)/748 = (639)/748? Let's add: 374+44=418, +187=605, +34=639. So sum = 639/748. So total conductance = 639/748 S. Then resistance = 748/639 ohms. That fraction can be reduced? Check gcd(748,639). 639 factors: 639 = 3*213 = 3*3*71 = 9*71. 748 = 2*374=2*2*187=4*187=4*11*17? 187=11*17, so 748=4*11*17=2^2*11*17. No common factor with 9*71 (71 is prime, not in 748; 3 not in 748). So reduced fraction is 748/639. So Block B = 748/639 ohms.
+
+Now Block C: Arg3 = P( S(30,26), S(P(4,S(3,9),S(1,2,1,2)), P(S(P(4,4),4), S(8,4),4), P(S(41,19), S(P(16,16), P(44,44)),20)), S(6,P(2,2),P(4,4),19), S(P(S(28,4),S(21,11)),19,P(10,10),P(32,32)) ). So it's a parallel combination of four branches: C1, C2, C3, C4? Actually let's list arguments of the P: It seems there are four: first is S(30,26), second is S(P(4,S(3,9),S(1,2,1,2)), P(S(P(4,4),4), S(8,4),4), P(S(41,19), S(P(16,16), P(44,44)),20)), third is S(6,P(2,2),P(4,4),19), fourth is S(P(S(28,4),S(21,11)),19,P(10,10),P(32,32)). So we have C1, C2, C3, C4.
+
+Compute each:
+
+C1 = S(30,26) = 30+26 = 56 ohms.
+
+C2 = S( X, Y, Z )? Actually careful: The second argument is "S(P(4, S(3,9), S(1,2,1,2)), P(S(P(4,4),4), S(8,4),4), P(S(41,19), S(P(16,16), P(44,44)),20))". This is an S with three arguments: 
+C2a = P(4, S(3,9), S(1,2,1,2))
+C2b = P(S(P(4,4),4), S(8,4),4)
+C2c = P(S(41,19), S(P(16,16), P(44,44)),20)
+So C2 = C2a + C2b + C2c in series.
+
+So compute each:
+
+C2a = P(4, S(3,9), S(1,2,1,2)). So three branches in parallel:
+- First: 4 ohms resistor.
+- Second: S(3,9) = 3+9=12 ohms.
+- Third: S(1,2,1,2) = 1+2+1+2=6 ohms.
+So we have 4,12,6 in parallel. Conductance: 1/4 + 1/12 + 1/6 = 0.25 + 0.08333... + 0.16666... = 0.5 S exactly? Let's compute: 1/4=3/12, 1/12=1/12, 1/6=2/12, sum=6/12=1/2, so resistance = 2 ohms. So C2a = 2 ohms.
+
+C2b = P(S(P(4,4),4), S(8,4),4). So three branches in parallel:
+- Branch1: S(P(4,4),4). P(4,4)=2 ohms, series with 4 gives 6 ohms.
+- Branch2: S(8,4) = 12 ohms.
+- Branch3: 4 ohms.
+So parallel of 6,12,4. Conductance: 1/6 + 1/12 + 1/4 = 2/12 + 1/12 + 3/12 = 6/12 = 1/2, resistance = 2 ohms. So C2b = 2 ohms.
+
+C2c = P(S(41,19), S(P(16,16), P(44,44)), 20). So three branches in parallel:
+- Branch1: S(41,19) = 60 ohms.
+- Branch2: S(P(16,16), P(44,44)). Compute P(16,16)=8 ohms, P(44,44)=22 ohms. So S(8,22)=30 ohms.
+- Branch3: 20 ohms.
+So parallel of 60,30,20. Conductance: 1/60 + 1/30 + 1/20 = 1/60 + 2/60 + 3/60 = 6/60 = 1/10, resistance = 10 ohms. So C2c = 10 ohms.
+
+Thus C2 = series: 2 + 2 + 10 = 14 ohms.
+
+So C2 = 14 ohms.
+
+Now C3 = S(6, P(2,2), P(4,4), 19). So series of four sub-networks: 
+C3a = 6 ohms.
+C3b = P(2,2) = 1 ohm.
+C3c = P(4,4) = 2 ohms.
+C3d = 19 ohms.
+Sum = 6+1+2+19 = 28 ohms.
+
+So C3 = 28 ohms.
+
+Now C4 = S(P(S(28,4), S(21,11)), 19, P(10,10), P(32,32)). So series of four sub-networks:
+C4a = P(S(28,4), S(21,11))
+C4b = 19
+C4c = P(10,10)
+C4d = P(32,32)
+
+Compute each:
+
+C4a = P( S(28,4)=32, S(21,11)=32 ) = parallel of two 32 ohm resistors = 16 ohms.
+C4b = 19.
+C4c = P(10,10) = 5 ohms.
+C4d = P(32,32) = 16 ohms.
+So series: 16+19+5+16 = 56 ohms.
+
+Thus C4 = 56 ohms.
+
+So Block C is a parallel combination of C1=56, C2=14, C3=28, C4=56. Compute equivalent resistance: 1/R_C = 1/56 + 1/14 + 1/28 + 1/56. Compute:
+1/56 + 1/56 = 2/56 = 1/28.
+1/14 = 2/28.
+1/28 = 1/28.
+Sum = 1/28 + 2/28 + 1/28 = 4/28 = 1/7. So R_C = 7 ohms. (Because 1/R = 1/7, so R=7). Nice.
+
+Thus Block C = 7 ohms.
+
+Now Block D: Arg4 = P( S(P(S(8,6), S(9,5)), P(18, S(16,2), S(13,5), 6)), S(8, P(6,4,S(2,10))) ). So it's a parallel combination of two branches: D1 and D2? Actually it's P( ... , ... ) with two arguments? Let's check: The expression: "P( S(P(S(8,6), S(9,5)), P(18, S(16,2), S(13,5), 6)), S(8, P(6,4,S(2,10))) )". So two branches in parallel: 
+D1 = S(P(S(8,6), S(9,5)), P(18, S(16,2), S(13,5), 6))
+D2 = S(8, P(6,4,S(2,10)))
+
+Compute D1: It is a series combination of two sub-networks: D1a = P(S(8,6), S(9,5)) and D1b = P(18, S(16,2), S(13,5), 6). So D1 = D1a + D1b.
+
+Compute D1a = P(S(8,6), S(9,5)). S(8,6)=14, S(9,5)=14. So parallel of two 14 ohm resistors = 7 ohms.
+
+Compute D1b = P(18, S(16,2), S(13,5), 6). So four branches in parallel: 
+- Branch1: 18 ohms.
+- Branch2: S(16,2)=18 ohms.
+- Branch3: S(13,5)=18 ohms.
+- Branch4: 6 ohms.
+So we have 18,18,18,6. Conductance: 1/18+1/18+1/18+1/6 = (1+1+1)/18 + 1/6 = 3/18 + 1/6 = 1/6 + 1/6 = 1/3. So resistance = 3 ohms. So D1b = 3 ohms.
+
+Thus D1 = 7 + 3 = 10 ohms.
+
+Now D2 = S(8, P(6,4,S(2,10))). Compute inner: P(6,4,S(2,10)). So three branches in parallel: 
+- 6 ohms.
+- 4 ohms.
+- S(2,10)=12 ohms.
+So parallel of 6,4,12. Conductance: 1/6 + 1/4 + 1/12 = 2/12+3/12+1/12=6/12=1/2, so resistance = 2 ohms. Then series with 8: 8+2=10 ohms. So D2 = 10 ohms.
+
+Thus Block D = parallel of D1=10 and D2=10 = 5 ohms.
+
+So we have all blocks: A=6, B=748/639, C=7, D=5.
+
+Now total network is series combination: R_total = A + B + C + D = 6 + 748/639 + 7 + 5 = (6+7+5) + 748/639 = 18 + 748/639.
+
+Now 18 = 18 * 639/639 = 11502/639? Actually 18 = 18/1 = (18*639)/639 = 11502/639. So sum = (11502 + 748)/639 = 12250/639. Can we reduce? Compute gcd(12250,639). 639 = 3*213 = 3*3*71 = 9*71. 12250: divisible by 2? 12250/2=6125, so it's even? Actually 12250 ends with 50, so divisible by 2? But 639 is odd, so no factor 2. Check divisibility by 5? 12250 ends with 0, divisible by 5, but 639 not divisible by 5. By 3? Sum of digits of 12250: 1+2+2+5+0=10, not divisible by 3. So not divisible by 3. By 7? 7*1750=12250? 7*1750=12250 exactly? 7*1750=12250, yes! So 12250 = 7*1750. But 639 not divisible by 7 (7*91=637, remainder 2). By 71? 71*172.535? Not integer. So no common factor. So fraction 12250/639 can be reduced? Check gcd(12250,639). Compute gcd using Euclidean algorithm: 12250 ÷ 639 = 19? 639*19=12141, remainder 109. Then 639 ÷ 109 = 5? 109*5=545, remainder 94. 109 ÷ 94 =1 remainder 15. 94 ÷ 15 =6 remainder 4. 15 ÷ 4 =3 remainder 3. 4 ÷ 3 =1 remainder 1. 3 ÷ 1 =3 remainder 0. So gcd=1. So fraction is reduced. So answer = 12250/639.
+
+But we can also express as mixed number? The problem asks: "Give the exact value as a reduced fraction p/q (or an integer if it is a whole number)." So 12250/639 is a reduced fraction. Check if it can be simplified by dividing numerator and denominator by something? We already did gcd=1. So answer is 12250/639.
+
+But let's double-check all calculations to ensure no arithmetic mistake. We had Block A: 6 ohms, Block B: 748/639, Block C: 7, Block D: 5. Sum = 6+7+5=18, plus 748/639 = (18*639 + 748)/639 = (11502+748)/639 = 12250/639. That's about 19.170... 12250/639 ≈ 19.1706. Check B approx: 748/639 ≈ 1.1706, plus 18 = 19.1706. That seems plausible.
+
+We should re-evaluate Block B carefully because that was the most complex. Also check Block B's branches: B1=2, B2=17, B3=4, B4=22. Sum of reciprocals: 1/2=0.5, 1/17≈0.0588235, 1/4=0.25, 1/22≈0.0454545, sum=0.854278, reciprocal=1.1706, indeed 748/639=1.17058. So correct.
+
+Now verify B2 calculation: B2 = C + D = 15+2=17. C = P(S(28,1,31),30,S(2,55,3)) gave 15. Check that: S(28,1,31)=60, S(2,55,3)=60, and 30, so parallel of 60,30,60 gives 1/(1/60+1/30+1/60)=1/(2/60+1/30)=1/(1/30+1/30)=1/(2/30)=15. Good.
+
+D = P(E,F) where E=4, F=4 gave 2. Check E: E = E1+E2=3+1=4. E1 = P(S(4,P(4,4)), S(4,2)). S(4,P(4,4))=4+2=6, S(4,2)=6, parallel gives 3. Good. E2 = P(8,2,4,8) gave 1. Check E2 components: E2a = S(P(2,2), P(21,14,42)). P(2,2)=1. P(21,14,42): compute 1/21+1/14+1/42 = (2+3+1)/42=6/42=1/7 -> 7 ohms, series gives 8. Good. E2d = S(1,1,3,3)=8. So parallel of 8,2,4,8: 1/8+1/2+1/4+1/8 = 0.125+0.5+0.25+0.125=1.0 -> 1 ohm. So E2=1, E=4. F = S(P(2,2), P(4,4,2),1,1) = 1+1+1+1=4. So D=2. So B2=17. Good.
+
+B3: G=P(2,4,4)=1, H=P(18,6,18,18)=3? Wait H = P(S(11,7)=18,6,18,S(8,5,5)=18). So 18,6,18,18. 1/18+1/6+1/18+1/18 = (1+3+1+1)/18=6/18=1/3 -> 3. So B3=1+3=4. Good.
+
+B4=22. So B parallel: 1/2+1/17+1/4+1/22 = compute exactly: common denominator 748: 374+44+187+34=639, so resistance = 748/639. Good.
+
+Now check Block C: C1=56, C2=14, C3=28, C4=56. 1/56+1/14+1/28+1/56 = 1/56+1/56=2/56=1/28, plus 1/14=2/28, plus 1/28=1/28, total 4/28=1/7 -> 7 ohms. Check C2: we had C2a=2, C2b=2, C2c=10 -> sum=14. Check C2a: P(4,12,6)=? 4,12,6: 1/4+1/12+1/6=3/12+1/12+2/12=6/12=1/2 ->2. Good. C2b: P(6,12,4): 1/6+1/12+1/4=2/12+1/12+3/12=6/12=1/2 ->2. Good. C2c: P(60,30,20): 1/60+1/30+1/20=1/60+2/60+3/60=6/60=1/10 ->10. Good. C3: 6+1+2+19=28. C4: 16+19+5+16=56. Good.
+
+Block D: D1=10, D2=10, parallel ->5. Check D1: D1a = P(14,14)=7, D1b = P(18,18,18,6)=? 1/18+1/18+1/18+1/6 = 3/18+1/6=1/6+1/6=1/3 ->3, so series 10. D2: 8+P(6,4,12)=8+2=10. Good.
+
+Block A: all 18, so 18/3=6.
+
+Thus total = 6 + 748/639 + 7 + 5 = 18 + 748/639 = (18*639+748)/639 = (11502+748)/639 = 12250/639.
+
+Now check if 12250 and 639 share any common factors: 639 = 3*213 = 3*3*71 = 9*71. 12250 / 5 =2450, /5=490, so 12250= 2 *5^3 *7^2? Actually 12250= 1225*10 = 35^2*10? Let's factor: 12250/2=6125, 6125/5=1225, 1225/5=245, 245/5=49, 49/7=7, 7/7=1. So 12250 = 2 * 5^3 * 7^2. No factor 3 or 71. So reduced. So answer is 12250/639.
+
+Thus final answer: 12250/639.
+
+But wait, the problem says "A two-terminal resistor network of 116 resistors". The total number of resistors is 116. We haven't counted, but that's consistent. So answer is as above.
+
+Therefore, final line: ANSWER: 12250/639.
+
+Let's output that.

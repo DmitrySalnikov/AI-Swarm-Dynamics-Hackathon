@@ -1,0 +1,550 @@
+We are given a 9x9 integer matrix A. We need to perform Gaussian elimination with partial pivoting to obtain PA = LU, where P is a permutation matrix, L unit lower-triangular, U upper-triangular. We need to output the original row numbers (1-based) of the rows that end up in positions 1,...,n, i.e., the permutation vector r_1,...,r_n, followed by the diagonal entries U_{11},...,U_{nn}, as a comma-separated list (2n numbers). The diagonal entries are integers.
+
+We need to perform the elimination step by step, using partial pivoting: at step k, among rows k to n of the current matrix, we find the row with the largest absolute value in column k (if tie, choose the one with the smallest original row index? Actually the pivot rule: "choose the one whose entry in column k has the largest absolute value (if several tie, the one in the smallest position) and swap it into position k". So we need to keep track of the original row indices. Since we swap rows, we maintain a permutation.
+
+We manually perform Gaussian elimination? Or systematically compute? Since the matrix is given, we can compute step-by-step. But it's tedious by hand; however, we can try to do it systematically using calculations, but we must be careful. Since we are to output the exact diagonal entries of U (which are integers), we can perform elimination with fractions? But we can use integer arithmetic if we keep track of multipliers, but U's diagonal entries may not be integers if we don't use exact rational arithmetic? However the problem says the diagonal entries are integers. So we can perform elimination using rational numbers, and the diagonal entries will be integers. Alternatively, we can perform elimination using fractions.
+
+We can do it stepwise. Let's denote the matrix A as given. We'll work with the matrix, keeping track of row swaps.
+
+Let's list the initial matrix rows (1-indexed):
+
+Row1: [0, 0, 6, 0, -4, -6, -6, 2, 4]
+Row2: [-2, -3, -4, 3, 1, 8, -2, -1, 7]
+Row3: [0, 0, 3, 0, -6, -5, 3, -1, 0]
+Row4: [0, 0, 0, 0, -2, -7, 7, -5, -3]
+Row5: [-4, -4, -6, 4, 4, 6, -4, 2, 6]
+Row6: [0, -1, -1, 3, -5, 1, -8, 3, -5]
+Row7: [-2, -2, 0, 1, 5, 5, -7, 5, 12]
+Row8: [0, -2, -2, 2, 2, 6, -4, 6, -6]
+Row9: [-2, -3, -7, 4, 2, 5, -4, 5, -6]
+
+We need to perform elimination on this matrix to get U, and also construct L (but we don't need L explicitly, only the permutation and diagonal of U). However, to get the diagonal of U, we need to perform the elimination steps correctly. The permutation vector r: row k of PA is row r_k of A. So we need to know which original row ends up in position 1,2,...,9 after the elimination steps (including all swaps). At each step k, we pivot in column k among rows k..9, then swap that row into position k. The permutation is recorded as we go.
+
+Let's denote the current matrix after each step. We'll keep track of the row ordering. Initially, the rows are in order 1,2,3,4,5,6,7,8,9. We'll maintain a vector of original row indices for the current positions. Let's call perm = [1,2,3,4,5,6,7,8,9] initially. At each step k, we look at rows k..9, find the index p (within that sublist) such that absolute value of entry in column k is maximum. Then we swap the row at position k with row at position p (if p != k). Then we eliminate below.
+
+We also need to compute the multipliers and update the matrix. We must use exact rational arithmetic to avoid errors. Since the matrix entries are integers and we will perform row operations using multipliers that are rational numbers, we can keep everything as fractions. But we can also perform elimination using integer arithmetic by using fraction-free Gaussian elimination (like using common denominators), but it's easier to just compute with fractions.
+
+Since the diagonal entries are promised to be integers, we can compute them by doing the elimination with rational numbers and then simplifying. Let's do it step by step.
+
+We'll perform the elimination manually with careful arithmetic. Let's denote the matrix after each step as we go. We'll also keep track of the multipliers for L, but we don't need L explicitly, but for elimination we need to subtract multiples of the pivot row from the rows below.
+
+We'll do step k=1 to 9.
+
+Step 1: Column 1, rows 1-9.
+
+Compute absolute values of entries in column 1:
+
+Row1: |0| = 0
+Row2: |-2| = 2
+Row3: |0| = 0
+Row4: |0| = 0
+Row5: |-4| = 4
+Row6: |0| = 0
+Row7: |-2| = 2
+Row8: |0| = 0
+Row9: |-2| = 2
+
+Maximum absolute value is 4, in row5. So we swap row1 and row5. Since row5 is at position 5, we swap position 1 and position 5. So new row order: position1 gets original row5, position5 gets original row1. Perm becomes: [5,2,3,4,1,6,7,8,9].
+
+Now the matrix after swap: Row1 (new) = original row5: [-4, -4, -6, 4, 4, 6, -4, 2, 6]
+Row2: original row2: [-2, -3, -4, 3, 1, 8, -2, -1, 7]
+Row3: original row3: [0, 0, 3, 0, -6, -5, 3, -1, 0]
+Row4: original row4: [0, 0, 0, 0, -2, -7, 7, -5, -3]
+Row5: original row1: [0, 0, 6, 0, -4, -6, -6, 2, 4]
+Row6: original row6: [0, -1, -1, 3, -5, 1, -8, 3, -5]
+Row7: original row7: [-2, -2, 0, 1, 5, 5, -7, 5, 12]
+Row8: original row8: [0, -2, -2, 2, 2, 6, -4, 6, -6]
+Row9: original row9: [-2, -3, -7, 4, 2, 5, -4, 5, -6]
+
+Now pivot is at row1, column1 = -4. We need to eliminate column1 in rows2-9. For each row i (2..9), compute multiplier m_i = (entry in column1 of row i) / pivot. Then subtract m_i * row1 from row i.
+
+Let's compute:
+
+Row2 col1 = -2, pivot = -4 => m2 = (-2)/(-4) = 1/2 = 0.5.
+Row3 col1 = 0 => m3 = 0.
+Row4 col1 = 0 => m4 = 0.
+Row5 col1 = 0 => m5 = 0.
+Row6 col1 = 0 => m6 = 0.
+Row7 col1 = -2 => m7 = (-2)/(-4) = 0.5.
+Row8 col1 = 0 => m8 = 0.
+Row9 col1 = -2 => m9 = (-2)/(-4) = 0.5.
+
+Now we update rows 2,7,9 (since others have zero already). Also rows 3-6,8 already have zero in col1, so no change? Actually we should still perform the elimination, but since m=0, no effect. So we update rows 2,7,9.
+
+We'll compute new rows:
+
+Row2 = Row2 - (1/2)*Row1. Row1: [-4, -4, -6, 4, 4, 6, -4, 2, 6]. Half of Row1: [-2, -2, -3, 2, 2, 3, -2, 1, 3]. So Row2 (original: [-2, -3, -4, 3, 1, 8, -2, -1, 7]) minus that: 
+col1: -2 - (-2) = 0
+col2: -3 - (-2) = -1
+col3: -4 - (-3) = -1
+col4: 3 - 2 = 1
+col5: 1 - 2 = -1
+col6: 8 - 3 = 5
+col7: -2 - (-2) = 0
+col8: -1 - 1 = -2
+col9: 7 - 3 = 4
+So Row2 becomes: [0, -1, -1, 1, -1, 5, 0, -2, 4].
+
+Row7: original row7: [-2, -2, 0, 1, 5, 5, -7, 5, 12]. Subtract (1/2)*Row1 = [-2, -2, -3, 2, 2, 3, -2, 1, 3]. So:
+col1: -2 - (-2)=0
+col2: -2 - (-2)=0
+col3: 0 - (-3)=3
+col4: 1 - 2 = -1
+col5: 5 - 2 = 3
+col6: 5 - 3 = 2
+col7: -7 - (-2) = -5
+col8: 5 - 1 = 4
+col9: 12 - 3 = 9
+So Row7: [0, 0, 3, -1, 3, 2, -5, 4, 9].
+
+Row9: original row9: [-2, -3, -7, 4, 2, 5, -4, 5, -6]. Subtract (1/2)*Row1 = [-2, -2, -3, 2, 2, 3, -2, 1, 3]. So:
+col1: -2 - (-2)=0
+col2: -3 - (-2)= -1
+col3: -7 - (-3)= -4
+col4: 4 - 2 = 2
+col5: 2 - 2 = 0
+col6: 5 - 3 = 2
+col7: -4 - (-2)= -2
+col8: 5 - 1 = 4
+col9: -6 - 3 = -9
+So Row9: [0, -1, -4, 2, 0, 2, -2, 4, -9].
+
+Now the matrix after step1 (with rows updated) is:
+
+Row1: [-4, -4, -6, 4, 4, 6, -4, 2, 6]  (orig row5)
+Row2: [0, -1, -1, 1, -1, 5, 0, -2, 4]   (orig row2)
+Row3: [0, 0, 3, 0, -6, -5, 3, -1, 0]   (orig row3) unchanged because m=0
+Row4: [0, 0, 0, 0, -2, -7, 7, -5, -3]  (orig row4)
+Row5: [0, 0, 6, 0, -4, -6, -6, 2, 4]   (orig row1)
+Row6: [0, -1, -1, 3, -5, 1, -8, 3, -5] (orig row6) unchanged because m=0? Actually row6 col1=0 so no change; but we should double-check that row6 originally had col1=0, so yes.
+Row7: [0, 0, 3, -1, 3, 2, -5, 4, 9]    (orig row7)
+Row8: [0, -2, -2, 2, 2, 6, -4, 6, -6]  (orig row8) unchanged because m=0.
+Row9: [0, -1, -4, 2, 0, 2, -2, 4, -9]  (orig row9)
+
+Now step2: k=2. We consider rows 2 to 9, column2. We need to find the row among rows2-9 with the largest absolute value in column2. Let's list column2 values:
+
+Row2: -1
+Row3: 0
+Row4: 0
+Row5: 0 (row5 col2 =0)
+Row6: -1
+Row7: 0
+Row8: -2
+Row9: -1
+
+Absolute values: Row2:1, Row3:0, Row4:0, Row5:0, Row6:1, Row7:0, Row8:2, Row9:1. Maximum is 2 in row8. So we swap row2 and row8. Since row8 is at position 8, we swap positions 2 and 8. So perm becomes: originally perm = [5,2,3,4,1,6,7,8,9]. After swap, position2 gets original row8, position8 gets original row2. So new perm: [5,8,3,4,1,6,7,2,9].
+
+Now after swap, the matrix: rows positions:
+Row1: unchanged (orig row5)
+Row2: now becomes original row8: [0, -2, -2, 2, 2, 6, -4, 6, -6] (since row8 before swap was row8? Actually we need to be careful: we are swapping current rows, not original. The current row2 is the one we had from previous step: it was row2 (orig row2) and row8 (orig row8). After swap, the new row2 is the previous row8. So we need to swap the rows in the current matrix. So we swap row2 and row8 of the current matrix (the one after step1). So we take the current row8 (which is [0, -2, -2, 2, 2, 6, -4, 6, -6]) and put it at row2; and take current row2 ([0, -1, -1, 1, -1, 5, 0, -2, 4]) and put it at row8. So after swap:
+
+Row1: [-4, -4, -6, 4, 4, 6, -4, 2, 6]
+Row2: [0, -2, -2, 2, 2, 6, -4, 6, -6]
+Row3: [0, 0, 3, 0, -6, -5, 3, -1, 0]
+Row4: [0, 0, 0, 0, -2, -7, 7, -5, -3]
+Row5: [0, 0, 6, 0, -4, -6, -6, 2, 4]
+Row6: [0, -1, -1, 3, -5, 1, -8, 3, -5]
+Row7: [0, 0, 3, -1, 3, 2, -5, 4, 9]
+Row8: [0, -1, -1, 1, -1, 5, 0, -2, 4]  (was row2)
+Row9: [0, -1, -4, 2, 0, 2, -2, 4, -9]
+
+Now pivot is row2, column2 = -2. We eliminate column2 in rows 3-9. Compute multipliers:
+
+Row3 col2 = 0 => m3=0.
+Row4 col2 = 0 => m4=0.
+Row5 col2 = 0 => m5=0.
+Row6 col2 = -1 => m6 = (-1)/(-2) = 1/2 = 0.5.
+Row7 col2 = 0 => m7=0.
+Row8 col2 = -1 => m8 = (-1)/(-2) = 0.5.
+Row9 col2 = -1 => m9 = (-1)/(-2) = 0.5.
+
+So we need to update rows 6,8,9 (rows with nonzero m). For each, subtract m * row2 from them.
+
+Row2: [0, -2, -2, 2, 2, 6, -4, 6, -6]. Half of row2: [0, -1, -1, 1, 1, 3, -2, 3, -3].
+
+Now update:
+
+Row6: original row6: [0, -1, -1, 3, -5, 1, -8, 3, -5] minus half row2:
+col1: 0-0=0
+col2: -1 - (-1)=0
+col3: -1 - (-1)=0
+col4: 3 - 1 = 2
+col5: -5 - 1 = -6
+col6: 1 - 3 = -2
+col7: -8 - (-2) = -6
+col8: 3 - 3 = 0
+col9: -5 - (-3) = -2
+So Row6 becomes: [0, 0, 0, 2, -6, -2, -6, 0, -2]
+
+Row8: current row8: [0, -1, -1, 1, -1, 5, 0, -2, 4] minus half row2:
+col1:0
+col2: -1 - (-1)=0
+col3: -1 - (-1)=0
+col4: 1 - 1 = 0
+col5: -1 - 1 = -2
+col6: 5 - 3 = 2
+col7: 0 - (-2) = 2
+col8: -2 - 3 = -5
+col9: 4 - (-3) = 7
+So Row8 becomes: [0, 0, 0, 0, -2, 2, 2, -5, 7]
+
+Row9: current row9: [0, -1, -4, 2, 0, 2, -2, 4, -9] minus half row2:
+col1:0
+col2: -1 - (-1)=0
+col3: -4 - (-1) = -3
+col4: 2 - 1 = 1
+col5: 0 - 1 = -1
+col6: 2 - 3 = -1
+col7: -2 - (-2)=0
+col8: 4 - 3 = 1
+col9: -9 - (-3) = -6
+So Row9 becomes: [0, 0, -3, 1, -1, -1, 0, 1, -6]
+
+Now the matrix after step2:
+
+Row1: [-4, -4, -6, 4, 4, 6, -4, 2, 6]
+Row2: [0, -2, -2, 2, 2, 6, -4, 6, -6]
+Row3: [0, 0, 3, 0, -6, -5, 3, -1, 0]
+Row4: [0, 0, 0, 0, -2, -7, 7, -5, -3]
+Row5: [0, 0, 6, 0, -4, -6, -6, 2, 4]
+Row6: [0, 0, 0, 2, -6, -2, -6, 0, -2]
+Row7: [0, 0, 3, -1, 3, 2, -5, 4, 9]
+Row8: [0, 0, 0, 0, -2, 2, 2, -5, 7]
+Row9: [0, 0, -3, 1, -1, -1, 0, 1, -6]
+
+Step3: k=3. Consider rows 3 to 9, column3. List column3 entries:
+
+Row3: 3
+Row4: 0
+Row5: 6
+Row6: 0
+Row7: 3
+Row8: 0
+Row9: -3
+
+Absolute values: 3,0,6,0,3,0,3. Maximum is 6 in row5. So we swap row3 and row5. Position3 currently has row3 (orig row3), position5 has row5 (orig row1). So we swap rows 3 and 5. Update perm: current perm = [5,8,3,4,1,6,7,2,9]. Swapping positions 3 and 5: position3 gets original row1, position5 gets original row3. So new perm: [5,8,1,4,3,6,7,2,9].
+
+Now after swap, the matrix:
+
+Row1: [-4, -4, -6, 4, 4, 6, -4, 2, 6]
+Row2: [0, -2, -2, 2, 2, 6, -4, 6, -6]
+Row3: becomes previous row5: [0, 0, 6, 0, -4, -6, -6, 2, 4]   (orig row1)
+Row4: [0, 0, 0, 0, -2, -7, 7, -5, -3]
+Row5: becomes previous row3: [0, 0, 3, 0, -6, -5, 3, -1, 0]   (orig row3)
+Row6: [0, 0, 0, 2, -6, -2, -6, 0, -2]
+Row7: [0, 0, 3, -1, 3, 2, -5, 4, 9]
+Row8: [0, 0, 0, 0, -2, 2, 2, -5, 7]
+Row9: [0, 0, -3, 1, -1, -1, 0, 1, -6]
+
+Now pivot is row3, column3 = 6. We eliminate column3 in rows 4-9. Compute multipliers:
+
+Row4 col3 = 0 => m4=0.
+Row5 col3 = 3 => m5 = 3/6 = 1/2 = 0.5.
+Row6 col3 = 0 => m6=0.
+Row7 col3 = 3 => m7 = 3/6 = 0.5.
+Row8 col3 = 0 => m8=0.
+Row9 col3 = -3 => m9 = (-3)/6 = -1/2 = -0.5.
+
+We need to update rows 5,7,9 (since m nonzero). Compute half of row3 (since m=1/2) and also m=-1/2 for row9. Row3: [0,0,6,0,-4,-6,-6,2,4]. Half of row3: [0,0,3,0,-2,-3,-3,1,2]. For m=0.5, subtract half row3; for m=-0.5, subtract (-0.5)*row3, i.e., add half row3. So:
+
+Row5: current row5: [0,0,3,0,-6,-5,3,-1,0] minus (1/2)*row3 => [0,0,3,0,-6,-5,3,-1,0] - [0,0,3,0,-2,-3,-3,1,2] = 
+col1:0, col2:0, col3:3-3=0, col4:0-0=0, col5:-6 - (-2)= -4, col6:-5 - (-3)= -2, col7:3 - (-3)=6, col8:-1-1= -2, col9:0-2=-2. So Row5 becomes: [0,0,0,0,-4,-2,6,-2,-2].
+
+Row7: current row7: [0,0,3,-1,3,2,-5,4,9] minus (1/2)*row3 => [0,0,3,-1,3,2,-5,4,9] - [0,0,3,0,-2,-3,-3,1,2] = 
+col1:0, col2:0, col3:3-3=0, col4:-1-0=-1, col5:3 - (-2)=5, col6:2 - (-3)=5, col7:-5 - (-3)=-2, col8:4-1=3, col9:9-2=7. So Row7 becomes: [0,0,0,-1,5,5,-2,3,7].
+
+Row9: current row9: [0,0,-3,1,-1,-1,0,1,-6] minus (-0.5)*row3 = [0,0,-3,1,-1,-1,0,1,-6] + (0.5)*row3? Actually m=-0.5, so row9 = row9 - (-0.5)*row3 = row9 + 0.5*row3. So we add half row3: [0,0,3,0,-2,-3,-3,1,2] to row9:
+col1:0+0=0, col2:0+0=0, col3:-3+3=0, col4:1+0=1, col5:-1+(-2)= -3, col6:-1+(-3)= -4, col7:0+(-3)= -3, col8:1+1=2, col9:-6+2= -4. So Row9 becomes: [0,0,0,1,-3,-4,-3,2,-4].
+
+Now the matrix after step3:
+
+Row1: [-4, -4, -6, 4, 4, 6, -4, 2, 6]
+Row2: [0, -2, -2, 2, 2, 6, -4, 6, -6]
+Row3: [0, 0, 6, 0, -4, -6, -6, 2, 4]   (pivot row)
+Row4: [0, 0, 0, 0, -2, -7, 7, -5, -3]
+Row5: [0, 0, 0, 0, -4, -2, 6, -2, -2]
+Row6: [0, 0, 0, 2, -6, -2, -6, 0, -2]
+Row7: [0, 0, 0, -1, 5, 5, -2, 3, 7]
+Row8: [0, 0, 0, 0, -2, 2, 2, -5, 7]
+Row9: [0, 0, 0, 1, -3, -4, -3, 2, -4]
+
+Now step4: k=4. Consider rows 4 to 9, column4. List column4 entries:
+
+Row4: 0
+Row5: 0
+Row6: 2
+Row7: -1
+Row8: 0
+Row9: 1
+
+Absolute values: 0,0,2,1,0,1. Maximum is 2 in row6. So we swap row4 and row6. Current perm: [5,8,1,4,3,6,7,2,9]. Swap positions 4 and 6: position4 gets original row6, position6 gets original row4. So new perm: [5,8,1,6,3,4,7,2,9].
+
+Now swap rows in matrix: row4 becomes previous row6, row6 becomes previous row4.
+
+Current matrix before swap:
+Row4: [0,0,0,0,-2,-7,7,-5,-3]
+Row6: [0,0,0,2,-6,-2,-6,0,-2]
+So after swap:
+Row4: [0,0,0,2,-6,-2,-6,0,-2]
+Row6: [0,0,0,0,-2,-7,7,-5,-3]
+
+Now rows after swap (all rows):
+
+Row1: [-4, -4, -6, 4, 4, 6, -4, 2, 6]
+Row2: [0, -2, -2, 2, 2, 6, -4, 6, -6]
+Row3: [0, 0, 6, 0, -4, -6, -6, 2, 4]
+Row4: [0, 0, 0, 2, -6, -2, -6, 0, -2]  (now pivot row for step4)
+Row5: [0, 0, 0, 0, -4, -2, 6, -2, -2]
+Row6: [0, 0, 0, 0, -2, -7, 7, -5, -3]  (was row4)
+Row7: [0, 0, 0, -1, 5, 5, -2, 3, 7]
+Row8: [0, 0, 0, 0, -2, 2, 2, -5, 7]
+Row9: [0, 0, 0, 1, -3, -4, -3, 2, -4]
+
+Now pivot is row4, column4 = 2. We eliminate column4 in rows 5-9. Compute multipliers:
+
+Row5 col4 = 0 => m5=0.
+Row6 col4 = 0 => m6=0.
+Row7 col4 = -1 => m7 = (-1)/2 = -0.5.
+Row8 col4 = 0 => m8=0.
+Row9 col4 = 1 => m9 = 1/2 = 0.5.
+
+So we need to update rows 7 and 9. For row7, m=-0.5, so subtract (-0.5)*row4 = add 0.5*row4. For row9, m=0.5, subtract 0.5*row4.
+
+Compute half of row4: row4 = [0,0,0,2,-6,-2,-6,0,-2]. Half = [0,0,0,1,-3,-1,-3,0,-1].
+
+Now update:
+
+Row7: current row7: [0,0,0,-1,5,5,-2,3,7] + half row4 (since m=-0.5, we add 0.5*row4). So add [0,0,0,1,-3,-1,-3,0,-1]:
+col1:0, col2:0, col3:0, col4:-1+1=0, col5:5+(-3)=2, col6:5+(-1)=4, col7:-2+(-3)=-5, col8:3+0=3, col9:7+(-1)=6. So Row7 becomes: [0,0,0,0,2,4,-5,3,6].
+
+Row9: current row9: [0,0,0,1,-3,-4,-3,2,-4] minus half row4 = [0,0,0,1,-3,-4,-3,2,-4] - [0,0,0,1,-3,-1,-3,0,-1] = 
+col1:0, col2:0, col3:0, col4:1-1=0, col5:-3 - (-3)=0, col6:-4 - (-1)= -3, col7:-3 - (-3)=0, col8:2-0=2, col9:-4 - (-1)= -3. So Row9 becomes: [0,0,0,0,0,-3,0,2,-3].
+
+Now matrix after step4:
+
+Row1: [-4, -4, -6, 4, 4, 6, -4, 2, 6]
+Row2: [0, -2, -2, 2, 2, 6, -4, 6, -6]
+Row3: [0, 0, 6, 0, -4, -6, -6, 2, 4]
+Row4: [0, 0, 0, 2, -6, -2, -6, 0, -2]
+Row5: [0, 0, 0, 0, -4, -2, 6, -2, -2]
+Row6: [0, 0, 0, 0, -2, -7, 7, -5, -3]
+Row7: [0, 0, 0, 0, 2, 4, -5, 3, 6]
+Row8: [0, 0, 0, 0, -2, 2, 2, -5, 7]
+Row9: [0, 0, 0, 0, 0, -3, 0, 2, -3]
+
+Step5: k=5. Consider rows 5 to 9, column5. List column5 entries:
+
+Row5: -4
+Row6: -2
+Row7: 2
+Row8: -2
+Row9: 0
+
+Absolute values: 4,2,2,2,0. Maximum is 4 in row5. So no swap needed because row5 is already at position5? Check: The pivot row is row5 itself, and it has the maximum absolute value. So we do not swap. But we need to check if there is any larger? Row5 has 4, others have 2 or 0. So row5 is the pivot. So perm remains same: [5,8,1,6,3,4,7,2,9].
+
+Now pivot is row5, column5 = -4. Eliminate column5 in rows 6-9. Compute multipliers:
+
+Row6 col5 = -2 => m6 = (-2)/(-4) = 1/2 = 0.5.
+Row7 col5 = 2 => m7 = 2/(-4) = -0.5.
+Row8 col5 = -2 => m8 = (-2)/(-4) = 0.5.
+Row9 col5 = 0 => m9 = 0.
+
+So we need to update rows6,7,8. For row6 and row8, subtract (1/2)*row5; for row7, subtract (-0.5)*row5 = add 0.5*row5.
+
+Row5: [0,0,0,0,-4,-2,6,-2,-2]. Half of row5: [0,0,0,0,-2,-1,3,-1,-1].
+
+Now updates:
+
+Row6: current row6: [0,0,0,0,-2,-7,7,-5,-3] minus half row5 = [0,0,0,0,-2,-7,7,-5,-3] - [0,0,0,0,-2,-1,3,-1,-1] = 
+col1:0, col2:0, col3:0, col4:0, col5:-2 - (-2)=0, col6:-7 - (-1)= -6, col7:7 - 3 = 4, col8:-5 - (-1)= -4, col9:-3 - (-1)= -2. So Row6 becomes: [0,0,0,0,0,-6,4,-4,-2].
+
+Row7: current row7: [0,0,0,0,2,4,-5,3,6] plus half row5 (since m=-0.5, we add 0.5*row5) = [0,0,0,0,2,4,-5,3,6] + [0,0,0,0,-2,-1,3,-1,-1] = 
+col1:0, col2:0, col3:0, col4:0, col5:2+(-2)=0, col6:4+(-1)=3, col7:-5+3=-2, col8:3+(-1)=2, col9:6+(-1)=5. So Row7 becomes: [0,0,0,0,0,3,-2,2,5].
+
+Row8: current row8: [0,0,0,0,-2,2,2,-5,7] minus half row5 = [0,0,0,0,-2,2,2,-5,7] - [0,0,0,0,-2,-1,3,-1,-1] = 
+col1:0, col2:0, col3:0, col4:0, col5:-2 - (-2)=0, col6:2 - (-1)=3, col7:2 - 3 = -1, col8:-5 - (-1)= -4, col9:7 - (-1)=8. So Row8 becomes: [0,0,0,0,0,3,-1,-4,8].
+
+Row9: unchanged: [0,0,0,0,0,-3,0,2,-3].
+
+Now matrix after step5:
+
+Row1: [-4, -4, -6, 4, 4, 6, -4, 2, 6]
+Row2: [0, -2, -2, 2, 2, 6, -4, 6, -6]
+Row3: [0, 0, 6, 0, -4, -6, -6, 2, 4]
+Row4: [0, 0, 0, 2, -6, -2, -6, 0, -2]
+Row5: [0, 0, 0, 0, -4, -2, 6, -2, -2]
+Row6: [0, 0, 0, 0, 0, -6, 4, -4, -2]
+Row7: [0, 0, 0, 0, 0, 3, -2, 2, 5]
+Row8: [0, 0, 0, 0, 0, 3, -1, -4, 8]
+Row9: [0, 0, 0, 0, 0, -3, 0, 2, -3]
+
+Step6: k=6. Consider rows 6 to 9, column6. List column6 entries:
+
+Row6: -6
+Row7: 3
+Row8: 3
+Row9: -3
+
+Absolute values: 6,3,3,3. Maximum is 6 in row6. So pivot is row6 itself (since it's already at position6? Actually row6 is position6, and it has the largest absolute value; no swap needed if it's the first among ties? But it is the only one with 6, so no need to swap. So perm unchanged: [5,8,1,6,3,4,7,2,9]. Note: The pivot row is row6.
+
+Now pivot is row6, column6 = -6. Eliminate column6 in rows 7-9. Compute multipliers:
+
+Row7 col6 = 3 => m7 = 3/(-6) = -0.5.
+Row8 col6 = 3 => m8 = 3/(-6) = -0.5.
+Row9 col6 = -3 => m9 = (-3)/(-6) = 0.5.
+
+So for rows7 and8, m=-0.5, so subtract (-0.5)*row6 = add 0.5*row6. For row9, m=0.5, subtract 0.5*row6.
+
+Compute half of row6: row6 = [0,0,0,0,0,-6,4,-4,-2]. Half = [0,0,0,0,0,-3,2,-2,-1].
+
+Now update:
+
+Row7: current row7: [0,0,0,0,0,3,-2,2,5] + half row6 = [0,0,0,0,0,3,-2,2,5] + [0,0,0,0,0,-3,2,-2,-1] = 
+col1-5:0, col6:3+(-3)=0, col7:-2+2=0, col8:2+(-2)=0, col9:5+(-1)=4. So Row7 becomes: [0,0,0,0,0,0,0,0,4].
+
+Row8: current row8: [0,0,0,0,0,3,-1,-4,8] + half row6 = [0,0,0,0,0,3,-1,-4,8] + [0,0,0,0,0,-3,2,-2,-1] = 
+col1-5:0, col6:3+(-3)=0, col7:-1+2=1, col8:-4+(-2)=-6, col9:8+(-1)=7. So Row8 becomes: [0,0,0,0,0,0,1,-6,7].
+
+Row9: current row9: [0,0,0,0,0,-3,0,2,-3] minus half row6 = [0,0,0,0,0,-3,0,2,-3] - [0,0,0,0,0,-3,2,-2,-1] = 
+col1-5:0, col6:-3 - (-3)=0, col7:0 - 2 = -2, col8:2 - (-2)=4, col9:-3 - (-1)= -2. So Row9 becomes: [0,0,0,0,0,0,-2,4,-2].
+
+Now matrix after step6:
+
+Row1: [-4, -4, -6, 4, 4, 6, -4, 2, 6]
+Row2: [0, -2, -2, 2, 2, 6, -4, 6, -6]
+Row3: [0, 0, 6, 0, -4, -6, -6, 2, 4]
+Row4: [0, 0, 0, 2, -6, -2, -6, 0, -2]
+Row5: [0, 0, 0, 0, -4, -2, 6, -2, -2]
+Row6: [0, 0, 0, 0, 0, -6, 4, -4, -2]
+Row7: [0, 0, 0, 0, 0, 0, 0, 0, 4]
+Row8: [0, 0, 0, 0, 0, 0, 1, -6, 7]
+Row9: [0, 0, 0, 0, 0, 0, -2, 4, -2]
+
+Step7: k=7. Consider rows 7 to 9, column7. List column7 entries:
+
+Row7: 0
+Row8: 1
+Row9: -2
+
+Absolute values: 0,1,2. Maximum is 2 in row9. So we need to swap row7 and row9 (since row9 is at position9, we swap with position7). So swap rows 7 and 9. Current perm: [5,8,1,6,3,4,7,2,9]. Swap positions 7 and 9: position7 gets original row9, position9 gets original row7. So new perm: [5,8,1,6,3,4,9,2,7].
+
+Now swap rows in matrix: Row7 becomes previous Row9, Row9 becomes previous Row7.
+
+Current matrix:
+Row7: [0,0,0,0,0,0,0,0,4]
+Row8: [0,0,0,0,0,0,1,-6,7]
+Row9: [0,0,0,0,0,0,-2,4,-2]
+After swap:
+Row7: [0,0,0,0,0,0,-2,4,-2]   (was row9)
+Row8: unchanged [0,0,0,0,0,0,1,-6,7]
+Row9: [0,0,0,0,0,0,0,0,4]   (was row7)
+
+Now pivot is row7, column7 = -2. Eliminate column7 in rows 8 and 9. Compute multipliers:
+
+Row8 col7 = 1 => m8 = 1/(-2) = -0.5.
+Row9 col7 = 0 => m9 = 0.
+
+So for row8, m = -0.5, so we subtract (-0.5)*row7 = add 0.5*row7.
+
+Compute half of row7: row7 = [0,0,0,0,0,0,-2,4,-2]. Half = [0,0,0,0,0,0,-1,2,-1].
+
+Now update:
+
+Row8: current row8: [0,0,0,0,0,0,1,-6,7] + half row7 (since m=-0.5, add 0.5*row7) = [0,0,0,0,0,0,1,-6,7] + [0,0,0,0,0,0,-1,2,-1] = 
+col1-6:0, col7:1+(-1)=0, col8:-6+2=-4, col9:7+(-1)=6. So Row8 becomes: [0,0,0,0,0,0,0,-4,6].
+
+Row9 unchanged: [0,0,0,0,0,0,0,0,4].
+
+Now matrix after step7:
+
+Row1: [-4, -4, -6, 4, 4, 6, -4, 2, 6]
+Row2: [0, -2, -2, 2, 2, 6, -4, 6, -6]
+Row3: [0, 0, 6, 0, -4, -6, -6, 2, 4]
+Row4: [0, 0, 0, 2, -6, -2, -6, 0, -2]
+Row5: [0, 0, 0, 0, -4, -2, 6, -2, -2]
+Row6: [0, 0, 0, 0, 0, -6, 4, -4, -2]
+Row7: [0, 0, 0, 0, 0, 0, -2, 4, -2]
+Row8: [0, 0, 0, 0, 0, 0, 0, -4, 6]
+Row9: [0, 0, 0, 0, 0, 0, 0, 0, 4]
+
+Step8: k=8. Consider rows 8 to 9, column8. List column8 entries:
+
+Row8: -4
+Row9: 0
+
+Absolute values: 4,0. Maximum is 4 in row8. So pivot is row8 itself (since it's already at position8). No swap. Perm remains: [5,8,1,6,3,4,9,2,7].
+
+Now pivot is row8, column8 = -4. Eliminate column8 in row9. Row9 col8 = 0, so no elimination needed. So matrix stays the same.
+
+Step9: k=9. Only row9, pivot is row9, column9 = 4. No elimination needed.
+
+Now the matrix is upper triangular. The diagonal entries of U are: U11, U22, ..., U99. They are the entries at positions (1,1), (2,2), ..., (9,9) in the final matrix. But note that after all eliminations, the matrix we have is U (upper triangular). So we read them:
+
+Row1 col1 = -4
+Row2 col2 = -2
+Row3 col3 = 6
+Row4 col4 = 2
+Row5 col5 = -4
+Row6 col6 = -6
+Row7 col7 = -2
+Row8 col8 = -4
+Row9 col9 = 4
+
+Thus diagonal entries: -4, -2, 6, 2, -4, -6, -2, -4, 4.
+
+Now we need the permutation vector r_1,...,r_n: the original row numbers that end up in positions 1..9. Our final perm after all swaps is [5,8,1,6,3,4,9,2,7]. So r1=5, r2=8, r3=1, r4=6, r5=3, r6=4, r7=9, r8=2, r9=7.
+
+Thus the list: 5,8,1,6,3,4,9,2,7, then the diagonal entries: -4,-2,6,2,-4,-6,-2,-4,4.
+
+But we need to output as one comma-separated list: 2n=18 numbers. So we output: 5,8,1,6,3,4,9,2,7,-4,-2,6,2,-4,-6,-2,-4,4.
+
+We should double-check our steps for any arithmetic errors. It's prudent to verify if the diagonal entries are indeed integers (they are). Also we might check that the product PA = LU holds? But we don't have L explicitly, but we can quickly check if the elimination steps are consistent. However, let's re-evaluate some steps to ensure no mistakes.
+
+We can also compute the determinant: product of diagonals times sign from permutation? But not needed.
+
+Let's re-check step1 elimination:
+
+Original row5 = [-4,-4,-6,4,4,6,-4,2,6] used as pivot.
+Row2: [-2,-3,-4,3,1,8,-2,-1,7] minus 0.5*row5 gave [0,-1,-1,1,-1,5,0,-2,4] (correct)
+Row7: [-2,-2,0,1,5,5,-7,5,12] minus 0.5*row5 gave [0,0,3,-1,3,2,-5,4,9] (correct)
+Row9: [-2,-3,-7,4,2,5,-4,5,-6] minus 0.5*row5 gave [0,-1,-4,2,0,2,-2,4,-9] (correct)
+
+Step2: pivot row2 = [0,-2,-2,2,2,6,-4,6,-6] (orig row8). Half = [0,-1,-1,1,1,3,-2,3,-3].
+Row6: [0,-1,-1,3,-5,1,-8,3,-5] minus half gave [0,0,0,2,-6,-2,-6,0,-2]? Let's recalc: row6 col4: 3-1=2, col5: -5-1=-6, col6:1-3=-2, col7:-8-(-2)=-6, col8:3-3=0, col9:-5-(-3)=-2. Yes.
+Row8: [0,-1,-1,1,-1,5,0,-2,4] minus half gave [0,0,0,0,-2,2,2,-5,7]? col4:1-1=0, col5:-1-1=-2, col6:5-3=2, col7:0-(-2)=2, col8:-2-3=-5, col9:4-(-3)=7. Yes.
+Row9: [0,-1,-4,2,0,2,-2,4,-9] minus half gave [0,0,-3,1,-1,-1,0,1,-6]? col3:-4-(-1)=-3, col4:2-1=1, col5:0-1=-1, col6:2-3=-1, col7:-2-(-2)=0, col8:4-3=1, col9:-9-(-3)=-6. Yes.
+
+Step3: pivot row3 = [0,0,6,0,-4,-6,-6,2,4] (orig row1). Half = [0,0,3,0,-2,-3,-3,1,2].
+Row5: [0,0,3,0,-6,-5,3,-1,0] minus half gave [0,0,0,0,-4,-2,6,-2,-2]? col5:-6 - (-2)=-4, col6:-5-(-3)=-2, col7:3-(-3)=6, col8:-1-1=-2, col9:0-2=-2. Yes.
+Row7: [0,0,3,-1,3,2,-5,4,9] minus half gave [0,0,0,-1,5,5,-2,3,7]? col4:-1-0=-1, col5:3-(-2)=5, col6:2-(-3)=5, col7:-5-(-3)=-2, col8:4-1=3, col9:9-2=7. Yes.
+Row9: [0,0,-3,1,-1,-1,0,1,-6] plus half (since m=-0.5) gave [0,0,0,1,-3,-4,-3,2,-4]? col3:-3+3=0, col4:1+0=1, col5:-1+(-2)=-3, col6:-1+(-3)=-4, col7:0+(-3)=-3, col8:1+1=2, col9:-6+2=-4. Yes.
+
+Step4: pivot row4 = [0,0,0,2,-6,-2,-6,0,-2] (orig row6). Half = [0,0,0,1,-3,-1,-3,0,-1].
+Row7: [0,0,0,-1,5,5,-2,3,7] + half gave [0,0,0,0,2,4,-5,3,6]? col4:-1+1=0, col5:5-3=2, col6:5-1=4, col7:-2-3=-5, col8:3+0=3, col9:7-1=6. Yes.
+Row9: [0,0,0,1,-3,-4,-3,2,-4] - half gave [0,0,0,0,0,-3,0,2,-3]? col4:1-1=0, col5:-3-(-3)=0, col6:-4-(-1)=-3, col7:-3-(-3)=0, col8:2-0=2, col9:-4-(-1)=-3. Yes.
+
+Step5: pivot row5 = [0,0,0,0,-4,-2,6,-2,-2]; half = [0,0,0,0,-2,-1,3,-1,-1].
+Row6: [0,0,0,0,-2,-7,7,-5,-3] - half gave [0,0,0,0,0,-6,4,-4,-2]? col6:-7-(-1)=-6, col7:7-3=4, col8:-5-(-1)=-4, col9:-3-(-1)=-2. Yes.
+Row7: [0,0,0,0,2,4,-5,3,6] + half gave [0,0,0,0,0,3,-2,2,5]? col6:4-1=3? Actually add: 4+(-1)=3, col7:-5+3=-2, col8:3+(-1)=2, col9:6+(-1)=5. Yes.
+Row8: [0,0,0,0,-2,2,2,-5,7] - half gave [0,0,0,0,0,3,-1,-4,8]? col6:2-(-1)=3, col7:2-3=-1, col8:-5-(-1)=-4, col9:7-(-1)=8. Yes.
+
+Step6: pivot row6 = [0,0,0,0,0,-6,4,-4,-2]; half = [0,0,0,0,0,-3,2,-2,-1].
+Row7: [0,0,0,0,0,3,-2,2,5] + half gave [0,0,0,0,0,0,0,0,4]? col6:3-3=0, col7:-2+2=0, col8:2-2=0, col9:5-1=4. Yes.
+Row8: [0,0,0,0,0,3,-1,-4,8] + half gave [0,0,0,0,0,0,1,-6,7]? col6:3-3=0, col7:-1+2=1, col8:-4-2=-6, col9:8-1=7. Yes.
+Row9: [0,0,0,0,0,-3,0,2,-3] - half gave [0,0,0,0,0,0,-2,4,-2]? col6:-3-(-3)=0, col7:0-2=-2, col8:2-(-2)=4, col9:-3-(-1)=-2. Yes.
+
+Step7: pivot row7 = [0,0,0,0,0,0,-2,4,-2]; half = [0,0,0,0,0,0,-1,2,-1].
+Row8: [0,0,0,0,0,0,1,-6,7] + half gave [0,0,0,0,0,0,0,-4,6]? col7:1-1=0, col8:-6+2=-4, col9:7-1=6. Yes.
+Row9: [0,0,0,0,0,0,0,0,4] unchanged.
+
+Thus final matrix is upper triangular. Diagonals as read: row1 col1 = -4, row2 col2 = -2, row3 col3 = 6, row4 col4 = 2, row5 col5 = -4, row6 col6 = -6, row7 col7 = -2, row8 col8 = -4, row9 col9 = 4.
+
+Permutation: we recorded swaps: step1: swap 1 and 5 -> perm: [5,2,3,4,1,6,7,8,9]. step2: swap 2 and 8 -> [5,8,3,4,1,6,7,2,9]. step3: swap 3 and 5 -> [5,8,1,4,3,6,7,2,9]. step4: swap 4 and 6 -> [5,8,1,6,3,4,7,2,9]. step5: no swap. step6: no swap. step7: swap 7 and 9 -> [5,8,1,6,3,4,9,2,7]. step8: no swap. step9: no swap. So final perm: [5,8,1,6,3,4,9,2,7]. That seems consistent.
+
+Thus answer: 5,8,1,6,3,4,9,2,7,-4,-2,6,2,-4,-6,-2,-4,4.
+
+Now we output in the required format: "ANSWER: 5,8,1,6,3,4,9,2,7,-4,-2,6,2,-4,-6,-2,-4,4". Check if any spaces? Usually just comma-separated. We'll provide that.
+
+But wait: The problem says "Give r_1, …, r_n followed by the diagonal entries U11, …, Unn of U, as one comma-separated list (2n numbers; the diagonal entries are integers)." So we list r1..r9 then U11..U99. Yes.
+
+Thus final answer.

@@ -1,0 +1,845 @@
+We are given a symmetric 7x7 integer matrix A. We need to find the signature (p, q) of the quadratic form Q(x) = x^T A x. This is the number of positive and negative eigenvalues, but since it's a real symmetric matrix, the signature is constant under congruence. We can compute the signature by diagonalizing the quadratic form via completing squares (Lagrange's method) or by computing the eigenvalues? But eigenvalues may be messy. We can perform row/column operations to reduce to diagonal form, but careful: since we are performing congruence transformations (i.e., change of variables x = P y, then Q becomes y^T (P^T A P) y). So we can apply simultaneous row and column operations (e.g., adding a multiple of a row and column to another) to diagonalize. This is like Gaussian elimination but with symmetric operations. We can also compute the determinant of leading principal minors to get the number of positive and negative eigenvalues? That's for the inertia via Sylvester's law: the number of positive eigenvalues equals the number of sign changes in the sequence of leading principal minors, provided all leading principal minors are non-zero. But here they might be zero. However, we can compute the rank and signature by doing elimination with pivoting.
+
+Alternatively, we can compute the eigenvalues numerically? Not recommended; but we can do rational arithmetic. Since matrix is integer, we can do exact arithmetic. Let's attempt Lagrange's method: we want to write Q as sum of squares with coefficients. We can treat it as a quadratic form in 7 variables. We can attempt to complete squares one variable at a time, but careful with zero coefficients.
+
+We'll denote variables x1,...,x7. The matrix A:
+
+Row1: [-1, -2, 2, 0, 0, -1, 0]
+Row2: [-2, -7, 4, 3, 6, -8, -3]
+Row3: [2, 4, -5, 0, 2, 3, 1]
+Row4: [0, 3, 0, 0, -6, 12, 3]
+Row5: [0, 6, 2, -6, -18, 12, 6]
+Row6: [-1, -8, 3, 12, 12, -5, -9]
+Row7: [0, -3, 1, 3, 6, -9, -9]
+
+We need to compute Q = x^T A x. Write expression:
+
+Q = -1*x1^2 + (-2-2?) Actually, cross terms are doubled? For symmetric matrix A, Q = sum_i a_ii x_i^2 + 2*sum_{i<j} a_ij x_i x_j. So we need to consider the off-diagonals as half? But we can work directly with the matrix.
+
+Let me write out Q as polynomial:
+
+Quadratic terms (diagonals):
+a11 = -1 => -x1^2
+a22 = -7 => -7x2^2
+a33 = -5 => -5x3^2
+a44 = 0 => 0*x4^2
+a55 = -18 => -18x5^2
+a66 = -5 => -5x6^2
+a77 = -9 => -9x7^2
+
+Cross terms (2*a_ij for i<j):
+a12 = -2 => 2*(-2) x1x2 = -4 x1x2
+a13 = 2 => 2*2 x1x3 = 4 x1x3
+a14 = 0 => 0
+a15 = 0 => 0
+a16 = -1 => 2*(-1) x1x6 = -2 x1x6
+a17 = 0 => 0
+
+a23 = 4 => 2*4 x2x3 = 8 x2x3
+a24 = 3 => 2*3 x2x4 = 6 x2x4
+a25 = 6 => 2*6 x2x5 = 12 x2x5
+a26 = -8 => 2*(-8) x2x6 = -16 x2x6
+a27 = -3 => 2*(-3) x2x7 = -6 x2x7
+
+a34 = 0 => 0
+a35 = 2 => 2*2 x3x5 = 4 x3x5
+a36 = 3 => 2*3 x3x6 = 6 x3x6
+a37 = 1 => 2*1 x3x7 = 2 x3x7
+
+a45 = -6 => 2*(-6) x4x5 = -12 x4x5
+a46 = 12 => 2*12 x4x6 = 24 x4x6
+a47 = 3 => 2*3 x4x7 = 6 x4x7
+
+a56 = 12 => 2*12 x5x6 = 24 x5x6
+a57 = 6 => 2*6 x5x7 = 12 x5x7
+
+a67 = -9 => 2*(-9) x6x7 = -18 x6x7
+
+So Q = -x1^2 -7x2^2 -5x3^2 -18x5^2 -5x6^2 -9x7^2
+      -4x1x2 +4x1x3 -2x1x6
+      +8x2x3 +6x2x4 +12x2x5 -16x2x6 -6x2x7
+      +4x3x5 +6x3x6 +2x3x7
+      -12x4x5 +24x4x6 +6x4x7
+      +24x5x6 +12x5x7
+      -18x6x7.
+
+That's messy. We can proceed with completing squares. But perhaps there is a smarter way: Use congruence transformations via Gaussian elimination. We can perform elementary row and column operations that preserve symmetry: For any elementary operation on rows, we apply the same operation on columns. This is equivalent to multiplying on left and right by an invertible matrix E and its transpose. So we can reduce A to diagonal form.
+
+We can do something like: Use a11 = -1 as pivot. Since it's nonzero, we can eliminate other entries in first row and column. Perform row operations: For i>1, add (a1i / a11) times row1 to row i, and similarly for columns. Because a11=-1, we can do: For i>1, row_i = row_i + (a1i/a11)*row1? Actually to zero out a1i (and a_i1), we do: row_i <- row_i - (a_{i1}/a_{11}) row1, and column_i <- column_i - (a_{i1}/a_{11}) column1. Since a11 = -1, a1i = a_i1. So factor = a_{i1} / a_{11} = -a_{i1}. Because a11 = -1 => 1/a11 = -1. So we should subtract a_{i1} * row1 from row_i? Actually we want to make a_{i1} become 0. For symmetric elimination, we do: new row_i = row_i - (a_{i1}/a_{11}) row1. Since a_{11}=-1, (a_{i1}/a_{11}) = -a_{i1}. So new row_i = row_i + a_{i1} * row1. Then we do the same for columns: new column_i = column_i + a_{i1} * column1. This will zero out the off-diagonals in first row/col. Let's compute.
+
+Let’s denote the original matrix A(0) = A.
+
+a11 = -1.
+a21 = -2, a31=2, a41=0, a51=0, a61=-1, a71=0.
+
+For i=2: factor = -a21 = 2? Wait careful: We want to add a_{i1} * row1 to row_i, because (a_{i1}/a_{11}) = a_{i1}/(-1) = -a_{i1}. So row_i = row_i - (-a_{i1})? Hmm let's do systematically:
+
+Let pivot p = a11. For i>1, we want to eliminate entry a_{i1}. Compute multiplier m = a_{i1}/p. Then new row_i = row_i - m * row1. Since p = -1, m = a_{i1}/(-1) = -a_{i1}. So new row_i = row_i - (-a_{i1}) row1 = row_i + a_{i1} * row1. So yes: row_i = row_i + a_{i1} * row1.
+
+Similarly for columns: column_i = column_i + a_{i1} * column1.
+
+So operations:
+
+For i=2: a21 = -2 => row2 = row2 + (-2)*row1 = row2 - 2*row1? Wait a_{i1} = -2, so row2 = row2 + (-2)*row1 = row2 - 2 row1. Check: a21 = -2, so row2 = row2 - 2 row1. Then column2 = column2 - 2 column1.
+
+For i=3: a31=2 => row3 = row3 + 2*row1; column3 = column3 + 2*column1.
+
+For i=4: a41=0 => no change.
+
+For i=5: a51=0 => no change.
+
+For i=6: a61=-1 => row6 = row6 + (-1)*row1 = row6 - row1; column6 = column6 - column1.
+
+For i=7: a71=0 => no change.
+
+Now we must apply these row operations to the whole matrix, and then column operations. Since matrix is symmetric, we could just apply row operations and then the column operations will automatically produce symmetric matrix because we will apply the same transformations to columns. Alternatively we can compute the transformed matrix as P^T A P, where P is the product of elementary matrices. But it's easier to do step-by-step: After row operations, we get an intermediate matrix that is not symmetric (since column ops not yet applied), then apply column ops to restore symmetry. However, we can compute the final matrix after both row and column ops by updating entries directly using formulas.
+
+We can perform elimination by updating the submatrix: After eliminating first row/col, we get a new symmetric matrix A' of size 6x6 (the Schur complement) given by: a'_ij = a_ij - (a_i1 * a_1j)/a_11 for i,j>1. Since a11 = -1, the formula simplifies: a'_ij = a_ij - (a_i1 * a_1j)/(-1) = a_ij + a_i1 * a_1j. Because dividing by -1 gives minus, but minus times minus? Let's derive: For Schur complement: new entry = old entry - (a_i1 * a_1j)/a_11. Since a_11 = -1, subtract = (a_i1 * a_1j)/(-1) = -a_i1 a_1j. So new entry = a_ij - ( - a_i1 a_1j ) = a_ij + a_i1 a_1j. So indeed a'_ij = a_ij + a_i1 * a_1j for i,j>1.
+
+This is simpler: we can compute all entries of the reduced 6x6 matrix directly. Then the pivot a11 contributes a term -1 * (something)^2? In the diagonalization, the first square will be a11 * (x1 + ...)^2. Since we are doing congruence, we will get first diagonal entry = a11 = -1. So p and q counts will include one negative from a11. Then we continue with the Schur complement.
+
+Let's compute the Schur complement matrix B (size 6) where indices 2..7 correspond to original indices. But careful: after elimination, we have new variables (e.g., y1 = x1 + something). But we only need signature so we can just compute the reduced matrix recursively.
+
+We have the original A with entries a_ij. We'll compute B_ij = a_ij + a_i1 * a_1j for i,j >1. Since a_1j = a_j1.
+
+Let's list a_1j for j=1..7:
+j=1: -1
+j=2: -2
+j=3: 2
+j=4: 0
+j=5: 0
+j=6: -1
+j=7: 0
+
+So for i,j from 2 to 7, we compute B_ij = a_ij + a_i1 * a_1j.
+
+We need a_ij for i,j>=2. Let's write the original matrix entries as per given.
+
+Original A (index 1..7):
+A =
+[  -1, -2,  2,  0,  0, -1,  0 ]
+[  -2, -7,  4,  3,  6, -8, -3 ]
+[   2,  4, -5,  0,  2,  3,  1 ]
+[   0,  3,  0,  0, -6, 12,  3 ]
+[   0,  6,  2, -6, -18, 12,  6 ]
+[  -1, -8,  3, 12, 12, -5, -9 ]
+[   0, -3,  1,  3,  6, -9, -9 ]
+
+Now compute B:
+
+We'll compute a matrix C of size 6, with rows/cols corresponding to original indices 2..7. Let's label them as new indices 1'..6' where 1'=2, 2'=3, 3'=4, 4'=5, 5'=6, 6'=7. But we'll keep original indices for clarity.
+
+For each pair i,j (2..7):
+B(i,j) = a(i,j) + a(i,1)*a(1,j).
+
+We need a(i,1) for i=2..7: 
+a(2,1)=-2
+a(3,1)=2
+a(4,1)=0
+a(5,1)=0
+a(6,1)=-1
+a(7,1)=0
+
+And a(1,j): for j=2..7:
+a(1,2)=-2
+a(1,3)=2
+a(1,4)=0
+a(1,5)=0
+a(1,6)=-1
+a(1,7)=0
+
+So product a(i,1)*a(1,j): 
+If either factor is zero, product is zero. So effectively, B(i,j) = a(i,j) + (a(i,1)*a(1,j)). Only non-zero contributions when both a(i,1) and a(1,j) are non-zero. a(i,1) non-zero for i=2,3,6. a(1,j) non-zero for j=2,3,6. So only for i,j in {2,3,6} the product adds something. For other combos, B = a(i,j) since product=0.
+
+Let's compute B for all i,j. We'll compute systematically.
+
+First, diagonal entries (i=j):
+For i=2: a(2,2)=-7, a(2,1)=-2, a(1,2)=-2 => product = (-2)*(-2)=4 => B(2,2)=-7+4=-3.
+For i=3: a(3,3)=-5, a(3,1)=2, a(1,3)=2 => product=4 => B(3,3)=-5+4=-1.
+For i=4: a(4,4)=0, a(4,1)=0 => B(4,4)=0.
+For i=5: a(5,5)=-18, a(5,1)=0 => B(5,5)=-18.
+For i=6: a(6,6)=-5, a(6,1)=-1, a(1,6)=-1 => product=1 => B(6,6)=-5+1=-4.
+For i=7: a(7,7)=-9, a(7,1)=0 => B(7,7)=-9.
+
+Off-diagonals i<j:
+
+(2,3): i=2,j=3: a(2,3)=4, a(2,1)=-2, a(1,3)=2 => product = (-2)*2 = -4 => B=4+(-4)=0.
+(2,4): i=2,j=4: a(2,4)=3, a(2,1)=-2, a(1,4)=0 => product=0 => B=3.
+(2,5): i=2,j=5: a(2,5)=6, a(2,1)=-2, a(1,5)=0 => B=6.
+(2,6): i=2,j=6: a(2,6)=-8, a(2,1)=-2, a(1,6)=-1 => product = (-2)*(-1)=2 => B=-8+2=-6.
+(2,7): i=2,j=7: a(2,7)=-3, a(2,1)=-2, a(1,7)=0 => B=-3.
+
+(3,4): i=3,j=4: a(3,4)=0, a(3,1)=2, a(1,4)=0 => B=0.
+(3,5): i=3,j=5: a(3,5)=2, a(3,1)=2, a(1,5)=0 => B=2.
+(3,6): i=3,j=6: a(3,6)=3, a(3,1)=2, a(1,6)=-1 => product=2*(-1)=-2 => B=3+(-2)=1.
+(3,7): i=3,j=7: a(3,7)=1, a(3,1)=2, a(1,7)=0 => B=1.
+
+(4,5): i=4,j=5: a(4,5)=-6, a(4,1)=0, a(1,5)=0 => B=-6.
+(4,6): i=4,j=6: a(4,6)=12, a(4,1)=0, a(1,6)=-1 => product=0 => B=12.
+(4,7): i=4,j=7: a(4,7)=3, a(4,1)=0, a(1,7)=0 => B=3.
+
+(5,6): i=5,j=6: a(5,6)=12, a(5,1)=0, a(1,6)=-1 => product=0 => B=12.
+(5,7): i=5,j=7: a(5,7)=6, a(5,1)=0, a(1,7)=0 => B=6.
+
+(6,7): i=6,j=7: a(6,7)=-9, a(6,1)=-1, a(1,7)=0 => product=0 => B=-9.
+
+So the Schur complement B (size 6) is symmetric (we should check symmetry, e.g., (2,3)=0, (3,2) we computed (3,2) same as (2,3), okay). Let's write B as matrix with rows/cols order 2,3,4,5,6,7:
+
+B = 
+Row2: [ -3, 0, 3, 6, -6, -3 ]
+Row3: [ 0, -1, 0, 2, 1, 1 ]
+Row4: [ 3, 0, 0, -6, 12, 3 ]
+Row5: [ 6, 2, -6, -18, 12, 6 ]
+Row6: [ -6, 1, 12, 12, -4, -9 ]
+Row7: [ -3, 1, 3, 6, -9, -9 ]
+
+Check row3: (3,2)=0, (3,3)=-1, (3,4)=0, (3,5)=2, (3,6)=1, (3,7)=1. Yes.
+Row4: (4,2)=3, (4,3)=0, (4,4)=0, (4,5)=-6, (4,6)=12, (4,7)=3.
+Row5: (5,2)=6, (5,3)=2, (5,4)=-6, (5,5)=-18, (5,6)=12, (5,7)=6.
+Row6: (6,2)=-6, (6,3)=1, (6,4)=12, (6,5)=12, (6,6)=-4, (6,7)=-9.
+Row7: (7,2)=-3, (7,3)=1, (7,4)=3, (7,5)=6, (7,6)=-9, (7,7)=-9.
+
+We have the first pivot -1 (negative). So so far we have one negative. Now continue with the reduced 6x6 matrix B. We need to find its signature. We can apply the same process: pick a pivot from B's first row/col (which corresponds to variable x2 now). But careful: The order of variables matters, we can reorder variables to have non-zero pivot. In Lagrange's method, we can choose any variable with non-zero coefficient as pivot. Here the first diagonal entry of B is B_{2,2} = -3 (non-zero). So we can use that as pivot. However, note that if we continue elimination, we treat the matrix as independent; we will get a diagonal form. So we use pivot -3. Then we compute new Schur complement for the remaining 5x5. Let's do that.
+
+But wait: B is not necessarily the matrix of the quadratic form in variables x2,...,x7 after a change that eliminated x1? Actually after completing square with x1, we have expression: Q = a11 (x1 + (1/a11)*∑_{j>1} a1j xj)^2 + Q'(x2,...,x7) where Q' corresponds to the Schur complement. So indeed signature contributions from a11 and from Q'. So we can iteratively compute the signature by looking at the signs of pivots when we perform Gaussian elimination with complete pivoting or just use the leading principal minors? But we need to ensure we pick pivots in order (we may need to reorder variables if zero pivot appears). In the reduced matrix B, the first diagonal entry is -3, which is non-zero, so we can proceed with that as pivot. Then we compute the Schur complement after eliminating the first row/col of B (i.e., variable x2). Let's denote B as matrix with index 1..6 where we map 1->2,2->3,3->4,4->5,5->6,6->7. So B(1,1) = -3, B(1,2)=0, B(1,3)=3, B(1,4)=6, B(1,5)=-6, B(1,6)=-3. And B(2,1)=0, etc.
+
+Now we eliminate using pivot B11 = -3. For i>1, we compute new entries: C_{ij} = B_{ij} - (B_{i1} B_{1j}) / B_{11}. That is the Schur complement. Since B11 = -3, the new entries will be C_{ij} = B_{ij} - (B_{i1} B_{1j})/(-3) = B_{ij} + (B_{i1} B_{1j})/3. Because minus over negative gives plus. More precisely, new entry = B_{ij} - (B_{i1} * B_{1j}) / B_{11}. Since B_{11} = -3, denominator = -3, so subtract = (B_{i1} B_{1j})/(-3) = - (B_{i1} B_{1j})/3? Wait: (B_{i1} B_{1j}) / (-3) = - (B_{i1} B_{1j})/3. Then B_{ij} - (B_{i1} B_{1j})/(-3) = B_{ij} - ( - (B_{i1} B_{1j})/3 ) = B_{ij} + (B_{i1} B_{1j})/3. So C_{ij} = B_{ij} + (B_{i1} B_{1j})/3.
+
+Thus we need to compute for i,j >=2 (i.e., indices 2..6 in new numbering). Compute B_{i1} and B_{1j}. Let's write the B matrix clearly with indices:
+
+Let’s denote rows/cols as 1: x2, 2: x3, 3: x4, 4: x5, 5: x6, 6: x7.
+
+B matrix (symmetric):
+
+B[1,1] = -3
+B[1,2] = 0
+B[1,3] = 3
+B[1,4] = 6
+B[1,5] = -6
+B[1,6] = -3
+
+B[2,2] = -1
+B[2,3] = 0
+B[2,4] = 2
+B[2,5] = 1
+B[2,6] = 1
+
+B[3,3] = 0
+B[3,4] = -6
+B[3,5] = 12
+B[3,6] = 3
+
+B[4,4] = -18
+B[4,5] = 12
+B[4,6] = 6
+
+B[5,5] = -4
+B[5,6] = -9
+
+B[6,6] = -9
+
+We need off-diagonals for i<j as above, and symmetric entries.
+
+Now compute C_{ij} for i=2..6, j=2..6:
+
+C_{ij} = B_{ij} + (B_{i1} * B_{1j})/3.
+
+We need B_{i1} for i=2..6:
+i=2: B_{2,1}=0
+i=3: B_{3,1}=3
+i=4: B_{4,1}=6
+i=5: B_{5,1}=-6
+i=6: B_{6,1}=-3
+
+And B_{1j} for j=2..6:
+j=2: B_{1,2}=0
+j=3: B_{1,3}=3
+j=4: B_{1,4}=6
+j=5: B_{1,5}=-6
+j=6: B_{1,6}=-3
+
+So product B_{i1}*B_{1j} is only non-zero when both are non-zero. So for i=2, B_{i1}=0, so C_{2j}=B_{2j} for all j. Similarly for j=2, B_{1j}=0, so C_{i2}=B_{i2} (but careful C_{2,2} includes term? For i=2,j=2: B_{21}=0 => product=0 => C_{22}=B_{22}=-1). So row/col 2 (x3) is unchanged? Let's compute properly.
+
+Thus we need to compute C for i and j from 2 to 6 (i.e., indices 2,3,4,5,6 in new numbering; corresponding to x3,x4,x5,x6,x7). But note that the new matrix after elimination will have size 5 (since we eliminated first variable x2). So we will have a 5x5 matrix D for variables x3,x4,x5,x6,x7. However our C is defined for i,j>=2; we need to compute each entry.
+
+Let's compute systematically:
+
+We'll list the original B entries for i,j>=2 (2..6). Then add (B_{i1}B_{1j})/3.
+
+Define:
+
+For i=2 (x3):
+B21=0 => C2j = B2j for j>=2.
+So:
+C22 = B22 = -1
+C23 = B23 = 0 (since B2,3=0)
+C24 = B24 = 2
+C25 = B25 = 1
+C26 = B26 = 1
+
+For i=3 (x4):
+B31=3, B1j as above.
+Compute:
+C33 = B33 + (B31*B13)/3 = B33 + (3*3)/3 = 0 + 9/3 = 0+3 = 3
+C34 = B34 + (B31*B14)/3 = (-6) + (3*6)/3 = -6 + 18/3 = -6+6 = 0
+C35 = B35 + (B31*B15)/3 = 12 + (3*(-6))/3 = 12 + (-18)/3 = 12 -6 = 6
+C36 = B36 + (B31*B16)/3 = 3 + (3*(-3))/3 = 3 + (-9)/3 = 3 -3 = 0
+
+Also C32 = B32 + (B31*B12)/3 = 0 + (3*0)/3 = 0 (symmetric to C23, already 0).
+
+For i=4 (x5):
+B41=6
+C44 = B44 + (B41*B14)/3 = -18 + (6*6)/3 = -18 + 36/3 = -18+12 = -6
+C45 = B45 + (B41*B15)/3 = 12 + (6*(-6))/3 = 12 + (-36)/3 = 12 -12 = 0
+C46 = B46 + (B41*B16)/3 = 6 + (6*(-3))/3 = 6 + (-18)/3 = 6 -6 = 0
+C43 = B43 + (B41*B13)/3 = -6 + (6*3)/3 = -6 + 18/3 = -6+6 = 0 (we already have C34=0)
+C42 = B42 + (B41*B12)/3 = 6? Wait B42 = B24 = 2? Actually B42 is B(4,2) = B(2,4)=2. But careful: i=4 corresponds to x5, j=2 corresponds to x3: B42 = B(4,2)=? Since B is symmetric, B(4,2)=B(2,4)=2. Then C42 = B42 + (B41*B12)/3 = 2 + (6*0)/3 = 2. But we need to check if we are including j=2 in the new matrix? The new matrix D after eliminating x2 includes only variables x3,x4,x5,x6,x7 i.e., indices 2-6 in new numbering? Wait we eliminated the first variable (x2) from B, so the remaining variables are those corresponding to the rows/cols with indices 2..6 (i.e., original x3,x4,x5,x6,x7). So the new matrix D is of size 5, with indices mapping: new 1->x3, 2->x4, 3->x5, 4->x6, 5->x7. So we should consider C entries only for i,j in {2,3,4,5,6}? Actually that's exactly i,j from 2 to 6. So we need to compute C22, C23,..., C26; C32,...,C36; C42,...,C46; C52,...,C56; C62,...,C66. But we have computed C22, C23, C24, C25, C26; C33, C34, C35, C36; C44, C45, C46; and also need C55, C56, C66, and also cross terms like C54, etc. Also we need C52, C53, etc. So we need to also compute for i=5 (x6) and i=6 (x7). Let's continue.
+
+For i=5 (x6):
+B51 = -6
+Compute:
+C55 = B55 + (B51*B15)/3 = -4 + ((-6)*(-6))/3 = -4 + (36)/3 = -4+12 = 8
+C56 = B56 + (B51*B16)/3 = -9 + ((-6)*(-3))/3 = -9 + (18)/3 = -9+6 = -3
+C54 = B54 + (B51*B14)/3 = 12 + ((-6)*6)/3 = 12 + (-36)/3 = 12-12 = 0 (note B54 = B45 = 12? Actually B45 = 12, B54 = 12)
+C53 = B53 + (B51*B13)/3 = 1 + ((-6)*3)/3 = 1 + (-18)/3 = 1-6 = -5? But careful: B53 = B35 = 1? Wait B35 = 6? Let's double-check B entries: From above, B[3,5]? Actually we had B[3,5] = 6? Let's re-index: Our B matrix indices: 1:x2,2:x3,3:x4,4:x5,5:x6,6:x7. So:
+- B(2,5) = B(2,5)? Row2 (x3) col5 (x6) = B[2,5] = 1 (from earlier: B[2,5]=1). So B53? i=5 (x6), j=3 (x4): B[5,3] = B[3,5] = 1? Actually B[3,5] = 6? Wait earlier we had B for (3,5) =? Let's list B correctly:
+
+From earlier computed B (with indices original variables):
+Rows/cols: (2,2)=-3; (2,3)=0; (2,4)=3; (2,5)=6; (2,6)=-6; (2,7)=-3.
+(3,3)=-1; (3,4)=0; (3,5)=2; (3,6)=1; (3,7)=1.
+(4,4)=0; (4,5)=-6; (4,6)=12; (4,7)=3.
+(5,5)=-18; (5,6)=12; (5,7)=6.
+(6,6)=-4; (6,7)=-9.
+(7,7)=-9.
+
+Now mapping: new1 = x2 -> B11 = -3, new2 = x3 -> B22 = -1, new3 = x4 -> B33 = 0, new4 = x5 -> B44 = -18, new5 = x6 -> B55 = -4, new6 = x7 -> B66 = -9. And off-diagonals: B12 = 0; B13 = 3; B14 = 6; B15 = -6; B16 = -3; B23 = 0; B24 = 2; B25 = 1; B26 = 1; B34 = -6; B35 = 12; B36 = 3; B45 = 12; B46 = 6; B56 = -9.
+
+Yes. So, for i=5 (x6) corresponds to index 5 in new numbering. So:
+B51 = B(5,1) = B15 = -6 (since symmetric)
+B52 = B(5,2) = B25 = 1? Wait B(5,2) corresponds to (x6, x3) = B[5,2] = B[2,5] = 1.
+B53 = B(5,3) = B35 = 12? Actually B35 = 12? B(3,5) = B35 = 12 (since B[3,5] = 12). Wait earlier I said B[3,5] = 12? Let's re-check: B[3,5] from our list: B[3,5] =? We have B[3,4] = -6, B[3,5] = 12, B[3,6] = 3. So yes B35 = 12. But note: (x4,x6) = B34 = -6, (x4,x7) = B36 = 3. So B53 = B35 = 12. However earlier I mistakenly thought B35 = 6. So correct: B35 = 12. So B53 = 12.
+B54 = B(5,4) = B45 = 12? Actually B45 = 12 (x5,x6) = 12. So B54 = 12.
+B55 = -4.
+B56 = B(5,6) = B56 = -9.
+
+So for i=5 (x6):
+B51 = -6
+B52 = 1
+B53 = 12
+B54 = 12
+B55 = -4
+B56 = -9
+
+But we only need B51 for product. And B1j values:
+B12=0, B13=3, B14=6, B15=-6, B16=-3.
+
+Now compute C5j for j=2..6 (i=5, j=2..6):
+C52 = B52 + (B51*B12)/3 = 1 + (-6*0)/3 = 1.
+But careful: We are computing C for i=5, j=2. However note that the new matrix D will include only indices 2..6 after eliminating variable 1. So we need all C entries for i>=2, j>=2. So indeed C52 is entry for (x6, x3). So it's included.
+
+C53 = B53 + (B51*B13)/3 = 12 + (-6*3)/3 = 12 + (-18)/3 = 12 -6 = 6.
+C54 = B54 + (B51*B14)/3 = 12 + (-6*6)/3 = 12 + (-36)/3 = 12 -12 = 0.
+C55 = B55 + (B51*B15)/3 = -4 + (-6 * -6)/3 = -4 + (36)/3 = -4+12 = 8 (as earlier).
+C56 = B56 + (B51*B16)/3 = -9 + (-6 * -3)/3 = -9 + (18)/3 = -9+6 = -3.
+
+Now for i=6 (x7):
+B61 = -3
+B62 = B26 = 1? Actually B26 = 1, so B62 = 1.
+B63 = B36 = 3? Wait B36 = 3, so B63 = 3.
+B64 = B46 = 6? B46 = 6, so B64 = 6.
+B65 = B56 = -9, so B65 = -9.
+B66 = -9.
+
+Now compute C6j for j=2..6:
+C62 = B62 + (B61*B12)/3 = 1 + (-3*0)/3 = 1.
+C63 = B63 + (B61*B13)/3 = 3 + (-3*3)/3 = 3 + (-9)/3 = 3-3 = 0.
+C64 = B64 + (B61*B14)/3 = 6 + (-3*6)/3 = 6 + (-18)/3 = 6-6 = 0.
+C65 = B65 + (B61*B15)/3 = -9 + (-3 * -6)/3 = -9 + (18)/3 = -9+6 = -3.
+C66 = B66 + (B61*B16)/3 = -9 + (-3 * -3)/3 = -9 + (9)/3 = -9+3 = -6.
+
+Also need C for i=3,j=2 (C32) we already have 0, for i=4,j=2 (C42) = B42 + (B41*B12)/3 = B42 = B24 = 2 + (6*0)/3 = 2; for i=4,j=3 (C43) we computed = 0; for i=4,j=5 (C45)=0; i=4,j=6 (C46)=0; i=5,j=2 (C52)=1; i=5,j=3 (C53)=6; i=5,j=4 (C54)=0; i=5,j=6 (C56)=-3; i=6,j=2 (C62)=1; i=6,j=3 (C63)=0; i=6,j=4 (C64)=0; i=6,j=5 (C65)=-3; i=6,j=6 (C66)=-6.
+
+Also we need C33, C44, C55, C66 we have; C34=0, C35=6, C36=0; C45=0, C46=0; C56=-3. Also C23 we computed =0, C24=2, C25=1, C26=1. So the new matrix D of size 5 (variables x3,x4,x5,x6,x7) with indices mapping: 1->x3,2->x4,3->x5,4->x6,5->x7. The entries are the C values for i=2..6, j=2..6. Let's construct D:
+
+Rows/cols order: 1: x3, 2: x4, 3: x5, 4: x6, 5: x7.
+
+From above:
+D11 = C22 = -1
+D12 = C23 = 0
+D13 = C24 = 2
+D14 = C25 = 1
+D15 = C26 = 1
+
+D21 = C32 = 0
+D22 = C33 = 3
+D23 = C34 = 0
+D24 = C35 = 6
+D25 = C36 = 0
+
+D31 = C42 = 2? Wait C42 = B42 + ... we computed C42 = 2. But careful: C42 corresponds to i=4 (x5) j=2 (x3)? Actually i=4 is x5, j=2 is x3. So D31 = entry for (x5,x3) = 2. So D31 = 2.
+D32 = C43 = 0
+D33 = C44 = -6
+D34 = C45 = 0
+D35 = C46 = 0
+
+D41 = C52 = 1 (x6,x3)
+D42 = C53 = 6 (x6,x4)
+D43 = C54 = 0 (x6,x5)
+D44 = C55 = 8
+D45 = C56 = -3
+
+D51 = C62 = 1 (x7,x3)
+D52 = C63 = 0 (x7,x4)
+D53 = C64 = 0 (x7,x5)
+D54 = C65 = -3 (x7,x6)
+D55 = C66 = -6
+
+Check symmetry: D12=0, D21=0 ok; D13=2, D31=2 ok; D14=1, D41=1 ok; D15=1, D51=1 ok; D23=0, D32=0 ok; D24=6, D42=6 ok; D25=0, D52=0 ok; D34=0, D43=0 ok; D35=0, D53=0 ok; D45=-3, D54=-3 ok. Good.
+
+So D is symmetric 5x5:
+
+D = 
+[ -1   0   2   1   1 ]
+[  0   3   0   6   0 ]
+[  2   0  -6   0   0 ]
+[  1   6   0   8  -3 ]
+[  1   0   0  -3  -6 ]
+
+Now we have the pivot from B elimination: B11 = -3 (negative). So we have so far: first pivot a11 = -1 (negative), second pivot = -3 (negative). So we have two negatives. Now we need the signature of D (5x5). Continue elimination.
+
+Now we look at D's first diagonal entry (corresponding to x3): D11 = -1 (non-zero). So we can use that as pivot. Elimination again: pivot = -1. Then we compute Schur complement of size 4 for variables x4,x5,x6,x7. Let's do that.
+
+Let D be with indices: 1:x3,2:x4,3:x5,4:x6,5:x7. D11 = -1.
+
+Now we compute new matrix E (size 4) as: for i,j>1: E_{i-1,j-1} = D_{ij} + (D_{i1} * D_{1j}) / D_{11}? Wait formula: new entry = D_{ij} - (D_{i1} D_{1j}) / D_{11}. Since D11 = -1, we have new = D_{ij} - (D_{i1}D_{1j})/(-1) = D_{ij} + D_{i1} D_{1j}. Because -1 divided gives minus sign: 1/D11 = -1, so - (D_{i1} D_{1j})/(-1) = + D_{i1} D_{1j}. Actually careful: New = D_{ij} - (D_{i1} * D_{1j}) / D_{11}. With D11 = -1, then (D_{i1} D_{1j}) / (-1) = - D_{i1} D_{1j}. Then New = D_{ij} - (- D_{i1} D_{1j}) = D_{ij} + D_{i1} D_{1j}. Yes, so new = D_{ij} + D_{i1} D_{1j} for i,j>1. So that's simple.
+
+We need D_{i1} for i=2..5 and D_{1j} for j=2..5.
+
+From D:
+D11 = -1
+D12 = 0
+D13 = 2
+D14 = 1
+D15 = 1
+
+Thus:
+D21 = D12 = 0
+D31 = D13 = 2
+D41 = D14 = 1
+D51 = D15 = 1
+
+Now compute E entries for i,j = 2..5 (mapping to x4,x5,x6,x7). We'll compute:
+
+E11 corresponds to (2,2) i.e., D22 = 3 + (D21*D12) = 3 + (0*0)=3.
+E12 = D23 + (D21*D13) = D23 = 0? Actually D23 = D32? D23 = entry (2,3)=0? Wait D23 is row2 col3 (x4,x5) = 0 from D matrix: D[2,3]=0. So E12 = 0 + (0*2)=0.
+E13 = D24 + (D21*D14) = D24 = 6 + (0*1)=6.
+E14 = D25 + (D21*D15) = D25 = 0 + (0*1)=0.
+
+E21 = D32 + (D31*D12) = D32 = 0 + (2*0)=0 (symmetric).
+E22 = D33 + (D31*D13) = D33 = -6 + (2*2)= -6+4 = -2.
+E23 = D34 + (D31*D14) = D34 = 0 + (2*1)=2.
+E24 = D35 + (D31*D15) = D35 = 0 + (2*1)=2.
+
+E31 = D42 + (D41*D12) = D42 = 6? Wait D42 = D24 = 6, plus (1*0)=6 => E31=6.
+E32 = D43 + (D41*D13) = D43 = 0 + (1*2)=2.
+E33 = D44 + (D41*D14) = D44 = 8 + (1*1)=9.
+E34 = D45 + (D41*D15) = D45 = -3 + (1*1)= -2.
+
+E41 = D52 + (D51*D12) = D52 = 0 + (1*0)=0.
+E42 = D53 + (D51*D13) = D53 = 0 + (1*2)=2.
+E43 = D54 + (D51*D14) = D54 = -3 + (1*1)= -2.
+E44 = D55 + (D51*D15) = D55 = -6 + (1*1)= -5.
+
+So E symmetric matrix (size 4) with rows/cols: 1:x4,2:x5,3:x6,4:x7? Actually careful: The indices after elimination: new variable order: x4, x5, x6, x7. So E entries:
+
+E = 
+Row1 (x4): [3, 0, 6, 0]
+Row2 (x5): [0, -2, 2, 2]
+Row3 (x6): [6, 2, 9, -2]
+Row4 (x7): [0, 2, -2, -5]
+
+Check symmetry: (1,2)=0, (2,1)=0; (1,3)=6, (3,1)=6; (1,4)=0, (4,1)=0; (2,3)=2, (3,2)=2; (2,4)=2, (4,2)=2; (3,4)=-2, (4,3)=-2. Good.
+
+Now we have pivot from D: D11 = -1 (negative). So far we have three negatives: a11=-1, B11=-3, D11=-1. So three negatives so far. Now we need signature of E (4x4). Continue.
+
+Now E is 4x4. Look at first diagonal entry: E11 = 3 (positive). So we can use that as pivot. Pivot = 3. Then we compute Schur complement of size 3 for variables x5,x6,x7. For i,j>1, new entry = E_{ij} - (E_{i1} * E_{1j}) / E_{11}. Since E11=3, we compute.
+
+We need E_{i1} for i=2,3,4: E21 = 0, E31 = 6, E41 = 0.
+E_{1j} for j=2,3,4: E12 = 0, E13 = 6, E14 = 0.
+
+So compute new matrix F (size 3) for variables x5,x6,x7:
+
+F_{ij} = E_{ij} - (E_{i1} E_{1j})/3.
+
+Let's compute:
+
+Indices: new 1 -> x5 (original index? Actually mapping: after eliminating x4, remaining variables: x5, x6, x7). So we compute for i,j from 2 to 4 in E's indexing (i.e., rows 2,3,4 and cols 2,3,4). Let's denote them as 1':x5, 2':x6, 3':x7.
+
+Compute:
+
+For i=2 (x5), j=2 (x5): E22 = -2, E21=0, E12=0 => product term =0; F11 = -2.
+i=2,j=3 (x5,x6): E23 = 2, E21=0, E13=6? Wait E13=6, but E21=0, so product =0; F12 = 2.
+i=2,j=4 (x5,x7): E24 = 2, E21=0, E14=0 => F13 = 2.
+
+For i=3 (x6), j=2: E32 = 2, E31=6, E12=0 => product = (6*0)/3=0; F21 = 2 (symmetric).
+i=3,j=3: E33 = 9, E31=6, E13=6 => product = (6*6)/3 = 36/3=12; so F22 = 9 - 12 = -3.
+i=3,j=4: E34 = -2, E31=6, E14=0 => product = (6*0)/3=0; so F23 = -2.
+
+For i=4 (x7), j=2: E42 = 2, E41=0, E12=0 => F31 =2.
+i=4,j=3: E43 = -2, E41=0, E13=6 => product =0; F32 = -2.
+i=4,j=4: E44 = -5, E41=0, E14=0 => F33 = -5.
+
+But note we also need check if any other terms: For i=4,j=2 we have F31=2, and F13=2, ok. So F matrix (3x3) is:
+
+F = 
+[ -2,  2,  2 ]
+[  2, -3, -2 ]
+[  2, -2, -5 ]
+
+Symmetric. Now we have pivot from E: E11 = 3 (positive). So we have one positive so far? Let's tally: So far we have pivots: a11 = -1 (negative), B11 = -3 (negative), D11 = -1 (negative), E11 = 3 (positive). So we have three negatives and one positive. Now we need signature of F (3x3). Continue.
+
+Now F is 3x3. First diagonal entry: F11 = -2 (non-zero). Use pivot = -2. Then compute Schur complement of size 2 for variables x6,x7 (since we eliminate x5). For i,j>1, new entry = F_{ij} - (F_{i1} * F_{1j}) / F_{11}. Since F11 = -2, we compute. Let's denote G (size 2).
+
+We need F_{i1} for i=2,3: F21 = 2, F31 = 2.
+F_{1j} for j=2,3: F12 = 2, F13 = 2.
+F11 = -2.
+
+Now compute G entries for i,j=2,3:
+
+G11 = F22 - (F21*F12)/F11 = -3 - (2*2)/(-2) = -3 - (4/(-2)) = -3 - (-2) = -3+2 = -1.
+G12 = F23 - (F21*F13)/F11 = -2 - (2*2)/(-2) = -2 - (4/(-2)) = -2 - (-2) = -2+2 = 0.
+G21 = F32 - (F31*F12)/F11 = -2 - (2*2)/(-2) = -2 - (4/(-2)) = -2 - (-2)=0. (symmetric)
+G22 = F33 - (F31*F13)/F11 = -5 - (2*2)/(-2) = -5 - (4/(-2)) = -5 - (-2)= -5+2 = -3.
+
+Thus G (2x2) = 
+[ -1, 0 ]
+[ 0, -3 ]
+
+So G is diagonal with entries -1 and -3 (both negative). So after eliminating x5, we have pivot F11 = -2 (negative). So now we have an additional negative. And then the remaining 2x2 matrix G has negative entries, giving two more negatives. So total negatives: from pivots: a11 = -1, B11 = -3, D11 = -1, F11 = -2, and then G's diagonals -1 and -3. That sums to 6 negatives? But we also had a positive pivot E11 = 3. So we have one positive and six negatives? But there are 7 variables; p+q = rank? We need to check if there are any zero eigenvalues? The matrix might be full rank? Let's see: we have 7 pivots? Let's count: we have a11 (size1), B11 (size1), D11 (size1), E11 (size1), F11 (size1), and finally G is 2x2 diagonal with two entries. That's total 1+1+1+1+1+2 = 7 pivots. So we have seven non-zero pivots. So rank = 7. So p = number of positive pivots = 1 (from E11=3). q = number of negative pivots = 6. So signature (p,q) = (1,6). But we should verify that all pivots are indeed non-zero and we didn't accidentally lose any sign due to reordering? The process we used is essentially Gaussian elimination with pivoting in a fixed order (the order we chose: x1, x2, x3, x4, x5, x6, x7). That is valid as long as the pivots we used were non-zero. They were all non-zero. The resulting diagonal entries (pivots) are the coefficients when the quadratic form is expressed as sum of squares after completing squares in that order. The signs of those pivots give the signature (by Sylvester's law of inertia, the signs of the pivots in a sequential elimination correspond to the signature, provided we don't reorder variables? Actually if we always choose the next variable as the one with non-zero coefficient in the current form, then the signs of the pivots are the same as the signs of the diagonal entries in some diagonalization. However, we must be cautious: In Lagrange's method, the signs of the squares coefficients are the same as the signs of the pivots we get when we eliminate in that order. So indeed we have 1 positive and 6 negative.
+
+But we should double-check if we made any arithmetic mistakes. Let's verify by computing the eigenvalues numerically perhaps? Since matrix is 7x7, we could compute approximate eigenvalues using a tool? But we are reasoning manually. Could also compute the determinant sign? The product of pivots times some positive factors? Actually the product of all pivots (including the ones from the reduction) is equal to the determinant of the original matrix up to a factor? In elimination without row interchanges, the product of the pivots equals the determinant of the matrix if we do row operations that multiply by 1? But we are performing congruence transformations, the product of the pivots (the diagonal entries after full elimination) is not directly the determinant because we have performed both row and column operations that change the determinant? Actually congruence transformations: If we have P^T A P = D (diagonal), then det(A) = det(P^{-T}) det(D) det(P^{-1}) = det(D) / (det(P))^2. Since det(P) is not necessarily 1, the product of diagonal entries is not directly det(A). But the signs of the diagonal entries are the same as the signs of eigenvalues (Sylvester). So our conclusion of 1 positive, 6 negative implies that the determinant of A has sign = (-1)^6 = positive? Since product of eigenvalues = det(A). With 1 positive and 6 negative, product is positive if the number of negative eigenvalues is even (6 is even), so det(A) > 0. Let's compute det(A) quickly? Might be a sanity check. Could compute using some method? Perhaps we can compute det of original A? Since it's 7x7, but maybe we can compute using the Schur complements we already computed. The product of the pivots from the elimination (the diagonal entries we obtained: -1, -3, -1, 3, -2, -1, -3) times some factor? Actually the elimination we performed is not exactly the same as the diagonalization that yields D = diag(pivots) because we used congruence transformations that are not simply elementary row operations; but the diagonal entries we obtained at each step are the coefficients of the squares when we complete squares in that order. For example, after eliminating x1, we had Q = -1*(x1 + ...)^2 + Q', where Q' is given by the Schur complement. Then we chose x2 as next variable; the coefficient of the square for x2 after completing square is the pivot we used from the Schur complement (the (1,1) entry of B). So the sequence of coefficients we used are: a11 = -1, then B11 = -3, then D11 = -1, then E11 = 3, then F11 = -2, then from G we got -1 and -3. So indeed the diagonal form we get is: -1 (y1)^2 -3 (y2)^2 -1 (y3)^2 +3 (y4)^2 -2 (y5)^2 -1 (y6)^2 -3 (y7)^2. So signature (1,6). But we need to ensure that no zero pivot appeared, and we didn't need to reorder variables, which is fine. However, we should also consider the possibility that some of these pivots might be zero after further reduction? They were non-zero.
+
+But let's double-check the arithmetic carefully, because errors could affect the outcome. Might be worthwhile to recompute the Schur complements step by step with more systematic approach or use alternative method like computing leading principal minors. However, leading principal minors approach works if all leading principal minors are non-zero. Let's compute leading principal minors of A? The sequence of leading principal minors (determinants of top-left kxk submatrices) can give the signature if they are all non-zero: number of positive eigenvalues = number of sign changes in the sequence (counting sign of det of 0x0 as +). But that requires the matrix to be such that all leading principal minors are non-zero. If some are zero, we may need to do a permutation. Let's compute the leading principal minors of A to see if they are all non-zero and see if the signs indicate (1,6). However careful: For a symmetric matrix, the number of positive eigenvalues is equal to the number of sign changes in the sequence of leading principal minors if all leading principal minors are non-zero, but that is a known theorem: For a symmetric matrix with all leading principal minors non-zero, the inertia is given by the signs of the leading principal minors. But it's not just sign changes; it's something like: the number of positive eigenvalues = number of sign agreements in the sequence? Actually there's a theorem: For a real symmetric matrix, if all leading principal minors are non-zero, then the number of positive eigenvalues equals the number of sign changes in the sequence of leading principal minors (where we consider the signs of the minors, starting with + for the 0x0 determinant). But I think the standard result: The number of positive eigenvalues of a symmetric matrix A equals the number of sign changes in the sequence {1, det(A1), det(A2), ..., det(An)} where A_k is the leading principal k×k submatrix. Actually there's a theorem by Jacobi: For a real symmetric matrix with non-zero leading principal minors, the inertia (p, q) can be found by counting the number of sign changes in the sequence of the leading principal minors. More precisely, p = number of sign changes (from + to - or - to +) in the sequence 1, det(A1), det(A2), ..., det(An); q = n - p. But I recall that it gives the number of positive eigenvalues as the number of sign agreements? Let's check with a simple 2x2: A = diag(1, -1). Leading principal minors: det(A1)=1>0, det(A2)=-1<0. Sequence: +, +, -? Starting with 1 (positive), then A1=+ => sign +, then A2=- => sign -. So there is one sign change (from + to -). p = number of sign changes = 1, q = 1. That works. For A = diag(1,1): minors: +, +, + => no sign changes, p=2, q=0. For A = diag(-1,-2): minors: -1 (negative), then det=2 positive? Actually A1=-1 negative, A2=2 positive. Sequence: + (starting), then - (sign change from + to -), then + (sign change from - to +) => two sign changes, p=0? That would give p=0? But p should be 0, q=2. So count sign changes: from + to - (first change), then from - to + (second change). So two changes, p=2? That's not correct. Let's recalc: For A = diag(-1,-2), leading principal minors: A1 = -1 (negative), A2 = (-1)*(-2)=2 (positive). Starting with +. Signs: + (starting) -> - (A1): change count 1. Then - (A1) to + (A2): change count 2. So p = number of sign changes = 2, but we have 0 positive eigenvalues. So that's not correct. Actually the correct theorem might be: The number of positive eigenvalues equals the number of sign changes in the sequence of the leading principal minors, but also considering the signs of the pivots from Gaussian elimination without pivoting. There is a nuance: If the matrix is not positive definite, the signs of leading principal minors might not directly give the inertia because they can be zero or have sign variations. Actually there is a known result: For a symmetric matrix, the number of positive eigenvalues is the number of sign changes in the sequence of leading principal minors when they are all non-zero, but only if we also consider the determinants of the submatrices obtained by eliminating? Let's recall: The "Jacobi's theorem" states that if all leading principal minors are non-zero, then the inertia of A is the same as the inertia of the diagonal matrix D whose entries are d_k = det(A_k)/det(A_{k-1}) (with det(A_0)=1). And the signs of d_k are the signs of the pivots in Gaussian elimination without row interchanges (i.e., the diagonal entries of the LDU decomposition). So the number of positive d_k is the number of positive eigenvalues. So we can compute d_k = det(A_k)/det(A_{k-1}). Then the signature is given by signs of these d_k. So we can compute leading principal minors of A and see if they are all non-zero, then compute these d_k and count positives. That might be a good verification because it's easier to compute determinants? However computing 7x7 determinant by hand is heavy but maybe we can compute using our elimination steps, because the pivots we got (the ones used in the elimination) are exactly the d_k when we eliminate in that order (without row/column swaps). Indeed, our elimination process using congruence transformations (which is equivalent to performing symmetric Gaussian elimination) yields pivots that are the ratios of successive leading principal minors: pivot_k = det(A_k)/det(A_{k-1}). And we computed pivots: -1, -3, -1, 3, -2, -1, -3. So the product of these pivots should equal det(A)/det(A_0) = det(A). So det(A) = (-1)*(-3)*(-1)*3*(-2)*(-1)*(-3). Let's compute: (-1)*(-3)=3; 3*(-1)=-3; -3*3=-9; -9*(-2)=18; 18*(-1)=-18; -18*(-3)=54. So det(A) = 54. So determinant is positive 54. That seems plausible. So the pivots we have yield product 54, positive. So the signs of pivots are: 1 negative, 2 negative, 3 negative, 4 positive, 5 negative, 6 negative, 7 negative: that's 6 negatives, 1 positive. So p=1, q=6.
+
+But we should be careful: The pivot sequence we used corresponds to the order x1,x2,x3,x4,x5,x6,x7. In symmetric Gaussian elimination, if we encounter a zero pivot, we might need to reorder. But we didn't. So the d_k are these pivots. So indeed the signature is (1,6). Let's double-check the computation of the pivots: we had a11 = -1 (pivot1). Then after elimination, B11 = -3 (pivot2). Then after eliminating x2, D11 = -1 (pivot3). Then after eliminating x3, E11 = 3 (pivot4). Then after eliminating x4, F11 = -2 (pivot5). Then after eliminating x5, we got a 2x2 diagonal matrix with entries -1 and -3, which are pivot6 and pivot7. All good.
+
+But we should verify the arithmetic for E11 = 3. That came from D matrix after eliminating x3. Let's recompute D more carefully because D seemed to have some numbers we derived from C. Let's recompute the steps from the beginning with more systematic approach to avoid errors.
+
+We'll recompute the Schur complement step by step using matrix formulas, maybe with fractions.
+
+Original A:
+
+A = 
+[ -1, -2,  2,  0,  0, -1,  0 ]
+[ -2, -7,  4,  3,  6, -8, -3 ]
+[  2,  4, -5,  0,  2,  3,  1 ]
+[  0,  3,  0,  0, -6, 12,  3 ]
+[  0,  6,  2, -6, -18, 12,  6 ]
+[ -1, -8,  3, 12, 12, -5, -9 ]
+[  0, -3,  1,  3,  6, -9, -9 ]
+
+First pivot: a11 = -1.
+
+Compute Schur complement S1 for indices 2..7 using formula: S1_ij = a_ij - (a_i1 * a_1j)/a_11. Since a11 = -1, this equals a_ij + a_i1 * a_1j. So we already computed B = S1. Let's recompute B carefully with all entries to avoid mistakes.
+
+Compute a_i1 and a_1j:
+
+a_i1 for i=2: -2; i=3:2; i=4:0; i=5:0; i=6:-1; i=7:0.
+a_1j for j=2: -2; j=3:2; j=4:0; j=5:0; j=6:-1; j=7:0.
+
+Now compute B_ij = a_ij + a_i1 * a_1j.
+
+We'll compute all entries matrix style:
+
+For i=2,j=2: a22=-7; product = (-2)*(-2)=4; B22=-3.
+i=2,j=3: a23=4; product = (-2)*2=-4; B23=0.
+i=2,j=4: a24=3; product = (-2)*0=0; B24=3.
+i=2,j=5: a25=6; product=(-2)*0=0; B25=6.
+i=2,j=6: a26=-8; product=(-2)*(-1)=2; B26=-6.
+i=2,j=7: a27=-3; product=(-2)*0=0; B27=-3.
+
+i=3,j=2: symmetric, B32=0.
+i=3,j=3: a33=-5; product=2*2=4; B33=-1.
+i=3,j=4: a34=0; product=2*0=0; B34=0.
+i=3,j=5: a35=2; product=2*0=0; B35=2.
+i=3,j=6: a36=3; product=2*(-1)=-2; B36=1.
+i=3,j=7: a37=1; product=2*0=0; B37=1.
+
+i=4,j=2: B42 = a42=3? Actually a42 = a24 =3; product=0*(-2)=0; B42=3.
+i=4,j=3: B43 = a43=0; product=0*2=0; B43=0.
+i=4,j=4: a44=0; product=0*0=0; B44=0.
+i=4,j=5: a45=-6; product=0*0=0; B45=-6.
+i=4,j=6: a46=12; product=0*(-1)=0; B46=12.
+i=4,j=7: a47=3; product=0*0=0; B47=3.
+
+i=5,j=2: B52 = a52=6; product=0*(-2)=0; B52=6.
+i=5,j=3: B53 = a53=2; product=0*2=0; B53=2.
+i=5,j=4: B54 = a54=-6; product=0*0=0; B54=-6.
+i=5,j=5: a55=-18; product=0*0=0; B55=-18.
+i=5,j=6: a56=12; product=0*(-1)=0; B56=12.
+i=5,j=7: a57=6; product=0*0=0; B57=6.
+
+i=6,j=2: B62 = a62=-8; product=(-1)*(-2)=2; B62 = -8+2 = -6.
+i=6,j=3: B63 = a63=3; product=(-1)*2=-2; B63 = 3-2=1.
+i=6,j=4: B64 = a64=12; product=(-1)*0=0; B64=12.
+i=6,j=5: B65 = a65=12; product=(-1)*0=0; B65=12.
+i=6,j=6: a66=-5; product=(-1)*(-1)=1; B66=-4.
+i=6,j=7: a67=-9; product=(-1)*0=0; B67=-9.
+
+i=7,j=2: B72 = a72=-3; product=0*(-2)=0; B72=-3.
+i=7,j=3: B73 = a73=1; product=0*2=0; B73=1.
+i=7,j=4: B74 = a74=3; product=0*0=0; B74=3.
+i=7,j=5: B75 = a75=6; product=0*0=0; B75=6.
+i=7,j=6: B76 = a76=-9; product=0*(-1)=0; B76=-9.
+i=7,j=7: a77=-9; product=0*0=0; B77=-9.
+
+So B matrix is as before. Good.
+
+Now second pivot: we use B11 = B_{2,2} = -3 (since we order variables as x2,x3,x4,x5,x6,x7). So pivot2 = -3.
+
+Now compute Schur complement S2 from B, eliminating first row/col (x2). For indices i,j>=2 (i.e., original indices 3..7), new entries = B_ij - (B_i1 * B_1j)/B_11, where B_11 is the pivot. Since B_11 = -3, we have new = B_ij - (B_i1 B_1j)/(-3) = B_ij + (B_i1 B_1j)/3.
+
+We computed that earlier. Let's recompute with more precision, perhaps using fractions.
+
+We'll define B' as the submatrix of B for rows/cols 3..7 (i.e., original indices 3,4,5,6,7). But note B_i1 for i in {3,4,5,6,7} is B(i,2) (since first column of B corresponds to x2). Let's list B entries for rows/cols 2..7 as a matrix M with indexing 1:2, 2:3, 3:4, 4:5, 5:6, 6:7.
+
+We have M:
+
+M[1,1] = -3
+M[1,2] = 0
+M[1,3] = 3
+M[1,4] = 6
+M[1,5] = -6
+M[1,6] = -3
+
+M[2,2] = -1
+M[2,3] = 0
+M[2,4] = 2
+M[2,5] = 1
+M[2,6] = 1
+
+M[3,3] = 0
+M[3,4] = -6
+M[3,5] = 12
+M[3,6] = 3
+
+M[4,4] = -18
+M[4,5] = 12
+M[4,6] = 6
+
+M[5,5] = -4
+M[5,6] = -9
+
+M[6,6] = -9
+
+We need N = Schur complement for indices 2..6 (i.e., rows/cols 2..6 of M). So for i,j in {2,3,4,5,6} (which correspond to original 3,4,5,6,7). Compute N[i-1,j-1] = M[i,j] + (M[i,1] * M[1,j])/3.
+
+Let's compute systematically, doing each entry.
+
+List M[i,1] for i=2..6:
+i=2: M[2,1] = 0
+i=3: M[3,1] = 3
+i=4: M[4,1] = 6
+i=5: M[5,1] = -6
+i=6: M[6,1] = -3
+
+M[1,j] for j=2..6:
+j=2: M[1,2] = 0
+j=3: M[1,3] = 3
+j=4: M[1,4] = 6
+j=5: M[1,5] = -6
+j=6: M[1,6] = -3
+
+Now compute:
+
+For i=2,j=2: N11 = M[2,2] + (0*0)/3 = -1.
+i=2,j=3: N12 = M[2,3] + (0*3)/3 = 0.
+i=2,j=4: N13 = M[2,4] + (0*6)/3 = 2.
+i=2,j=5: N14 = M[2,5] + (0*(-6))/3 = 1.
+i=2,j=6: N15 = M[2,6] + (0*(-3))/3 = 1.
+
+For i=3,j=2: N21 = M[3,2] + (3*0)/3 = 0 (since M[3,2]=M[2,3]=0).
+i=3,j=3: N22 = M[3,3] + (3*3)/3 = 0 + 9/3 = 3.
+i=3,j=4: N23 = M[3,4] + (3*6)/3 = -6 + 18/3 = -6+6=0.
+i=3,j=5: N24 = M[3,5] + (3*(-6))/3 = 12 + (-18)/3 = 12-6=6.
+i=3,j=6: N25 = M[3,6] + (3*(-3))/3 = 3 + (-9)/3 = 3-3=0.
+
+For i=4,j=2: N31 = M[4,2] + (6*0)/3 = M[4,2]=M[2,4]=2? Wait M[4,2] = M[2,4] = 2? Actually M[2,4]=2, so M[4,2]=2. So N31=2.
+i=4,j=3: N32 = M[4,3] + (6*3)/3 = M[4,3]=M[3,4]= -6? Actually M[3,4] = -6, so M[4,3] = -6. Then N32 = -6 + 18/3 = -6+6=0.
+i=4,j=4: N33 = M[4,4] + (6*6)/3 = -18 + 36/3 = -18+12 = -6.
+i=4,j=5: N34 = M[4,5] + (6*(-6))/3 = 12 + (-36)/3 = 12-12=0.
+i=4,j=6: N35 = M[4,6] + (6*(-3))/3 = 6 + (-18)/3 = 6-6=0.
+
+For i=5,j=2: N41 = M[5,2] + ((-6)*0)/3 = M[5,2]=M[2,5]=1? Actually M[2,5]=1, so N41=1.
+i=5,j=3: N42 = M[5,3] + ((-6)*3)/3 = M[5,3]=M[3,5]=12? Actually M[3,5]=12, so M[5,3]=12. Then N42 = 12 + (-18)/3 = 12-6=6.
+i=5,j=4: N43 = M[5,4] + ((-6)*6)/3 = M[5,4]=M[4,5]=12? Actually M[4,5]=12, so M[5,4]=12. Then N43 = 12 + (-36)/3 = 12-12=0.
+i=5,j=5: N44 = M[5,5] + ((-6)*(-6))/3 = -4 + 36/3 = -4+12=8.
+i=5,j=6: N45 = M[5,6] + ((-6)*(-3))/3 = -9 + 18/3 = -9+6=-3.
+
+For i=6,j=2: N51 = M[6,2] + ((-3)*0)/3 = M[6,2]=M[2,6]=1? Actually M[2,6]=1, so N51=1.
+i=6,j=3: N52 = M[6,3] + ((-3)*3)/3 = M[6,3]=M[3,6]=3? Actually M[3,6]=3, so M[6,3]=3. Then N52 = 3 + (-9)/3 = 3-3=0.
+i=6,j=4: N53 = M[6,4] + ((-3)*6)/3 = M[6,4]=M[4,6]=6? Actually M[4,6]=6, so N53 = 6 + (-18)/3 = 6-6=0.
+i=6,j=5: N54 = M[6,5] + ((-3)*(-6))/3 = M[6,5]=M[5,6]= -9? Actually M[5,6]=-9, so N54 = -9 + 18/3 = -9+6=-3.
+i=6,j=6: N55 = M[6,6] + ((-3)*(-3))/3 = -9 + 9/3 = -9+3 = -6.
+
+So N = D matrix we had: 
+[ -1, 0, 2, 1, 1 ]
+[ 0, 3, 0, 6, 0 ]
+[ 2, 0, -6, 0, 0 ]
+[ 1, 6, 0, 8, -3 ]
+[ 1, 0, 0, -3, -6 ]
+Good.
+
+Now pivot3 = D11 = -1. Now we eliminate x3 (first variable of D). Compute Schur complement P for indices 2..5 (i.e., variables x4,x5,x6,x7). Using new = D_ij - (D_i1 D_1j)/D_11. Since D11 = -1, new = D_ij + D_i1 D_1j (since minus divided by -1 = plus). So we computed E = D_ij + D_i1 D_1j for i,j>=2.
+
+Let's recompute E with D entries.
+
+D matrix with indices: 1:x3,2:x4,3:x5,4:x6,5:x7.
+
+D entries:
+D11=-1
+D12=0
+D13=2
+D14=1
+D15=1
+
+D22=3
+D23=0
+D24=6
+D25=0
+D33=-6
+D34=0
+D35=0
+D44=8
+D45=-3
+D55=-6
+
+And symmetric.
+
+Now compute E:
+
+For i=2 (x4), j=2: E11 = D22 + D21*D12 = 3 + 0*0 = 3.
+i=2,j=3: E12 = D23 + D21*D13 = 0 + 0*2 = 0.
+i=2,j=4: E13 = D24 + D21*D14 = 6 + 0*1 = 6.
+i=2,j=5: E14 = D25 + D21*D15 = 0 + 0*1 = 0.
+
+For i=3 (x5), j=2: E21 = D32 + D31*D12 = 0 + 2*0 = 0. (since D31=2)
+i=3,j=3: E22 = D33 + D31*D13 = -6 + 2*2 = -6+4 = -2.
+i=3,j=4: E23 = D34 + D31*D14 = 0 + 2*1 = 2.
+i=3,j=5: E24 = D35 + D31*D15 = 0 + 2*1 = 2.
+
+For i=4 (x6), j=2: E31 = D42 + D41*D12 = 6 + 1*0 = 6. (D41=1)
+i=4,j=3: E32 = D43 + D41*D13 = 0 + 1*2 = 2.
+i=4,j=4: E33 = D44 + D41*D14 = 8 + 1*1 = 9.
+i=4,j=5: E34 = D45 + D41*D15 = -3 + 1*1 = -2.
+
+For i=5 (x7), j=2: E41 = D52 + D51*D12 = 0 + 1*0 = 0. (D51=1)
+i=5,j=3: E42 = D53 + D51*D13 = 0 + 1*2 = 2.
+i=5,j=4: E43 = D54 + D51*D14 = -3 + 1*1 = -2.
+i=5,j=5: E44 = D55 + D51*D15 = -6 + 1*1 = -5.
+
+So E = 
+[3, 0, 6, 0;
+ 0, -2, 2, 2;
+ 6, 2, 9, -2;
+ 0, 2, -2, -5]
+Yes. So pivot4 = E11 = 3 (positive).
+
+Now we eliminate x4 using pivot4 = 3. Compute Schur complement Q for indices 2..4 (x5,x6,x7). Using new = E_ij - (E_i1 E_1j)/E11. Since E11=3, we compute.
+
+E matrix with indices: 1:x4,2:x5,3:x6,4:x7.
+
+E entries:
+E11=3
+E12=0
+E13=6
+E14=0
+E22=-2
+E23=2
+E24=2
+E33=9
+E34=-2
+E44=-5
+
+Now compute F:
+
+For i=2 (x5), j=2: F11 = E22 - (E21*E12)/3 = -2 - (0*0)/3 = -2.
+i=2,j=3: F12 = E23 - (E21*E13)/3 = 2 - (0*6)/3 = 2.
+i=2,j=4: F13 = E24 - (E21*E14)/3 = 2 - (0*0)/3 = 2.
+
+For i=3 (x6), j=2: F21 = E32 - (E31*E12)/3 = 2 - (6*0)/3 = 2.
+i=3,j=3: F22 = E33 - (E31*E13)/3 = 9 - (6*6)/3 = 9 - 36/3 = 9 - 12 = -3.
+i=3,j=4: F23 = E34 - (E31*E14)/3 = -2 - (6*0)/3 = -2.
+
+For i=4 (x7), j=2: F31 = E42 - (E41*E12)/3 = 2 - (0*0)/3 = 2.
+i=4,j=3: F32 = E43 - (E41*E13)/3 = -2 - (0*6)/3 = -2.
+i=4,j=4: F33 = E44 - (E41*E14)/3 = -5 - (0*0)/3 = -5.
+
+Thus F = 
+[ -2, 2, 2 ]
+[ 2, -3, -2 ]
+[ 2, -2, -5 ]
+Matches earlier.
+
+Now pivot5 = F11 = -2. Eliminate x5. Compute Schur complement G for indices 2..3 (x6,x7). Using new = F_ij - (F_i1 F_1j)/F11. Since F11=-2, we compute.
+
+F entries:
+F11=-2
+F12=2
+F13=2
+F22=-3
+F23=-2
+F33=-5
+
+Compute G:
+
+For i=2 (x6), j=2: G11 = F22 - (F21*F12)/F11 = -3 - (2*2)/(-2) = -3 - (4/(-2)) = -3 - (-2) = -1.
+i=2,j=3: G12 = F23 - (F21*F13)/F11 = -2 - (2*2)/(-2) = -2 - (4/(-2)) = -2 - (-2) = 0.
+i=3,j=2: G21 = F32 - (F31*F12)/F11 = -2 - (2*2)/(-2) = -2 - (4/(-2)) = -2 - (-2)=0.
+i=3,j=3: G22 = F33 - (F31*F13)/F11 = -5 - (2*2)/(-2) = -5 - (4/(-2)) = -5 - (-2) = -3.
+
+So G = 
+[ -1, 0 ]
+[ 0, -3 ]
+Thus pivot6 = -1, pivot7 = -3. So final diagonal entries: -1, -3, -1, 3, -2, -1, -3. That's 1 positive and 6 negative. So signature (1,6).
+
+But wait, we have 7 variables; we got 7 non-zero pivots. So full rank. So p=1, q=6.
+
+We should also consider if any of these pivots could be zero due to rounding? No, they are integers. So answer is (1,6). However, it's always good to double-check by computing the eigenvalues numerically to be sure. Let's do a quick numeric approximate eigenvalues using some mental calculation? Might be heavy but we can try to compute the characteristic polynomial? Or we can use the fact that the determinant is 54, and the trace? trace = sum of diagonal entries = -1-7-5+0-18-5-9 = -45. So sum of eigenvalues = -45. With 1 positive and 6 negatives, the positive eigenvalue must be relatively small? Not necessarily. Could be plausible. We can also compute the product of eigenvalues = 54. Since there is 1 positive eigenvalue, product positive, okay.
+
+We can also compute some principal minors to see if the signs are consistent. For instance, the leading principal minors of A: 
+det(A1) = -1 (negative)
+det(A2) = determinant of top-left 2x2 = (-1)*(-7) - (-2)*(-2) = 7 - 4 = 3 (positive)
+det(A3) = determinant of 3x3 top-left. Compute:
+A3 = 
+[-1, -2, 2;
+ -2, -7, 4;
+ 2, 4, -5]
+Compute det: Using formula. det = -1 * det([-7,4;4,-5]) - (-2)*det([-2,4;2,-5]) + 2*det([-2,-7;2,4]).
+Compute: 
+det1 = (-7)*(-5) - 4*4 = 35 - 16 = 19, times -1 = -19.
+Second term: -(-2)=+2 times det([-2,4;2,-5]) = (-2)*(-5) - 4*2 = 10 - 8 = 2, so contribution = 2*2 = 4.
+Third term: 2 * det([-2,-7;2,4]) = 2*((-2)*4 - (-7)*2) = 2*(-8 +14) = 2*6=12.
+Total det = -19+4+12 = -3. So det(A3) = -3 (negative).
+det(A4) = top-left 4x4. Could compute using our Schur complement approach? Not necessary. However, the signs of leading principal minors are: A1: -, A2: +, A3: -, ... That indicates sign changes: starting with + (det0=+), then - (A1), then + (A2), then - (A3). So number of sign changes: from + to - (1), - to + (2), + to - (3). So that would suggest p = number of sign changes = 3? But we got p=1. So careful: The theorem about leading principal minors giving the number of positive eigenvalues is only valid if the matrix is symmetric and all leading principal minors are non-zero, but it gives the number of positive eigenvalues as the number of sign changes in the sequence of leading principal minors? We saw earlier with diag(-1,-2) gave p=2 but actual p=0, so that rule is not correct. The correct rule: The number of positive eigenvalues is the number of sign changes in the sequence of the leading principal minors if we consider the signs of the pivots from Gaussian elimination without pivoting, which are the ratios of successive leading principal minors. The signs of the leading principal minors themselves do not directly give the inertia; rather the number of positive eigenvalues equals the number of sign changes in the sequence of the determinants of the leading principal minors? Actually there is a known result: For a symmetric matrix, the inertia is the same as the inertia of the tridiagonal matrix obtained by Gaussian elimination? Wait, the correct statement: If all leading principal minors are non-zero, then the number of positive eigenvalues is equal to the number of sign changes in the sequence {1, det(A1), det(A2), ..., det(An)}? Let's test with diag(-1,-2): det(A1)=-1 (negative), det(A2)=2 (positive). Sequence: 1 (positive), -1 (negative), 2 (positive). Signs: +, -, +. Number of sign changes: from + to - (1), from - to + (2). So two changes, but p=0. So that fails. So the correct theorem is: The number of positive eigenvalues is the number of sign changes in the sequence of the leading principal minors when the matrix is positive definite? No. Actually the result: For a symmetric matrix, the number of positive eigenvalues equals the number of sign changes in the sequence of the leading principal minors of the matrix after it has been factored as LDL^T, where D is diagonal with the pivots. The pivots are the ratios det(A_k)/det(A_{k-1}). Their signs determine the inertia. So the number of positive pivots = number of positive eigenvalues. So we can compute the pivots from the leading principal minors: pivot_k = det(A_k)/det(A_{k-1}). So sign(pivot_k) = sign(det(A_k)) * sign(det(A_{k-1})). So we can compute the signs of the pivots from the signs of the leading principal minors. For our A, we have:
+det(A0)=1 (+)
+det(A1)=-1 (-) => pivot1 = det1/det0 = -1 => sign negative.
+det(A2)=3 (+) => pivot2 = det2/det1 = 3/(-1) = -3 => negative.
+det(A3)=-3 (-) => pivot3 = det3/det2 = (-3)/3 = -1 => negative.
+Now we need det(A4). Let's compute det(A4). The top-left 4x4 submatrix of A (rows 1-4, cols 1-4). A4 = 
+[ -1, -2, 2, 0;
+  -2, -7, 4, 3;
+   2, 4, -5, 0;
+   0, 3, 0, 0 ]
+We can compute det(A4). Let's compute using expansion or using elimination we already have. Since we already have the Schur complement after eliminating first 3 variables? We computed D which is for variables x3,x4,x5,x6,x7 after eliminating x1,x2? Wait we eliminated x1 and x2 to get D, but D is for x3..x7. However, we could compute det(A4) by using the product of the first three pivots times the determinant of the Schur complement after three steps? Actually the product of the first k pivots is equal to det(A_k). So from our pivots: pivot1=-1, pivot2=-3, pivot3=-1, so det(A3) = (-1)*(-3)*(-1) = -3? That matches our computed det(A3)=-3. Good. Then det(A4) = det(A3)*pivot4, where pivot4 is our next pivot after eliminating x3? But careful: The pivot4 we computed (E11=3) corresponds to the pivot for the 4th variable (x4) after eliminating x1,x2,x3. So indeed pivot4 = det(A4)/det(A3). So det(A4) = det(A3)*pivot4 = (-3)*3 = -9. So det(A4) = -9. Then det(A5) = det(A4)*pivot5 = (-9)*(-2)=18. det(A6) = det(A5)*pivot6 = 18*(-1) = -18. det(A7)=det(A6)*pivot7 = (-18)*(-3)=54. So the signs of leading principal minors: det0:+, det1:-, det2:+, det3:-, det4:-, det5:+, det6:-, det7:+? Let's list:
+det0: + (by convention)
+det1: -
+det2: +
+det3: -
+det4: - (since -9)
+det5: + (18)
+det6: - (-18)
+det7: + (54)
+Now compute signs: + (0), - (1), + (2), - (3), - (4), + (5), - (6), + (7). The pivots signs are: pivot1 = - (since -/+) ; pivot2 = - (+/-) ; pivot3 = - (-/+) ; pivot4 = + (-/-) ; pivot5 = - (+/-) ; pivot6 = - (-/+) ; pivot7 = - (+/-) . Indeed all negatives except pivot4 positive. So signature (1,6). So the leading principal minors' signs are consistent with that.
+
+Thus answer is (1,6). So we output "1,6". But the problem asks: "Give p, q as a comma-separated list of two integers." So answer: 1,6. So final line: ANSWER: 1,6.

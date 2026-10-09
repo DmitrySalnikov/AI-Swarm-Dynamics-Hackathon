@@ -1,0 +1,1001 @@
+We are given a 10x10 integer matrix A. We need to compute its LU decomposition without pivoting, i.e., find unit lower triangular L and upper triangular U such that A = LU. It says it exists and is unique, and all entries are integers. So we can perform Gaussian elimination without row exchanges, using integer arithmetic (since all entries are integer, and the pivots are such that the multipliers are integers? Actually the multipliers might be rational, but the resulting L and U are integer matrices? The problem statement says all entries of L and U are integers, so indeed the factorization yields integer matrices. So we can proceed with standard LU decomposition.
+
+We'll compute row by row. Let A be the given matrix. For i from 1 to n, we compute U(i,j) for j>=i, and L(i,j) for j<i. The standard algorithm: For k=1 to n, for i=k+1 to n, multiplier L(i,k) = A(i,k)/U(k,k) (but we need to compute U as we go). Actually we need to compute U first: U(1,j)=A(1,j) for j=1..n; then L(i,1)=A(i,1)/U(1,1) for i>1. Then for k=2..n, we compute U(k,j) = A(k,j) - sum_{r=1}^{k-1} L(k,r)*U(r,j) for j>=k; and L(i,k) = (A(i,k) - sum_{r=1}^{k-1} L(i,r)*U(r,k)) / U(k,k) for i>k.
+
+All operations should be integer because L and U are integers. We'll compute stepwise.
+
+Let's write A as matrix (10 rows, 10 columns). I'll copy it:
+
+Row1: [1, -3, -2, 1, -2, -2, 2, 3, 2, -1]
+Row2: [-2, 3, 7, -5, 3, 6, -4, -9, -3, 0]
+Row3: [-2, 12, -5, 5, 8, 1, -1, 3, -3, 4]
+Row4: [-2, 3, 4, -7, 4, 7, -1, -4, 3, 0]
+Row5: [2, -3, -10, 9, -2, -3, 5, 7, 3, -6]
+Row6: [-1, 6, 5, -3, -2, -5, -9, -1, -7, 9]
+Row7: [1, 0, -5, 7, 4, -14, 6, 17, -6, 3]
+Row8: [-2, 9, 1, -2, 6, -6, -2, 12, -7, 8]
+Row9: [-2, 0, 7, -10, 7, 8, 2, 1, 7, 4]
+Row10: [-2, 3, 10, -9, -2, 13, -9, -14, -3, 2]
+
+We'll index rows 1..10, columns 1..10.
+
+First step: k=1
+U(1,j) = A(1,j) for j=1..10.
+U11 = 1
+U12 = -3
+U13 = -2
+U14 = 1
+U15 = -2
+U16 = -2
+U17 = 2
+U18 = 3
+U19 = 2
+U110 = -1
+
+L(i,1) = A(i,1) / U11 = A(i,1)/1 = A(i,1) for i>1. Since U11=1, L(i,1)=A(i,1) integer. So:
+L21 = A(2,1) = -2
+L31 = A(3,1) = -2
+L41 = A(4,1) = -2
+L51 = A(5,1) = 2
+L61 = A(6,1) = -1
+L71 = A(7,1) = 1
+L81 = A(8,1) = -2
+L91 = A(9,1) = -2
+L101 = A(10,1) = -2
+
+Now we need to update the submatrix for rows i>1 and columns j>1: A_new(i,j) = A(i,j) - L(i,1)*U(1,j). This is the elimination step. Equivalent to computing U and L for further steps.
+
+Compute A^{(2)} = A - L(:,1)*U(1,:) (but only for rows i>=2, columns j>=2? Actually for the algorithm we compute U(k,j) and L(i,k) using the current A values after previous eliminations. Typically we store the updated values in place. So we'll compute the "reduced" matrix after first column elimination. For each i=2..10, j=2..10:
+new A(i,j) = A(i,j) - L(i,1)*U(1,j).
+
+We'll compute these values. Then later we will set U(2,j) = new A(2,j) for j>=2, and L(i,2) = new A(i,2)/U(2,2) for i>2, etc.
+
+So compute row2 new values after eliminating column1:
+Row2 original: [-2,3,7,-5,3,6,-4,-9,-3,0]
+L21 = -2, U1j: [-3,-2,1,-2,-2,2,3,2,-1] for j=2..10.
+So row2_new(j) = row2(j) - L21 * U1j = row2(j) - (-2)*U1j = row2(j) + 2*U1j? Wait careful: A_new(i,j) = A(i,j) - L(i,1)*U(1,j). So L21 = -2, U(1,j)= as above. So subtract (-2)*U1j = +2*U1j. So new = row2(j) + 2*U1j.
+Compute j=2: row2(2)=3, U12=-3 -> 3 + 2*(-3)=3-6=-3
+j=3: 7 + 2*(-2)=7-4=3
+j=4: -5 + 2*1 = -5+2=-3
+j=5: 3 + 2*(-2)=3-4=-1
+j=6: 6 + 2*(-2)=6-4=2
+j=7: -4 + 2*2 = -4+4=0
+j=8: -9 + 2*3 = -9+6=-3
+j=9: -3 + 2*2 = -3+4=1
+j=10: 0 + 2*(-1)=0-2=-2
+So row2_new: [-3, 3, -3, -1, 2, 0, -3, 1, -2]? Wait careful: The new row2 should have entries for columns 2..10. But we also keep column1 as U(1,1) and L21, but we don't need it now. So for row2_new we have values: (col2) -3, (col3) 3, (col4) -3, (col5) -1, (col6) 2, (col7) 0, (col8) -3, (col9) 1, (col10) -2.
+
+But note: we also need to keep column1? The decomposition uses the updated matrix for next steps. So we define A2(i,j) for i>=2,j>=2. So row2 (i=2) is the first row of the updated submatrix. And it will become U(2,j) for j>=2.
+
+Now row3: original row3: [-2,12,-5,5,8,1,-1,3,-3,4]. L31 = -2. So new = row3(j) - (-2)*U1j = row3(j)+2*U1j.
+Compute:
+col2: 12 + 2*(-3)=12-6=6
+col3: -5 + 2*(-2)=-5-4=-9? Actually -5 + (-4) = -9, yes.
+col4: 5 + 2*1 =5+2=7
+col5: 8 + 2*(-2)=8-4=4
+col6: 1 + 2*(-2)=1-4=-3
+col7: -1 + 2*2 = -1+4=3
+col8: 3 + 2*3 =3+6=9
+col9: -3 + 2*2 = -3+4=1
+col10: 4 + 2*(-1)=4-2=2
+So row3_new: [6, -9, 7, 4, -3, 3, 9, 1, 2]
+
+Row4: original: [-2,3,4,-7,4,7,-1,-4,3,0]. L41 = -2 -> new = row4+2*U1j.
+col2: 3 + 2*(-3)=3-6=-3
+col3: 4 + 2*(-2)=4-4=0
+col4: -7 + 2*1 = -7+2=-5
+col5: 4 + 2*(-2)=4-4=0
+col6: 7 + 2*(-2)=7-4=3
+col7: -1 + 2*2 = -1+4=3
+col8: -4 + 2*3 = -4+6=2
+col9: 3 + 2*2 = 3+4=7
+col10: 0 + 2*(-1)=0-2=-2
+So row4_new: [-3,0,-5,0,3,3,2,7,-2]
+
+Row5: original: [2,-3,-10,9,-2,-3,5,7,3,-6]. L51 = 2 -> new = row5 - 2*U1j (since L51=2, subtract L51*U1j = 2*U1j). So row5(j) - 2*U1j.
+Compute:
+col2: -3 - 2*(-3)= -3+6=3
+col3: -10 - 2*(-2)= -10+4=-6
+col4: 9 - 2*1 = 9-2=7
+col5: -2 - 2*(-2)= -2+4=2
+col6: -3 - 2*(-2)= -3+4=1
+col7: 5 - 2*2 = 5-4=1
+col8: 7 - 2*3 = 7-6=1
+col9: 3 - 2*2 = 3-4=-1
+col10: -6 - 2*(-1)= -6+2=-4
+So row5_new: [3,-6,7,2,1,1,1,-1,-4]
+
+Row6: original: [-1,6,5,-3,-2,-5,-9,-1,-7,9]. L61 = -1 -> new = row6 - (-1)*U1j = row6 + U1j? Actually L61 = -1, so new = row6(j) - (-1)*U1j = row6(j) + U1j. So add U1j.
+Compute:
+col2: 6 + (-3)=3
+col3: 5 + (-2)=3
+col4: -3 + 1 = -2
+col5: -2 + (-2)= -4
+col6: -5 + (-2)= -7
+col7: -9 + 2 = -7
+col8: -1 + 3 = 2
+col9: -7 + 2 = -5
+col10: 9 + (-1)=8
+So row6_new: [3,3,-2,-4,-7,-7,2,-5,8]
+
+Row7: original: [1,0,-5,7,4,-14,6,17,-6,3]. L71 = 1 -> new = row7 - 1*U1j = row7 - U1j.
+Compute:
+col2: 0 - (-3)=0+3=3
+col3: -5 - (-2)= -5+2=-3
+col4: 7 - 1 =6
+col5: 4 - (-2)=4+2=6
+col6: -14 - (-2)= -14+2=-12
+col7: 6 - 2 =4
+col8: 17 - 3 =14
+col9: -6 - 2 = -8
+col10: 3 - (-1)=3+1=4
+So row7_new: [3,-3,6,6,-12,4,14,-8,4]
+
+Row8: original: [-2,9,1,-2,6,-6,-2,12,-7,8]. L81 = -2 -> new = row8 - (-2)*U1j = row8+2U1j.
+Compute:
+col2: 9 + 2*(-3)=9-6=3
+col3: 1 + 2*(-2)=1-4=-3
+col4: -2 + 2*1 = -2+2=0
+col5: 6 + 2*(-2)=6-4=2
+col6: -6 + 2*(-2)= -6-4=-10
+col7: -2 + 2*2 = -2+4=2
+col8: 12 + 2*3 =12+6=18
+col9: -7 + 2*2 = -7+4=-3
+col10: 8 + 2*(-1)=8-2=6
+So row8_new: [3,-3,0,2,-10,2,18,-3,6]
+
+Row9: original: [-2,0,7,-10,7,8,2,1,7,4]. L91 = -2 -> new = row9+2U1j.
+Compute:
+col2: 0 + 2*(-3)= -6
+col3: 7 + 2*(-2)=7-4=3
+col4: -10 + 2*1 = -10+2=-8
+col5: 7 + 2*(-2)=7-4=3
+col6: 8 + 2*(-2)=8-4=4
+col7: 2 + 2*2 =2+4=6
+col8: 1 + 2*3 =1+6=7
+col9: 7 + 2*2 =7+4=11
+col10: 4 + 2*(-1)=4-2=2
+So row9_new: [-6,3,-8,3,4,6,7,11,2]
+
+Row10: original: [-2,3,10,-9,-2,13,-9,-14,-3,2]. L101 = -2 -> new = row10+2U1j.
+Compute:
+col2: 3 + 2*(-3)=3-6=-3
+col3: 10 + 2*(-2)=10-4=6
+col4: -9 + 2*1 = -9+2=-7
+col5: -2 + 2*(-2)= -2-4=-6
+col6: 13 + 2*(-2)=13-4=9
+col7: -9 + 2*2 = -9+4=-5
+col8: -14 + 2*3 = -14+6=-8
+col9: -3 + 2*2 = -3+4=1
+col10: 2 + 2*(-1)=2-2=0
+So row10_new: [-3,6,-7,-6,9,-5,-8,1,0]
+
+Now we have the reduced matrix for rows 2..10 and columns 2..10. Let's denote this as B (9x9). For clarity, row2 (new) corresponds to i=2, columns 2..10; row3 i=3; etc.
+
+We also have U(2,j) = B(2,j) for j>=2? Actually step: after elimination of first column, the first row of the reduced matrix (row2) becomes the second row of U: U(2,2) = B(2,2) = -3, U(2,3)=3, U(2,4)=-3, U(2,5)=-1, U(2,6)=2, U(2,7)=0, U(2,8)=-3, U(2,9)=1, U(2,10)=-2. But note that we need to compute U(2,j) for j>=2. So far.
+
+Now we need to compute L(i,2) for i=3..10 using the second column of B (col2 of B = column index 2 of original but now it's the first column of B). That is, L(i,2) = B(i,2) / U(2,2) for i>2. Since U(2,2) = -3. And we must get integer results. So we compute B(i,2) for i=3..10 and divide by -3 to get integer L(i,2). Then we update the rest of the submatrix for rows i>=3 and columns j>=3.
+
+Let's list the B matrix rows (i=2..10, j=2..10). I will index by original row numbers but the submatrix rows are 2..10. So:
+
+Row2 (i=2): values for j=2..10: [-3, 3, -3, -1, 2, 0, -3, 1, -2] 
+Row3 (i=3): [6, -9, 7, 4, -3, 3, 9, 1, 2]
+Row4 (i=4): [-3, 0, -5, 0, 3, 3, 2, 7, -2]
+Row5 (i=5): [3, -6, 7, 2, 1, 1, 1, -1, -4]
+Row6 (i=6): [3, 3, -2, -4, -7, -7, 2, -5, 8]
+Row7 (i=7): [3, -3, 6, 6, -12, 4, 14, -8, 4]
+Row8 (i=8): [3, -3, 0, 2, -10, 2, 18, -3, 6]
+Row9 (i=9): [-6, 3, -8, 3, 4, 6, 7, 11, 2]
+Row10 (i=10): [-3, 6, -7, -6, 9, -5, -8, 1, 0]
+
+Now compute L(i,2) = B(i,2) / U(2,2). U(2,2) = -3.
+So for each i=3..10:
+i=3: B(3,2)=6 -> L32 = 6 / (-3) = -2
+i=4: B(4,2)=-3 -> L42 = -3/(-3)=1
+i=5: B(5,2)=3 -> L52 = 3/(-3) = -1
+i=6: B(6,2)=3 -> L62 = 3/(-3) = -1
+i=7: B(7,2)=3 -> L72 = 3/(-3) = -1
+i=8: B(8,2)=3 -> L82 = 3/(-3) = -1
+i=9: B(9,2)=-6 -> L92 = -6/(-3)=2
+i=10: B(10,2)=-3 -> L102 = -3/(-3)=1
+
+Now we need to update the submatrix for rows i>=3 and columns j>=3 by subtracting L(i,2)*U(2,j) from B(i,j) for j>=3. That is, we define C(i,j) = B(i,j) - L(i,2)*U(2,j) for i>=3, j>=3. Then U(3,j) for j>=3 will be C(3,j) (the first row of the new submatrix), and L(i,3) = C(i,3)/U(3,3) for i>3, etc.
+
+We have U(2,j) for j=3..10: from row2 of B: j=3: 3, j=4: -3, j=5: -1, j=6: 2, j=7: 0, j=8: -3, j=9: 1, j=10: -2.
+
+Now compute C(i,j) for i=3..10, j=3..10.
+
+We'll compute row by row.
+
+First i=3 (row3). L32 = -2. For each j=3..10: C(3,j) = B(3,j) - L32 * U(2,j) = B(3,j) - (-2)*U(2,j) = B(3,j) + 2*U(2,j). So we add twice U(2,j) to B(3,j). B(3,3) = -9, U(2,3)=3 -> -9 + 2*3 = -9+6=-3
+j=4: B(3,4)=7, U(2,4)=-3 -> 7 + 2*(-3)=7-6=1
+j=5: B(3,5)=4, U(2,5)=-1 -> 4 + 2*(-1)=4-2=2
+j=6: B(3,6)=-3, U(2,6)=2 -> -3 + 2*2 = -3+4=1
+j=7: B(3,7)=3, U(2,7)=0 -> 3 + 0 = 3
+j=8: B(3,8)=9, U(2,8)=-3 -> 9 + 2*(-3)=9-6=3
+j=9: B(3,9)=1, U(2,9)=1 -> 1 + 2*1 = 3
+j=10: B(3,10)=2, U(2,10)=-2 -> 2 + 2*(-2)=2-4=-2
+So row3 C: [-3, 1, 2, 1, 3, 3, 3, -2] for j=3..10.
+
+Now i=4: L42=1. So C(4,j) = B(4,j) - L42*U(2,j) = B(4,j) - 1*U(2,j). So subtract U(2,j) from B(4,j).
+B(4,3)=0, U(2,3)=3 -> 0-3=-3
+j=4: B(4,4)=-5, U(2,4)=-3 -> -5 - (-3)= -5+3=-2
+j=5: B(4,5)=0, U(2,5)=-1 -> 0 - (-1)=1
+j=6: B(4,6)=3, U(2,6)=2 -> 3-2=1
+j=7: B(4,7)=3, U(2,7)=0 -> 3-0=3
+j=8: B(4,8)=2, U(2,8)=-3 -> 2 - (-3)=5
+j=9: B(4,9)=7, U(2,9)=1 -> 7-1=6
+j=10: B(4,10)=-2, U(2,10)=-2 -> -2 - (-2)=0
+So row4 C: [-3, -2, 1, 1, 3, 5, 6, 0]
+
+i=5: L52 = -1. So C(5,j) = B(5,j) - (-1)*U(2,j) = B(5,j) + U(2,j). So add U(2,j) to B(5,j).
+B(5,3)=-6, U(2,3)=3 -> -6+3=-3
+j=4: B(5,4)=7, U(2,4)=-3 -> 7+(-3)=4
+j=5: B(5,5)=2, U(2,5)=-1 -> 2+(-1)=1
+j=6: B(5,6)=1, U(2,6)=2 -> 1+2=3
+j=7: B(5,7)=1, U(2,7)=0 -> 1+0=1
+j=8: B(5,8)=1, U(2,8)=-3 -> 1+(-3)=-2
+j=9: B(5,9)=-1, U(2,9)=1 -> -1+1=0
+j=10: B(5,10)=-4, U(2,10)=-2 -> -4+(-2)=-6
+So row5 C: [-3,4,1,3,1,-2,0,-6]
+
+i=6: L62 = -1. So C(6,j) = B(6,j) + U(2,j) (same as row5 case). B(6,3)=3, U(2,3)=3 -> 3+3=6
+j=4: B(6,4)=-2, U(2,4)=-3 -> -2+(-3)=-5
+j=5: B(6,5)=-4, U(2,5)=-1 -> -4+(-1)=-5
+j=6: B(6,6)=-7, U(2,6)=2 -> -7+2=-5
+j=7: B(6,7)=-7, U(2,7)=0 -> -7+0=-7
+j=8: B(6,8)=2, U(2,8)=-3 -> 2+(-3)=-1
+j=9: B(6,9)=-5, U(2,9)=1 -> -5+1=-4
+j=10: B(6,10)=8, U(2,10)=-2 -> 8+(-2)=6
+So row6 C: [6,-5,-5,-5,-7,-1,-4,6]
+
+i=7: L72 = -1. So C(7,j) = B(7,j) + U(2,j). B(7,3)=-3, U(2,3)=3 -> -3+3=0
+j=4: B(7,4)=6, U(2,4)=-3 -> 6+(-3)=3
+j=5: B(7,5)=6, U(2,5)=-1 -> 6+(-1)=5
+j=6: B(7,6)=-12, U(2,6)=2 -> -12+2=-10
+j=7: B(7,7)=4, U(2,7)=0 -> 4+0=4
+j=8: B(7,8)=14, U(2,8)=-3 -> 14+(-3)=11
+j=9: B(7,9)=-8, U(2,9)=1 -> -8+1=-7
+j=10: B(7,10)=4, U(2,10)=-2 -> 4+(-2)=2
+So row7 C: [0,3,5,-10,4,11,-7,2]
+
+i=8: L82 = -1. So C(8,j) = B(8,j) + U(2,j). B(8,3)=-3, U(2,3)=3 -> -3+3=0
+j=4: B(8,4)=0, U(2,4)=-3 -> 0+(-3)=-3
+j=5: B(8,5)=2, U(2,5)=-1 -> 2+(-1)=1
+j=6: B(8,6)=-10, U(2,6)=2 -> -10+2=-8
+j=7: B(8,7)=2, U(2,7)=0 -> 2+0=2
+j=8: B(8,8)=18, U(2,8)=-3 -> 18+(-3)=15
+j=9: B(8,9)=-3, U(2,9)=1 -> -3+1=-2
+j=10: B(8,10)=6, U(2,10)=-2 -> 6+(-2)=4
+So row8 C: [0,-3,1,-8,2,15,-2,4]
+
+i=9: L92 = 2. So C(9,j) = B(9,j) - 2*U(2,j). So subtract 2*U(2,j) from B(9,j).
+B(9,3)=3, U(2,3)=3 -> 3 - 2*3 = 3-6=-3
+j=4: B(9,4)=-8, U(2,4)=-3 -> -8 - 2*(-3)= -8+6=-2
+j=5: B(9,5)=3, U(2,5)=-1 -> 3 - 2*(-1)=3+2=5
+j=6: B(9,6)=4, U(2,6)=2 -> 4 - 2*2 =4-4=0
+j=7: B(9,7)=6, U(2,7)=0 ->6 - 0=6
+j=8: B(9,8)=7, U(2,8)=-3 ->7 - 2*(-3)=7+6=13
+j=9: B(9,9)=11, U(2,9)=1 ->11 - 2*1=9
+j=10: B(9,10)=2, U(2,10)=-2 ->2 - 2*(-2)=2+4=6
+So row9 C: [-3, -2,5,0,6,13,9,6]
+
+i=10: L102 = 1. So C(10,j) = B(10,j) - 1*U(2,j) = B(10,j) - U(2,j).
+B(10,3)=6, U(2,3)=3 -> 6-3=3
+j=4: B(10,4)=-7, U(2,4)=-3 -> -7 - (-3)= -7+3=-4
+j=5: B(10,5)=-6, U(2,5)=-1 -> -6 - (-1)= -6+1=-5
+j=6: B(10,6)=9, U(2,6)=2 -> 9-2=7
+j=7: B(10,7)=-5, U(2,7)=0 -> -5-0=-5
+j=8: B(10,8)=-8, U(2,8)=-3 -> -8 - (-3)= -8+3=-5
+j=9: B(10,9)=1, U(2,9)=1 -> 1-1=0
+j=10: B(10,10)=0, U(2,10)=-2 -> 0 - (-2)=2
+So row10 C: [3, -4, -5, 7, -5, -5, 0, 2]
+
+Now we have the submatrix C for rows 3..10, cols 3..10. Let's list them clearly as a 8x8 matrix (rows 3..10, columns 3..10). We'll denote these rows as i=3..10, columns j=3..10. For reference, the first row of C (row3) will become U(3,j) for j>=3. So U(3,3) = -3, U(3,4)=1, U(3,5)=2, U(3,6)=1, U(3,7)=3, U(3,8)=3, U(3,9)=3, U(3,10)=-2.
+
+Now we compute L(i,3) for i=4..10 = C(i,3) / U(3,3) = C(i,3)/(-3). Need integer results.
+
+Let's extract column 3 (the first column of this submatrix) from rows 4..10:
+
+Row4 C: col3 = -3
+Row5 C: col3 = -3
+Row6 C: col3 = 6
+Row7 C: col3 = 0
+Row8 C: col3 = 0
+Row9 C: col3 = -3
+Row10 C: col3 = 3
+
+Now compute L(i,3) = C(i,3) / (-3). So:
+i=4: L43 = (-3)/(-3)=1
+i=5: L53 = (-3)/(-3)=1
+i=6: L63 = 6/(-3) = -2
+i=7: L73 = 0/(-3)=0
+i=8: L83 = 0/(-3)=0
+i=9: L93 = (-3)/(-3)=1
+i=10: L103 = 3/(-3) = -1
+
+Now we need to update the submatrix further: For rows i>=4 and columns j>=4, we compute D(i,j) = C(i,j) - L(i,3)*U(3,j) for i>=4, j>=4. Then U(4,j) for j>=4 will be D(4,j) (the first row of the new submatrix, which is row4 of D), and L(i,4) = D(i,4)/U(4,4) for i>4, etc.
+
+So we need U(3,j) for j=4..10: from above: U(3,4)=1, U(3,5)=2, U(3,6)=1, U(3,7)=3, U(3,8)=3, U(3,9)=3, U(3,10)=-2.
+
+Now compute D(i,j) for i=4..10, j=4..10.
+
+We'll compute row by row.
+
+First i=4: L43=1. So D(4,j) = C(4,j) - 1*U(3,j) = C(4,j) - U(3,j). 
+We have C(4,4) = -2, C(4,5)=1, C(4,6)=1, C(4,7)=3, C(4,8)=5, C(4,9)=6, C(4,10)=0.
+Subtract U(3,j):
+j=4: -2 - 1 = -3
+j=5: 1 - 2 = -1
+j=6: 1 - 1 = 0
+j=7: 3 - 3 = 0
+j=8: 5 - 3 = 2
+j=9: 6 - 3 = 3
+j=10: 0 - (-2) = 2? Actually U(3,10) = -2, so 0 - (-2)=2.
+So row4 D: [-3, -1, 0, 0, 2, 3, 2] for j=4..10.
+
+i=5: L53=1. So D(5,j) = C(5,j) - U(3,j). C(5,4)=4, C(5,5)=1, C(5,6)=3, C(5,7)=1, C(5,8)=-2, C(5,9)=0, C(5,10)=-6. Subtract:
+j=4: 4 - 1 = 3
+j=5: 1 - 2 = -1
+j=6: 3 - 1 = 2
+j=7: 1 - 3 = -2
+j=8: -2 - 3 = -5
+j=9: 0 - 3 = -3
+j=10: -6 - (-2)= -6+2 = -4
+So row5 D: [3, -1, 2, -2, -5, -3, -4]
+
+i=6: L63 = -2. So D(6,j) = C(6,j) - (-2)*U(3,j) = C(6,j) + 2*U(3,j). 
+C(6,4)=-5, C(6,5)=-5, C(6,6)=-5, C(6,7)=-7, C(6,8)=-1, C(6,9)=-4, C(6,10)=6.
+Add 2*U(3,j):
+U(3,4)=1 => 2*1=2, so -5+2=-3
+j=5: U=2 => 2*2=4, -5+4=-1
+j=6: U=1 => 2, -5+2=-3
+j=7: U=3 => 6, -7+6=-1
+j=8: U=3 => 6, -1+6=5
+j=9: U=3 => 6, -4+6=2
+j=10: U=-2 => -4, 6+(-4)=2
+So row6 D: [-3, -1, -3, -1, 5, 2, 2]
+
+i=7: L73 = 0. So D(7,j) = C(7,j) - 0*U(3,j) = C(7,j) directly.
+C(7,4)=3, C(7,5)=5, C(7,6)=-10, C(7,7)=4, C(7,8)=11, C(7,9)=-7, C(7,10)=2.
+So row7 D: [3, 5, -10, 4, 11, -7, 2]
+
+i=8: L83 = 0. So D(8,j)=C(8,j) unchanged.
+C(8,4)=-3, C(8,5)=1, C(8,6)=-8, C(8,7)=2, C(8,8)=15, C(8,9)=-2, C(8,10)=4.
+So row8 D: [-3, 1, -8, 2, 15, -2, 4]
+
+i=9: L93 = 1. So D(9,j) = C(9,j) - 1*U(3,j) = C(9,j) - U(3,j).
+C(9,4)=-2, C(9,5)=5, C(9,6)=0, C(9,7)=6, C(9,8)=13, C(9,9)=9, C(9,10)=6.
+Subtract U(3,j):
+j=4: -2 - 1 = -3
+j=5: 5 - 2 = 3
+j=6: 0 - 1 = -1
+j=7: 6 - 3 = 3
+j=8: 13 - 3 = 10
+j=9: 9 - 3 = 6
+j=10: 6 - (-2)= 8
+So row9 D: [-3, 3, -1, 3, 10, 6, 8]
+
+i=10: L103 = -1. So D(10,j) = C(10,j) - (-1)*U(3,j) = C(10,j) + U(3,j).
+C(10,4)=-4, C(10,5)=-5, C(10,6)=7, C(10,7)=-5, C(10,8)=-5, C(10,9)=0, C(10,10)=2.
+Add U(3,j):
+j=4: -4 + 1 = -3
+j=5: -5 + 2 = -3
+j=6: 7 + 1 = 8
+j=7: -5 + 3 = -2
+j=8: -5 + 3 = -2
+j=9: 0 + 3 = 3
+j=10: 2 + (-2) = 0
+So row10 D: [-3, -3, 8, -2, -2, 3, 0]
+
+Now we have submatrix D for rows 4..10, columns 4..10 (7x7). The first row (row4) gives U(4,j) for j>=4: U(4,4)=-3, U(4,5)=-1, U(4,6)=0, U(4,7)=0, U(4,8)=2, U(4,9)=3, U(4,10)=2.
+
+Now compute L(i,4) for i=5..10 = D(i,4) / U(4,4) = D(i,4)/(-3). D(i,4) is the first column of this submatrix (col4) for rows i=5..10.
+
+Let's list D(i,4) for i=5..10:
+From row5 D: col4 = 3
+row6 D: col4 = -3
+row7 D: col4 = 3
+row8 D: col4 = -3
+row9 D: col4 = -3
+row10 D: col4 = -3
+
+Now compute L(i,4) = D(i,4)/(-3):
+i=5: 3/(-3) = -1
+i=6: -3/(-3)=1
+i=7: 3/(-3) = -1
+i=8: -3/(-3)=1
+i=9: -3/(-3)=1
+i=10: -3/(-3)=1
+
+Now we need to update again: For rows i>=5 and columns j>=5, compute E(i,j) = D(i,j) - L(i,4)*U(4,j) for i>=5, j>=5. Then U(5,j) for j>=5 will be E(5,j) (first row of new submatrix), and L(i,5) = E(i,5)/U(5,5), etc.
+
+We need U(4,j) for j=5..10: U(4,5)=-1, U(4,6)=0, U(4,7)=0, U(4,8)=2, U(4,9)=3, U(4,10)=2.
+
+Now compute E(i,j) for i=5..10, j=5..10.
+
+We'll compute row by row.
+
+First i=5: L54 = -1. So E(5,j) = D(5,j) - (-1)*U(4,j) = D(5,j) + U(4,j). 
+D(5,5) = -1, D(5,6)=2, D(5,7)=-2, D(5,8)=-5, D(5,9)=-3, D(5,10)=-4.
+Add U(4,j): U(4,5)=-1 => -1+(-1) = -2? Wait careful: D(5,j) + U(4,j). So for j=5: -1 + (-1) = -2
+j=6: 2 + 0 = 2
+j=7: -2 + 0 = -2
+j=8: -5 + 2 = -3
+j=9: -3 + 3 = 0
+j=10: -4 + 2 = -2
+So row5 E: [-2, 2, -2, -3, 0, -2] for j=5..10.
+
+i=6: L64 = 1. So E(6,j) = D(6,j) - 1*U(4,j) = D(6,j) - U(4,j).
+D(6,5) = -1, D(6,6)=-3, D(6,7)=-1, D(6,8)=5, D(6,9)=2, D(6,10)=2.
+Subtract U(4,j):
+j=5: -1 - (-1) = -1+1=0
+j=6: -3 - 0 = -3
+j=7: -1 - 0 = -1
+j=8: 5 - 2 = 3
+j=9: 2 - 3 = -1
+j=10: 2 - 2 = 0
+So row6 E: [0, -3, -1, 3, -1, 0]
+
+i=7: L74 = -1. So E(7,j) = D(7,j) - (-1)*U(4,j) = D(7,j) + U(4,j).
+D(7,5)=5, D(7,6)=-10, D(7,7)=4, D(7,8)=11, D(7,9)=-7, D(7,10)=2.
+Add U(4,j):
+j=5: 5 + (-1)=4
+j=6: -10 + 0 = -10
+j=7: 4 + 0 = 4
+j=8: 11 + 2 = 13
+j=9: -7 + 3 = -4
+j=10: 2 + 2 = 4
+So row7 E: [4, -10, 4, 13, -4, 4]
+
+i=8: L84 = 1. So E(8,j) = D(8,j) - U(4,j).
+D(8,5)=1, D(8,6)=-8, D(8,7)=2, D(8,8)=15, D(8,9)=-2, D(8,10)=4.
+Subtract U(4,j):
+j=5: 1 - (-1)=2
+j=6: -8 - 0 = -8
+j=7: 2 - 0 = 2
+j=8: 15 - 2 = 13
+j=9: -2 - 3 = -5
+j=10: 4 - 2 = 2
+So row8 E: [2, -8, 2, 13, -5, 2]
+
+i=9: L94 = 1. So E(9,j) = D(9,j) - U(4,j).
+D(9,5)=3, D(9,6)=-1, D(9,7)=3, D(9,8)=10, D(9,9)=6, D(9,10)=8.
+Subtract:
+j=5: 3 - (-1)=4
+j=6: -1 - 0 = -1
+j=7: 3 - 0 = 3
+j=8: 10 - 2 = 8
+j=9: 6 - 3 = 3
+j=10: 8 - 2 = 6
+So row9 E: [4, -1, 3, 8, 3, 6]
+
+i=10: L104 = 1. So E(10,j) = D(10,j) - U(4,j).
+D(10,5)=-3, D(10,6)=8, D(10,7)=-2, D(10,8)=-2, D(10,9)=3, D(10,10)=0.
+Subtract:
+j=5: -3 - (-1) = -2
+j=6: 8 - 0 = 8
+j=7: -2 - 0 = -2
+j=8: -2 - 2 = -4
+j=9: 3 - 3 = 0
+j=10: 0 - 2 = -2
+So row10 E: [-2, 8, -2, -4, 0, -2]
+
+Now we have submatrix E for rows 5..10, columns 5..10 (6x6). The first row (row5) gives U(5,j) for j>=5: U(5,5) = -2, U(5,6)=2, U(5,7)=-2, U(5,8)=-3, U(5,9)=0, U(5,10)=-2.
+
+Now compute L(i,5) for i=6..10 = E(i,5) / U(5,5) = E(i,5)/(-2). E(i,5) is the first column of this submatrix (col5) for rows i=6..10.
+
+List E(i,5):
+row6 E: col5 = 0
+row7 E: col5 = 4
+row8 E: col5 = 2
+row9 E: col5 = 4
+row10 E: col5 = -2
+
+Compute L(i,5) = E(i,5)/(-2):
+i=6: 0/(-2)=0
+i=7: 4/(-2) = -2
+i=8: 2/(-2) = -1
+i=9: 4/(-2) = -2
+i=10: -2/(-2)=1
+
+Now update to get F(i,j) for i>=6, j>=6: F(i,j) = E(i,j) - L(i,5)*U(5,j) for i>=6, j>=6. Then U(6,j) = F(6,j) for j>=6, and L(i,6) = F(i,6)/U(6,6) for i>6.
+
+We need U(5,j) for j=6..10: U(5,6)=2, U(5,7)=-2, U(5,8)=-3, U(5,9)=0, U(5,10)=-2.
+
+Now compute F for i=6..10, j=6..10.
+
+First i=6: L65 = 0. So F(6,j) = E(6,j) - 0*U(5,j) = E(6,j) unchanged.
+E(6,6)=-3, E(6,7)=-1, E(6,8)=3, E(6,9)=-1, E(6,10)=0.
+So row6 F: [-3, -1, 3, -1, 0] for j=6..10.
+
+i=7: L75 = -2. So F(7,j) = E(7,j) - (-2)*U(5,j) = E(7,j) + 2*U(5,j).
+E(7,6)=-10, E(7,7)=4, E(7,8)=13, E(7,9)=-4, E(7,10)=4.
+Add 2*U(5,j): U(5,6)=2 =>2*2=4, so -10+4=-6
+j=7: U(5,7)=-2 =>2*(-2)=-4, so 4+(-4)=0
+j=8: U(5,8)=-3 =>2*(-3)=-6, so 13+(-6)=7
+j=9: U(5,9)=0 =>0, so -4+0=-4
+j=10: U(5,10)=-2 =>2*(-2)=-4, so 4+(-4)=0
+So row7 F: [-6, 0, 7, -4, 0]
+
+i=8: L85 = -1. So F(8,j) = E(8,j) - (-1)*U(5,j) = E(8,j) + U(5,j).
+E(8,6)=-8, E(8,7)=2, E(8,8)=13, E(8,9)=-5, E(8,10)=2.
+Add U(5,j):
+j=6: -8 + 2 = -6
+j=7: 2 + (-2)=0
+j=8: 13 + (-3)=10
+j=9: -5 + 0 = -5
+j=10: 2 + (-2)=0
+So row8 F: [-6, 0, 10, -5, 0]
+
+i=9: L95 = -2. So F(9,j) = E(9,j) - (-2)*U(5,j) = E(9,j) + 2*U(5,j).
+E(9,6)=-1, E(9,7)=3, E(9,8)=8, E(9,9)=3, E(9,10)=6.
+Add 2*U:
+j=6: -1 + 4 = 3
+j=7: 3 + (-4) = -1
+j=8: 8 + (-6)=2
+j=9: 3 + 0 = 3
+j=10: 6 + (-4)=2
+So row9 F: [3, -1, 2, 3, 2]
+
+i=10: L105 = 1. So F(10,j) = E(10,j) - 1*U(5,j) = E(10,j) - U(5,j).
+E(10,6)=8, E(10,7)=-2, E(10,8)=-4, E(10,9)=0, E(10,10)=-2.
+Subtract:
+j=6: 8 - 2 = 6
+j=7: -2 - (-2)=0
+j=8: -4 - (-3)= -4+3 = -1
+j=9: 0 - 0 = 0
+j=10: -2 - (-2)=0
+So row10 F: [6, 0, -1, 0, 0]
+
+Now we have submatrix F for rows 6..10, columns 6..10 (5x5). The first row (row6) gives U(6,j) for j>=6: U(6,6)=-3, U(6,7)=-1, U(6,8)=3, U(6,9)=-1, U(6,10)=0.
+
+Now compute L(i,6) for i=7..10 = F(i,6) / U(6,6) = F(i,6)/(-3). F(i,6) is column6 (first column of this submatrix) for rows i=7..10.
+
+List F(i,6):
+row7 F: col6 = -6
+row8 F: col6 = -6
+row9 F: col6 = 3
+row10 F: col6 = 6
+
+Compute L(i,6) = F(i,6)/(-3):
+i=7: -6/(-3)=2
+i=8: -6/(-3)=2
+i=9: 3/(-3) = -1
+i=10: 6/(-3) = -2
+
+Now update to get G(i,j) for i>=7, j>=7: G(i,j) = F(i,j) - L(i,6)*U(6,j) for i>=7, j>=7. Then U(7,j) = G(7,j) for j>=7, and L(i,7) = G(i,7)/U(7,7) for i>7.
+
+We need U(6,j) for j=7..10: U(6,7)=-1, U(6,8)=3, U(6,9)=-1, U(6,10)=0.
+
+Now compute G for i=7..10, j=7..10.
+
+First i=7: L76 = 2. So G(7,j) = F(7,j) - 2*U(6,j).
+F(7,7)=0, F(7,8)=7, F(7,9)=-4, F(7,10)=0.
+Compute:
+j=7: 0 - 2*(-1)=0+2=2
+j=8: 7 - 2*3 = 7-6=1
+j=9: -4 - 2*(-1)= -4+2 = -2
+j=10: 0 - 2*0 = 0
+So row7 G: [2, 1, -2, 0] for j=7..10.
+
+i=8: L86 = 2. So G(8,j) = F(8,j) - 2*U(6,j).
+F(8,7)=0, F(8,8)=10, F(8,9)=-5, F(8,10)=0.
+Compute:
+j=7: 0 - 2*(-1)=2
+j=8: 10 - 2*3 = 10-6=4
+j=9: -5 - 2*(-1)= -5+2=-3
+j=10: 0 - 2*0=0
+So row8 G: [2, 4, -3, 0]
+
+i=9: L96 = -1. So G(9,j) = F(9,j) - (-1)*U(6,j) = F(9,j) + U(6,j).
+F(9,7)=-1, F(9,8)=2, F(9,9)=3, F(9,10)=2.
+Add U(6,j):
+j=7: -1 + (-1) = -2
+j=8: 2 + 3 = 5
+j=9: 3 + (-1) = 2
+j=10: 2 + 0 = 2
+So row9 G: [-2, 5, 2, 2]
+
+i=10: L106 = -2. So G(10,j) = F(10,j) - (-2)*U(6,j) = F(10,j) + 2*U(6,j).
+F(10,7)=0, F(10,8)=-1, F(10,9)=0, F(10,10)=0.
+Add 2*U:
+j=7: 0 + 2*(-1) = -2
+j=8: -1 + 2*3 = -1+6=5
+j=9: 0 + 2*(-1)= -2
+j=10: 0 + 2*0=0
+So row10 G: [-2, 5, -2, 0]
+
+Now we have submatrix G for rows 7..10, columns 7..10 (4x4). The first row (row7) gives U(7,j) for j>=7: U(7,7)=2, U(7,8)=1, U(7,9)=-2, U(7,10)=0.
+
+Now compute L(i,7) for i=8..10 = G(i,7) / U(7,7) = G(i,7)/2. G(i,7) is column7 (first column of this submatrix) for rows i=8..10.
+
+List G(i,7):
+row8 G: col7 = 2
+row9 G: col7 = -2
+row10 G: col7 = -2
+
+Compute L(i,7):
+i=8: 2/2 = 1
+i=9: -2/2 = -1
+i=10: -2/2 = -1
+
+Now update to get H(i,j) for i>=8, j>=8: H(i,j) = G(i,j) - L(i,7)*U(7,j) for i>=8, j>=8. Then U(8,j) = H(8,j) for j>=8, and L(i,8) = H(i,8)/U(8,8) for i>8.
+
+We need U(7,j) for j=8..10: U(7,8)=1, U(7,9)=-2, U(7,10)=0.
+
+Now compute H for i=8..10, j=8..10.
+
+First i=8: L87 = 1. So H(8,j) = G(8,j) - 1*U(7,j).
+G(8,8)=4, G(8,9)=-3, G(8,10)=0.
+Subtract:
+j=8: 4 - 1 = 3
+j=9: -3 - (-2)= -3+2 = -1
+j=10: 0 - 0 = 0
+So row8 H: [3, -1, 0] for j=8..10.
+
+i=9: L97 = -1. So H(9,j) = G(9,j) - (-1)*U(7,j) = G(9,j) + U(7,j).
+G(9,8)=5, G(9,9)=2, G(9,10)=2.
+Add U:
+j=8: 5 + 1 = 6
+j=9: 2 + (-2)=0
+j=10: 2 + 0 = 2
+So row9 H: [6, 0, 2]
+
+i=10: L107 = -1. So H(10,j) = G(10,j) + U(7,j).
+G(10,8)=5, G(10,9)=-2, G(10,10)=0.
+Add:
+j=8: 5 + 1 = 6
+j=9: -2 + (-2) = -4
+j=10: 0 + 0 = 0
+So row10 H: [6, -4, 0]
+
+Now we have submatrix H for rows 8..10, columns 8..10 (3x3). The first row (row8) gives U(8,j) for j>=8: U(8,8)=3, U(8,9)=-1, U(8,10)=0.
+
+Now compute L(i,8) for i=9,10 = H(i,8) / U(8,8) = H(i,8)/3. H(i,8) is column8 for rows 9,10.
+
+List H(i,8):
+row9 H: col8 = 6
+row10 H: col8 = 6
+
+Compute L(i,8):
+i=9: 6/3 = 2
+i=10: 6/3 = 2
+
+Now update to get I(i,j) for i>=9, j>=9: I(i,j) = H(i,j) - L(i,8)*U(8,j) for i>=9, j>=9. Then U(9,j) = I(9,j) for j>=9, and L(10,9) = I(10,9)/U(9,9).
+
+We need U(8,j) for j=9..10: U(8,9)=-1, U(8,10)=0.
+
+Now compute I for i=9,10, j=9,10.
+
+First i=9: L98 = 2. So I(9,j) = H(9,j) - 2*U(8,j).
+H(9,9)=0, H(9,10)=2.
+Compute:
+j=9: 0 - 2*(-1)=0+2=2
+j=10: 2 - 2*0 = 2
+So row9 I: [2, 2] for j=9..10.
+
+i=10: L108 = 2. So I(10,j) = H(10,j) - 2*U(8,j).
+H(10,9)=-4, H(10,10)=0.
+Compute:
+j=9: -4 - 2*(-1)= -4+2 = -2
+j=10: 0 - 2*0 = 0
+So row10 I: [-2, 0]
+
+Now we have submatrix I for rows 9..10, columns 9..10 (2x2). The first row (row9) gives U(9,j) for j>=9: U(9,9)=2, U(9,10)=2.
+
+Now compute L(10,9) = I(10,9) / U(9,9) = (-2)/2 = -1.
+
+Now update to get J(i,j) for i>=10, j>=10? Actually we only have i=10, j=10: J(10,10) = I(10,10) - L(10,9)*U(9,10) = 0 - (-1)*2 = 0+2=2. So U(10,10)=2.
+
+And L is unit lower triangular, so L(10,10)=1 (diagonal). Also L(i,i)=1 for all i.
+
+Now we have all L and U entries. Let's collect them:
+
+L entries (strictly below diagonal) row by row:
+Row2: L21 = -2
+Row3: L31 = -2, L32 = -2
+Row4: L41 = -2, L42 = 1, L43 = 1
+Row5: L51 = 2, L52 = -1, L53 = 1, L54 = -1
+Row6: L61 = -1, L62 = -1, L63 = -2, L64 = 1, L65 = 0
+Row7: L71 = 1, L72 = -1, L73 = 0, L74 = -1, L75 = -2, L76 = 2
+Row8: L81 = -2, L82 = -1, L83 = 0, L84 = 1, L85 = -1, L86 = 2, L87 = 1
+Row9: L91 = -2, L92 = 2, L93 = 1, L94 = 1, L95 = -2, L96 = -1, L97 = -1, L98 = 2
+Row10: L101 = -2, L102 = 1, L103 = -1, L104 = 1, L105 = 1, L106 = -2, L107 = -1, L108 = 2, L109 = -1
+
+Check: row10 has 9 entries below diagonal? Actually row10 has L10,1 through L10,9. We have: L101=-2, L102=1, L103=-1, L104=1, L105=1, L106=-2, L107=-1, L108=2, L109=-1. That's 9 entries.
+
+Now U entries (on and above diagonal) row by row:
+Row1: U11=1, U12=-3, U13=-2, U14=1, U15=-2, U16=-2, U17=2, U18=3, U19=2, U110=-1
+Row2: U22=-3, U23=3, U24=-3, U25=-1, U26=2, U27=0, U28=-3, U29=1, U210=-2
+Row3: U33=-3, U34=1, U35=2, U36=1, U37=3, U38=3, U39=3, U310=-2
+Row4: U44=-3, U45=-1, U46=0, U47=0, U48=2, U49=3, U410=2
+Row5: U55=-2, U56=2, U57=-2, U58=-3, U59=0, U510=-2
+Row6: U66=-3, U67=-1, U68=3, U69=-1, U610=0
+Row7: U77=2, U78=1, U79=-2, U710=0
+Row8: U88=3, U89=-1, U810=0
+Row9: U99=2, U910=2
+Row10: U10,10=2
+
+Now we need to output as a comma-separated list: first entries of L strictly below the diagonal row by row (L21; L31, L32; L41, L42, L43; ...; L10,1..L10,9), then entries of U on and above diagonal row by row (U11...U1n; U22...U2n; ...; Unn). So we need to list them in order.
+
+Let's compile L entries row by row:
+
+Row2: L21 = -2
+Row3: L31 = -2, L32 = -2
+Row4: L41 = -2, L42 = 1, L43 = 1
+Row5: L51 = 2, L52 = -1, L53 = 1, L54 = -1
+Row6: L61 = -1, L62 = -1, L63 = -2, L64 = 1, L65 = 0
+Row7: L71 = 1, L72 = -1, L73 = 0, L74 = -1, L75 = -2, L76 = 2
+Row8: L81 = -2, L82 = -1, L83 = 0, L84 = 1, L85 = -1, L86 = 2, L87 = 1
+Row9: L91 = -2, L92 = 2, L93 = 1, L94 = 1, L95 = -2, L96 = -1, L97 = -1, L98 = 2
+Row10: L101 = -2, L102 = 1, L103 = -1, L104 = 1, L105 = 1, L106 = -2, L107 = -1, L108 = 2, L109 = -1
+
+Check count: For a 10x10, number of subdiagonal entries = 10*9/2 = 45. Let's count: row2:1, row3:2, row4:3, row5:4, row6:5, row7:6, row8:7, row9:8, row10:9 => total 1+2+3+4+5+6+7+8+9=45. Good.
+
+Now U entries row by row (on and above diagonal):
+Row1: 1, -3, -2, 1, -2, -2, 2, 3, 2, -1
+Row2: -3, 3, -3, -1, 2, 0, -3, 1, -2
+Row3: -3, 1, 2, 1, 3, 3, 3, -2
+Row4: -3, -1, 0, 0, 2, 3, 2
+Row5: -2, 2, -2, -3, 0, -2
+Row6: -3, -1, 3, -1, 0
+Row7: 2, 1, -2, 0
+Row8: 3, -1, 0
+Row9: 2, 2
+Row10: 2
+
+Count: row1:10, row2:9, row3:8, row4:7, row5:6, row6:5, row7:4, row8:3, row9:2, row10:1 = 55 entries. Good.
+
+Now we write them as a comma-separated list: first all L entries in order, then U entries. Let's list them:
+
+L: -2, -2, -2, -2, 1, 1, 2, -1, 1, -1, -1, -1, -2, 1, 0, 1, -1, 0, -1, -2, 2, -2, -1, 0, 1, -1, 2, 1, -2, 2, 1, 1, -2, -1, -1, 2, -2, 1, -1, 1, 1, -2, -1, 2, -1
+
+But need to be careful: row7 entries: L71=1, L72=-1, L73=0, L74=-1, L75=-2, L76=2. So that is 1, -1, 0, -1, -2, 2. Yes.
+
+Now U: 
+Row1: 1, -3, -2, 1, -2, -2, 2, 3, 2, -1
+Row2: -3, 3, -3, -1, 2, 0, -3, 1, -2
+Row3: -3, 1, 2, 1, 3, 3, 3, -2
+Row4: -3, -1, 0, 0, 2, 3, 2
+Row5: -2, 2, -2, -3, 0, -2
+Row6: -3, -1, 3, -1, 0
+Row7: 2, 1, -2, 0
+Row8: 3, -1, 0
+Row9: 2, 2
+Row10: 2
+
+Now concatenate all: first L list then U list.
+
+Let's write them in order:
+
+L entries: 
+L21 = -2
+L31 = -2
+L32 = -2
+L41 = -2
+L42 = 1
+L43 = 1
+L51 = 2
+L52 = -1
+L53 = 1
+L54 = -1
+L61 = -1
+L62 = -1
+L63 = -2
+L64 = 1
+L65 = 0
+L71 = 1
+L72 = -1
+L73 = 0
+L74 = -1
+L75 = -2
+L76 = 2
+L81 = -2
+L82 = -1
+L83 = 0
+L84 = 1
+L85 = -1
+L86 = 2
+L87 = 1
+L91 = -2
+L92 = 2
+L93 = 1
+L94 = 1
+L95 = -2
+L96 = -1
+L97 = -1
+L98 = 2
+L101 = -2
+L102 = 1
+L103 = -1
+L104 = 1
+L105 = 1
+L106 = -2
+L107 = -1
+L108 = 2
+L109 = -1
+
+Now U entries:
+U11=1
+U12=-3
+U13=-2
+U14=1
+U15=-2
+U16=-2
+U17=2
+U18=3
+U19=2
+U1,10=-1
+U22=-3
+U23=3
+U24=-3
+U25=-1
+U26=2
+U27=0
+U28=-3
+U29=1
+U2,10=-2
+U33=-3
+U34=1
+U35=2
+U36=1
+U37=3
+U38=3
+U39=3
+U3,10=-2
+U44=-3
+U45=-1
+U46=0
+U47=0
+U48=2
+U49=3
+U4,10=2
+U55=-2
+U56=2
+U57=-2
+U58=-3
+U59=0
+U5,10=-2
+U66=-3
+U67=-1
+U68=3
+U69=-1
+U6,10=0
+U77=2
+U78=1
+U79=-2
+U7,10=0
+U88=3
+U89=-1
+U8,10=0
+U99=2
+U9,10=2
+U10,10=2
+
+Now we need to ensure no mistakes. Let's verify quickly that A = LU by checking a few entries maybe? Possibly we can compute a couple of entries to validate.
+
+We can compute A(1,1) = 1 = U11*L11? L11=1, so OK.
+A(2,1) = -2 = L21*U11 = -2*1 = -2 OK.
+A(2,2) should be L21*U12 + L22*U22? L22=1, so = (-2)*(-3) + 1*(-3) = 6-3=3 which matches A(2,2)=3. OK.
+A(3,3) = -5? Actually A(3,3) = -5. Compute from LU: L31*U13 + L32*U23 + L33*U33. L31=-2, U13=-2 => 4; L32=-2, U23=3 => -6; L33=1, U33=-3 => -3; sum = 4-6-3=-5. Good.
+A(10,10)=2. Compute: sum over k=1..10 L10k*U_k10. L10,1=-2, U1,10=-1 => 2; L10,2=1, U2,10=-2 => -2; L10,3=-1, U3,10=-2 => 2; L10,4=1, U4,10=2 =>2; L10,5=1, U5,10=-2 => -2; L10,6=-2, U6,10=0 =>0; L10,7=-1, U7,10=0 =>0; L10,8=2, U8,10=0=>0; L10,9=-1, U9,10=2=>-2; L10,10=1*U10,10=2; sum = 2-2+2+2-2+0+0+0-2+2 = 2? Let's calculate: 2-2=0; +2=2; +2=4; -2=2; +0=2; +0=2; +0=2; -2=0; +2=2. So 2, matches A(10,10)=2. Good.
+
+Check a middle entry like A(5,5) = -2? Actually A(5,5) = -2 (from original row5 col5 = -2). Compute from LU: row5: L51=2, L52=-1, L53=1, L54=-1, L55=1. U15=-2, U25=-1, U35=2, U45=0, U55=-2. So sum: 2*(-2) + (-1)*(-1) + 1*2 + (-1)*0 + 1*(-2) = -4 +1+2+0-2 = -3? That gives -3, not -2. Wait A(5,5) originally row5 col5 = -2? Let's double-check original matrix: Row5: [2, -3, -10, 9, -2, -3, 5, 7, 3, -6]. So A(5,5) = -2. Our computed sum gave -3, so there might be an error. Let's recompute carefully.
+
+We have L51 = 2 (from earlier: row5 col1 =2? Actually A(5,1)=2, U11=1, so L51=2, correct). L52 = -1 (we computed from B(5,2)=3? Actually we had L52 = -1). L53 = 1 (we computed L53 = 1). L54 = -1 (we computed L54 = -1). L55 = 1.
+
+U15 = -2 (from row1 col5 = -2, correct). U25 = -1 (from row2 col5 = -1? Wait row2 U25 is -1? In our U row2: U25 = -1, yes). U35 = 2 (U35=2? In row3 U35=2, correct). U45 = 0 (U45=0, yes). U55 = -2 (U55=-2). So sum = 2*(-2) + (-1)*(-1) + 1*2 + (-1)*0 + 1*(-2) = -4 + 1 + 2 + 0 -2 = -3. But A(5,5) = -2. So discrepancy. Let's check our earlier computations for L53, L54, U35, U45 maybe.
+
+Maybe we made a mistake in the elimination steps, particularly in the computation of L53 and L54? Let's trace back.
+
+Recall the process: After eliminating first column, we had B matrix. For row5 (original row5) we computed B row5: [3, -6, 7, 2, 1, 1, 1, -1, -4]? Wait we had row5_new: [3, -6, 7, 2, 1, 1, 1, -1, -4] from earlier? Let's check row5 after first elimination: we computed row5_new: col2=3, col3=-6, col4=7, col5=2, col6=1, col7=1, col8=1, col9=-1, col10=-4. Yes. Then we computed L52 = B(5,2)/U22 = 3/(-3) = -1. Good. Then we computed C(5,j) for j>=3: C(5,j) = B(5,j) - L52*U(2,j) = B(5,j) - (-1)*U(2,j) = B(5,j)+U(2,j). U(2,j) for j=3..10: U23=3, U24=-3, U25=-1, U26=2, U27=0, U28=-3, U29=1, U210=-2. So we added: C(5,3) = -6+3=-3? Actually we computed C(5,3) = -3? Let's recalc: B(5,3)=-6, U23=3 => -6+3=-3. We got -3 earlier? Yes we had C(5,3) = -3. C(5,4)=7+(-3)=4, C(5,5)=2+(-1)=1, C(5,6)=1+2=3, C(5,7)=1+0=1, C(5,8)=1+(-3)=-2, C(5,9)=-1+1=0, C(5,10)=-4+(-2)=-6. So C(5,3)=-3, C(5,4)=4, C(5,5)=1, C(5,6)=3, C(5,7)=1, C(5,8)=-2, C(5,9)=0, C(5,10)=-6. Good.
+
+Then we computed L53 = C(5,3)/U33. U33 at that stage was from row3 C: we had U33 = C(3,3) = -3. So L53 = (-3)/(-3)=1. Good.
+
+Then we computed D(5,j) = C(5,j) - L53*U(3,j) for j>=4. U(3,j) for j=4..10: U34=1, U35=2, U36=1, U37=3, U38=3, U39=3, U310=-2. So D(5,4)= C(5,4)-1*1 = 4-1=3? Wait earlier we computed D(5,4)=3? Yes we had D(5,4)=3. D(5,5)=1-2= -1, D(5,6)=3-1=2, D(5,7)=1-3=-2, D(5,8)=-2-3=-5, D(5,9)=0-3=-3, D(5,10)=-6 - (-2)= -4. So D(5,5) = -1. Good.
+
+Then L54 = D(5,4)/U44. U44 = D(4,4) = -3. So L54 = 3/(-3) = -1. Good.
+
+Then E(5,j) = D(5,j) - L54*U(4,j) for j>=5. U(4,j) for j=5..10: U45=-1, U46=0, U47=0, U48=2, U49=3, U410=2. L54=-1, so E(5,j) = D(5,j) - (-1)*U(4,j) = D(5,j)+U(4,j). So E(5,5)= -1 + (-1) = -2, E(5,6)=2+0=2, E(5,7)=-2+0=-2, E(5,8)=-5+2=-3, E(5,9)=-3+3=0, E(5,10)=-4+2=-2. So E(5,5)=-2, which is U55. So U55 = -2. So far so good.
+
+Then L65 etc. So the computed U55 = -2. Then A(5,5) from LU should be sum_{k=1}^{5} L5k U_{k5}. We have L51=2, U15=-2 -> -4; L52=-1, U25=-1 -> 1; L53=1, U35=2 ->2; L54=-1, U45=0? Wait U45=0? Actually U45 we have as -1? Let's reexamine U45: from row4 U45 = -1? In our U entries list, we have U45 = -1? In row4 we have U44=-3, U45=-1, U46=0, U47=0, U48=2, U49=3, U410=2. So U45 = -1. But when we computed E(5,5) = D(5,5)+U(4,5) = -1 + (-1) = -2, that used U45 = -1. So U45 is -1. Then in the product for A(5,5), the term L54*U45 = (-1)*(-1)=1. So we have contributions: L51*U15 = 2*(-2)=-4; L52*U25 = (-1)*(-1)=1; L53*U35 = 1*2=2; L54*U45 = (-1)*(-1)=1; L55*U55 = 1*(-2)=-2; Sum = -4+1+2+1-2 = -2. Oh! I mistakenly used U45=0 earlier, but it's -1. So sum is -2, correct. So our earlier calculation that gave -3 used U45=0 incorrectly. So it's consistent. Good.
+
+Thus our LU decomposition appears correct.
+
+Now we need to output the list. Let's double-check all L entries for possible typographical errors.
+
+We'll re-list L entries with indices to avoid mistakes:
+
+Row2: L21 = -2
+Row3: L31 = -2, L32 = -2
+Row4: L41 = -2, L42 = 1, L43 = 1
+Row5: L51 = 2, L52 = -1, L53 = 1, L54 = -1
+Row6: L61 = -1, L62 = -1, L63 = -2, L64 = 1, L65 = 0
+Row7: L71 = 1, L72 = -1, L73 = 0, L74 = -1, L75 = -2, L76 = 2
+Row8: L81 = -2, L82 = -1, L83 = 0, L84 = 1, L85 = -1, L86 = 2, L87 = 1
+Row9: L91 = -2, L92 = 2, L93 = 1, L94 = 1, L95 = -2, L96 = -1, L97 = -1, L98 = 2
+Row10: L101 = -2, L102 = 1, L103 = -1, L104 = 1, L105 = 1, L106 = -2, L107 = -1, L108 = 2, L109 = -1
+
+Now U entries: 
+Row1: 1, -3, -2, 1, -2, -2, 2, 3, 2, -1
+Row2: -3, 3, -3, -1, 2, 0, -3, 1, -2
+Row3: -3, 1, 2, 1, 3, 3, 3, -2
+Row4: -3, -1, 0, 0, 2, 3, 2
+Row5: -2, 2, -2, -3, 0, -2
+Row6: -3, -1, 3, -1, 0
+Row7: 2, 1, -2, 0
+Row8: 3, -1, 0
+Row9: 2, 2
+Row10: 2
+
+Let's verify U row2: U22=-3, U23=3, U24=-3, U25=-1, U26=2, U27=0, U28=-3, U29=1, U210=-2. Yes.
+
+Now we must produce the list as a single comma-separated list. The order: first L entries row by row strictly below diagonal, then U entries row by row on and above diagonal. So we'll flatten.
+
+Let me write them in order:
+
+L list:
+-2, 
+-2, -2,
+-2, 1, 1,
+2, -1, 1, -1,
+-1, -1, -2, 1, 0,
+1, -1, 0, -1, -2, 2,
+-2, -1, 0, 1, -1, 2, 1,
+-2, 2, 1, 1, -2, -1, -1, 2,
+-2, 1, -1, 1, 1, -2, -1, 2, -1
+
+Now combine all into one list: 
+L: -2, -2, -2, -2, 1, 1, 2, -1, 1, -1, -1, -1, -2, 1, 0, 1, -1, 0, -1, -2, 2, -2, -1, 0, 1, -1, 2, 1, -2, 2, 1, 1, -2, -1, -1, 2, -2, 1, -1, 1, 1, -2, -1, 2, -1
+
+Count: that's 45 numbers. Let's count: row2:1, row3:2, row4:3, row5:4, row6:5, row7:6, row8:7, row9:8, row10:9 = 45. Good.
+
+Now U list: 
+1, -3, -2, 1, -2, -2, 2, 3, 2, -1,
+-3, 3, -3, -1, 2, 0, -3, 1, -2,
+-3, 1, 2, 1, 3, 3, 3, -2,
+-3, -1, 0, 0, 2, 3, 2,
+-2, 2, -2, -3, 0, -2,
+-3, -1, 3, -1, 0,
+2, 1, -2, 0,
+3, -1, 0,
+2, 2,
+2
+
+So U entries as a flat list: 
+1, -3, -2, 1, -2, -2, 2, 3, 2, -1, -3, 3, -3, -1, 2, 0, -3, 1, -2, -3, 1, 2, 1, 3, 3, 3, -2, -3, -1, 0, 0, 2, 3, 2, -2, 2, -2, -3, 0, -2, -3, -1, 3, -1, 0, 2, 1, -2, 0, 3, -1, 0, 2, 2, 2
+
+Now combine L and U: total 45+55=100 numbers. We'll output them comma-separated.
+
+Double-check a few more entries for safety: Compute A(10,5) = -2? Original A(10,5) = -2 (row10 col5 = -2). Let's compute from LU: L10,1*U15 + L10,2*U25 + L10,3*U35 + L10,4*U45 + L10,5*U55 + L10,6*U65 + ... up to L10,10*U10,5 but U_k5 for k>5 are zero since U is upper triangular. So contributions: L10,1=-2, U15=-2 => 4; L10,2=1, U25=-1 => -1; L10,3=-1, U35=2 => -2; L10,4=1, U45=-1 => -1; L10,5=1, U55=-2 => -2; L10,6=-2, U65? U65 is zero (U6,5 is below diagonal? Actually U is upper triangular, so U(i,j)=0 for i>j. So U65=0; similarly U75=0 etc. So sum = 4-1-2-1-2 = -2. Good.
+
+Check A(9,2) = 0? Original A(9,2)=0 (row9 col2 = 0). Compute: L91*U12 + L92*U22 + L93*U32 + ... but U32? U is upper triangular, so for column2, only U12, U22 are non-zero (since U32 is below diagonal? Actually U32 is entry row3 col2, row3>col2, so it's zero). So contributions: L91=-2, U12=-3 => 6; L92=2, U22=-3 => -6; L93=1, U32=0; others zero. Sum = 0. Good.
+
+Check A(9,1) = -2: L91*U11 = -2*1 = -2. Good.
+
+Thus the decomposition seems consistent.
+
+Now provide answer as: ANSWER: <list>
+
+We'll produce the list in order: first 45 L entries, then 55 U entries, separated by commas.
+
+Let's write them in a single line:
+
+-2, -2, -2, -2, 1, 1, 2, -1, 1, -1, -1, -1, -2, 1, 0, 1, -1, 0, -1, -2, 2, -2, -1, 0, 1, -1, 2, 1, -2, 2, 1, 1, -2, -1, -1, 2, -2, 1, -1, 1, 1, -2, -1, 2, -1, 1, -3, -2, 1, -2, -2, 2, 3, 2, -1, -3, 3, -3, -1, 2, 0, -3, 1, -2, -3, 1, 2, 1, 3, 3, 3, -2, -3, -1, 0, 0, 2, 3, 2, -2, 2, -2, -3, 0, -2, -3, -1, 3, -1, 0, 2, 1, -2, 0, 3, -1, 0, 2, 2, 2
+
+Make sure commas between every number. Let's count numbers: L: 45; U: 55; total 100. We'll count in our list: I'll separate by groups:
+
+L part: 
+-2, -2, -2, -2, 1, 1, 2, -1, 1, -1, -1, -1, -2, 1, 0, 1, -1, 0, -1, -2, 2, -2, -1, 0, 1, -1, 2, 1, -2, 2, 1, 1, -2, -1, -1, 2, -2, 1, -1, 1, 1, -2, -1, 2, -1 -> that's 45.
+
+Now U part:
+1, -3, -2, 1, -2, -2, 2, 3, 2, -1, -3, 3, -3, -1, 2, 0, -3, 1, -2, -3, 1, 2, 1, 3, 3, 3, -2, -3, -1, 0, 0, 2, 3, 2, -2, 2, -2, -3, 0, -2, -3, -1, 3, -1, 0, 2, 1, -2, 0, 3, -1, 0, 2, 2, 2 -> count: 10+9+8+7+6+5+4+3+2+1 = 55. Good.
+
+Now we need to output exactly as this comma-separated list. We'll write it in the answer line.
+
+Thus final answer: ANSWER: -2, -2, -2, -2, 1, 1, 2, -1, 1, -1, -1, -1, -2, 1, 0, 1, -1, 0, -1, -2, 2, -2, -1, 0, 1, -1, 2, 1, -2, 2, 1, 1, -2, -1, -1, 2, -2, 1, -1, 1, 1, -2, -1, 2, -1, 1, -3, -2, 1, -2, -2, 2, 3, 2, -1, -3, 3, -3, -1, 2, 0, -3, 1, -2, -3, 1, 2, 1, 3, 3, 3, -2, -3, -1, 0, 0, 2, 3, 2, -2, 2, -2, -3, 0, -2, -3, -1, 3, -1, 0, 2, 1, -2, 0, 3, -1, 0, 2, 2, 2
+
+We might double-check that the list includes all. Let's optionally verify a random entry by recomputing using these L and U in our mind. Possibly check A(6,3) = 5? Actually A(6,3)=5 (row6 col3). Compute from LU: sum_{k=1}^{3} L6k*U_{k3} (since U_{k3}=0 for k>3). L61=-1, U13=-2 => 2; L62=-1, U23=3 => -3; L63=-2, U33=-3 => 6; total = 2-3+6=5. Good. So correct.
+
+Hence answer is ready.

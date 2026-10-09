@@ -1,0 +1,464 @@
+We are given a 6x6 integer matrix A. We need to compute its adjugate (classical adjoint), which is the transpose of the cofactor matrix. That means for each entry (i,j), the adjugate matrix adj(A) has entry (j,i) equal to the cofactor C_{ij} = (-1)^{i+j} det(M_{ij}), where M_{ij} is the submatrix obtained by deleting row i and column j. Then A * adj(A) = det(A) I.
+
+We need to compute all 36 entries of adj(A) row by row, i.e., we list adj(A)_{1,1}, adj(A)_{1,2}, ..., adj(A)_{1,6}, then adj(A)_{2,1}, ..., adj(A)_{2,6}, and so on up to row 6. Output as a comma-separated list of integers.
+
+Since A is 6x6, computing the adjugate directly via cofactor expansions for each entry would be heavy (36 determinants of 5x5 matrices). However, we can use the relation A * adj(A) = det(A) I, so if we can compute det(A) and also compute the inverse of A (if A is invertible), then adj(A) = det(A) * A^{-1}. But A might be singular? We need to compute adj(A) regardless. However, if det(A) is nonzero, we can compute the inverse (e.g., by Gaussian elimination) and multiply by det(A) to get adj(A). If det(A)=0, then adj(A) might still be nonzero, but then we need to compute it directly or via other means. So first, compute det(A) to see if it's zero.
+
+Let's compute det(A) for the 6x6 matrix. Write the matrix:
+
+A =
+[ 1, 0, -1, 1, -2, -2 ]
+[ 2, 1, 0, 1, -5, -4 ]
+[ -1, 1, 2, 0, -1, 0 ]
+[ 0, 0, -1, 3, -1, -2 ]
+[ 2, 0, -1, 1, -2, -4 ]
+[ -1, 0, 2, -5, 3, 9 ]
+
+We can compute determinant using row operations to simplify. Let's denote rows R1..R6.
+
+We can attempt to compute det via elimination. Because it's 6x6, it's manageable by hand with careful arithmetic.
+
+Let me write the matrix with row operations. I'll try to reduce to upper triangular form and compute product of diagonal entries, accounting for row swaps.
+
+First, use R1 as pivot. R1: [1,0,-1,1,-2,-2]. We can eliminate entries in column 1 below.
+
+R2: [2,1,0,1,-5,-4]. Replace R2 = R2 - 2*R1: [2-2*1=0, 1-2*0=1, 0-2*(-1)=2, 1-2*1=-1, -5-2*(-2)=-5+4=-1, -4-2*(-2)=-4+4=0] => R2': [0,1,2,-1,-1,0].
+
+R3: [-1,1,2,0,-1,0]. Replace R3 = R3 + R1 (since -1+1=0): [0, 1+0=1, 2+(-1)=1, 0+1=1, -1+(-2)=-3, 0+(-2)=-2] => R3': [0,1,1,1,-3,-2].
+
+R4: [0,0,-1,3,-1,-2]. Already has 0 in column1, no change. R4': [0,0,-1,3,-1,-2].
+
+R5: [2,0,-1,1,-2,-4]. Replace R5 = R5 - 2*R1: [2-2=0, 0-0=0, -1-2*(-1)= -1+2=1, 1-2*1=-1, -2-2*(-2)= -2+4=2, -4-2*(-2)= -4+4=0] => R5': [0,0,1,-1,2,0].
+
+R6: [-1,0,2,-5,3,9]. Replace R6 = R6 + R1: [0,0,2+(-1)=1?, Wait: R6 + R1: [-1+1=0, 0+0=0, 2+(-1)=1, -5+1=-4, 3+(-2)=1, 9+(-2)=7] => R6': [0,0,1,-4,1,7].
+
+So after elimination, we have:
+
+R1: [1,0,-1,1,-2,-2]
+R2: [0,1,2,-1,-1,0]
+R3: [0,1,1,1,-3,-2]
+R4: [0,0,-1,3,-1,-2]
+R5: [0,0,1,-1,2,0]
+R6: [0,0,1,-4,1,7]
+
+Now we have a 5x5 submatrix from rows 2-6 and columns 2-6. But we have to continue elimination. Let's work on the submatrix from rows 2-6, columns 2-6. The pivot for row2 column2 is 1. We already have zeros in column2 below? Actually row3 has a 1 in column2, so we need to eliminate that.
+
+R3: [0,1,1,1,-3,-2]. Subtract R2 from R3: R3'' = R3 - R2: [0,0,1-2? Wait column2: 1-1=0; column3: 1-2= -1; column4: 1 - (-1)=2; column5: -3 - (-1)= -2; column6: -2 - 0 = -2] => R3'': [0,0,-1,2,-2,-2].
+
+R4, R5, R6 have 0 in column2 already, so no change.
+
+Now the matrix becomes:
+
+R1: [1,0,-1,1,-2,-2]
+R2: [0,1,2,-1,-1,0]
+R3: [0,0,-1,2,-2,-2]
+R4: [0,0,-1,3,-1,-2]
+R5: [0,0,1,-1,2,0]
+R6: [0,0,1,-4,1,7]
+
+Now pivot at row3 column3, which is -1. We can use it to eliminate column3 entries in rows4,5,6.
+
+Row4: [0,0,-1,3,-1,-2]. Since row4 col3 = -1, we can do R4 = R4 - R3? Because R3 col3 = -1, R4 col3 = -1, so R4 - R3 gives 0: R4 - R3: (col3: -1 - (-1)=0; col4: 3-2=1; col5: -1 - (-2)=1; col6: -2 - (-2)=0) => R4': [0,0,0,1,1,0].
+
+Row5: [0,0,1,-1,2,0]. To eliminate col3, we need to add R3 to R5? Because R5 col3 = 1, R3 col3 = -1, so R5 + R3: (col3: 1+(-1)=0; col4: -1+2=1; col5: 2+(-2)=0; col6: 0+(-2)= -2) => R5': [0,0,0,1,0,-2].
+
+Row6: [0,0,1,-4,1,7]. Similarly, R6 + R3: (col3:1+(-1)=0; col4:-4+2=-2; col5:1+(-2)=-1; col6:7+(-2)=5) => R6': [0,0,0,-2,-1,5].
+
+Now matrix:
+
+R1: [1,0,-1,1,-2,-2]
+R2: [0,1,2,-1,-1,0]
+R3: [0,0,-1,2,-2,-2]
+R4: [0,0,0,1,1,0]
+R5: [0,0,0,1,0,-2]
+R6: [0,0,0,-2,-1,5]
+
+Now pivot at row4 column4 = 1. Eliminate below in rows5 and6.
+
+Row5: [0,0,0,1,0,-2]. Subtract R4 from R5: R5 - R4: (col4:1-1=0; col5:0-1=-1; col6:-2-0=-2) => R5': [0,0,0,0,-1,-2].
+
+Row6: [0,0,0,-2,-1,5]. We need to eliminate col4. Since row4 col4=1, we can do R6 = R6 + 2*R4: (col4: -2+2*1=0; col5: -1+2*1=1; col6:5+2*0=5) => R6': [0,0,0,0,1,5].
+
+Now matrix:
+
+R1: [1,0,-1,1,-2,-2]
+R2: [0,1,2,-1,-1,0]
+R3: [0,0,-1,2,-2,-2]
+R4: [0,0,0,1,1,0]
+R5: [0,0,0,0,-1,-2]
+R6: [0,0,0,0,1,5]
+
+Now pivot at row5 column5 = -1. Eliminate row6 column5: R6 has 1. Do R6 = R6 + R5? Since R5 col5 = -1, add R5 to R6: (col5:1+(-1)=0; col6:5+(-2)=3) => R6': [0,0,0,0,0,3].
+
+Now matrix is upper triangular:
+
+R1: [1,0,-1,1,-2,-2]
+R2: [0,1,2,-1,-1,0]
+R3: [0,0,-1,2,-2,-2]
+R4: [0,0,0,1,1,0]
+R5: [0,0,0,0,-1,-2]
+R6: [0,0,0,0,0,3]
+
+The determinant is the product of the diagonal entries times sign from row swaps (none). So det = 1 * 1 * (-1) * 1 * (-1) * 3 = (1 * 1) =1, (-1)*1 = -1, (-1)*(-1)=1, 1*3=3. So det = 3. Check: product: 1*1=1, times -1=-1, times 1=-1, times -1=1, times 3=3. Yes det(A)=3.
+
+Since det(A) is nonzero, A is invertible. Then adj(A) = det(A) * A^{-1} = 3 * A^{-1}. So we can compute the inverse of A and then multiply by 3 to get adj(A). Or we can compute adj(A) directly by computing cofactors, but using inverse might be easier because we can compute A^{-1} via Gaussian elimination (augmented with identity) and then multiply by 3. Since the entries will be integers? Likely A^{-1} will have rational entries with denominator 3, so adj(A) will be integer matrix. Indeed adj(A) = det(A) A^{-1} yields integer entries because A^{-1} = (1/det) adj(A) so adj(A) = det(A) A^{-1} is integer.
+
+So compute A^{-1} by row reducing [A | I] to [I | A^{-1}]. Then multiply each entry by 3 to get adj(A). Be careful: we need to do exact rational arithmetic.
+
+We have already performed forward elimination to upper triangular form. Let's write the augmented matrix with the identity on the right. We performed row operations to get upper triangular form on A. We need to extend those operations to the identity matrix. Then back substitution to get inverse.
+
+We'll do step by step. Start with augmented matrix [A | I6].
+
+A as given. I'll list it again:
+
+Row1: [1,0,-1,1,-2,-2 | 1,0,0,0,0,0]
+Row2: [2,1,0,1,-5,-4 | 0,1,0,0,0,0]
+Row3: [-1,1,2,0,-1,0 | 0,0,1,0,0,0]
+Row4: [0,0,-1,3,-1,-2 | 0,0,0,1,0,0]
+Row5: [2,0,-1,1,-2,-4 | 0,0,0,0,1,0]
+Row6: [-1,0,2,-5,3,9 | 0,0,0,0,0,1]
+
+We will apply the same row operations we used to reduce A to upper triangular, keeping track of changes to the identity.
+
+Forward elimination steps we did:
+
+1. For each row below row1, we eliminated column1:
+   - R2 = R2 - 2*R1
+   - R3 = R3 + R1
+   - R4 unchanged
+   - R5 = R5 - 2*R1
+   - R6 = R6 + R1
+
+Let's apply these to the entire augmented matrix.
+
+We'll keep the same row numbering.
+
+Initial:
+
+R1: [1,0,-1,1,-2,-2 | 1,0,0,0,0,0]
+R2: [2,1,0,1,-5,-4 | 0,1,0,0,0,0]
+R3: [-1,1,2,0,-1,0 | 0,0,1,0,0,0]
+R4: [0,0,-1,3,-1,-2 | 0,0,0,1,0,0]
+R5: [2,0,-1,1,-2,-4 | 0,0,0,0,1,0]
+R6: [-1,0,2,-5,3,9 | 0,0,0,0,0,1]
+
+Now apply row ops:
+
+R2_new = R2 - 2R1:
+Row2 A: (2-2*1=0, 1-2*0=1, 0-2*(-1)=2, 1-2*1=-1, -5-2*(-2)=-5+4=-1, -4-2*(-2)=-4+4=0)
+Row2 I: (0-2*1=-2, 1-2*0=1, 0-2*0=0, 0-2*0=0, 0-2*0=0, 0-2*0=0) => [-2,1,0,0,0,0]
+So R2_new: [0,1,2,-1,-1,0 | -2,1,0,0,0,0]
+
+R3_new = R3 + R1:
+Row3 A: (-1+1=0, 1+0=1, 2+(-1)=1, 0+1=1, -1+(-2)=-3, 0+(-2)=-2)
+Row3 I: (0+1=1, 0+0=0, 1+0=1, 0+0=0, 0+0=0, 0+0=0) => [1,0,1,0,0,0]
+So R3_new: [0,1,1,1,-3,-2 | 1,0,1,0,0,0]
+
+R4 unchanged: [0,0,-1,3,-1,-2 | 0,0,0,1,0,0]
+
+R5_new = R5 - 2R1:
+Row5 A: (2-2=0, 0-0=0, -1-2*(-1)=-1+2=1, 1-2*1=-1, -2-2*(-2)=-2+4=2, -4-2*(-2)=-4+4=0)
+Row5 I: (0-2*1=-2, 0-2*0=0, 0-2*0=0, 0-2*0=0, 1-2*0=1, 0-2*0=0) => [-2,0,0,0,1,0]
+So R5_new: [0,0,1,-1,2,0 | -2,0,0,0,1,0]
+
+R6_new = R6 + R1:
+Row6 A: (-1+1=0, 0+0=0, 2+(-1)=1, -5+1=-4, 3+(-2)=1, 9+(-2)=7)
+Row6 I: (0+1=1, 0+0=0, 0+0=0, 0+0=0, 0+0=0, 1+0=1) => [1,0,0,0,0,1]
+So R6_new: [0,0,1,-4,1,7 | 1,0,0,0,0,1]
+
+Now the matrix after step1:
+
+R1: [1,0,-1,1,-2,-2 | 1,0,0,0,0,0]
+R2: [0,1,2,-1,-1,0 | -2,1,0,0,0,0]
+R3: [0,1,1,1,-3,-2 | 1,0,1,0,0,0]
+R4: [0,0,-1,3,-1,-2 | 0,0,0,1,0,0]
+R5: [0,0,1,-1,2,0 | -2,0,0,0,1,0]
+R6: [0,0,1,-4,1,7 | 1,0,0,0,0,1]
+
+Now step2: Eliminate column2 in row3. We did R3 = R3 - R2.
+
+Compute R3_new = R3 - R2:
+A part: (0-0=0, 1-1=0, 1-2=-1, 1 - (-1)=2, -3 - (-1)= -2, -2 - 0 = -2)
+I part: (1 - (-2)=3, 0-1= -1, 1-0=1, 0-0=0, 0-0=0, 0-0=0) => [3, -1, 1, 0,0,0]
+
+So R3_new: [0,0,-1,2,-2,-2 | 3, -1, 1, 0,0,0]
+
+Now we have:
+
+R1: [1,0,-1,1,-2,-2 | 1,0,0,0,0,0]
+R2: [0,1,2,-1,-1,0 | -2,1,0,0,0,0]
+R3: [0,0,-1,2,-2,-2 | 3,-1,1,0,0,0]
+R4: [0,0,-1,3,-1,-2 | 0,0,0,1,0,0]
+R5: [0,0,1,-1,2,0 | -2,0,0,0,1,0]
+R6: [0,0,1,-4,1,7 | 1,0,0,0,0,1]
+
+Now step3: Eliminate column3 in rows4,5,6 using pivot row3 (col3 = -1). We did:
+- R4 = R4 - R3
+- R5 = R5 + R3 (since R5 col3=1, R3 col3=-1, so R5+R3 gives 0)
+- R6 = R6 + R3
+
+Apply:
+
+R4_new = R4 - R3:
+A: (0-0=0,0-0=0, -1 - (-1)=0, 3-2=1, -1 - (-2)=1, -2 - (-2)=0)
+I: (0-3=-3, 0-(-1)=1, 0-1=-1, 1-0=1, 0-0=0, 0-0=0) => [-3,1,-1,1,0,0]
+So R4_new: [0,0,0,1,1,0 | -3,1,-1,1,0,0]
+
+R5_new = R5 + R3:
+A: (0+0=0,0+0=0,1+(-1)=0, -1+2=1, 2+(-2)=0, 0+(-2)=-2)
+I: (-2+3=1, 0+(-1)=-1, 0+1=1, 0+0=0, 1+0=1, 0+0=0) => [1,-1,1,0,1,0]
+So R5_new: [0,0,0,1,0,-2 | 1,-1,1,0,1,0]
+
+R6_new = R6 + R3:
+A: (0+0=0,0+0=0,1+(-1)=0, -4+2=-2, 1+(-2)=-1, 7+(-2)=5)
+I: (1+3=4, 0+(-1)=-1, 0+1=1, 0+0=0, 0+0=0, 1+0=1) => [4,-1,1,0,0,1]
+So R6_new: [0,0,0,-2,-1,5 | 4,-1,1,0,0,1]
+
+Now matrix:
+
+R1: [1,0,-1,1,-2,-2 | 1,0,0,0,0,0]
+R2: [0,1,2,-1,-1,0 | -2,1,0,0,0,0]
+R3: [0,0,-1,2,-2,-2 | 3,-1,1,0,0,0]
+R4: [0,0,0,1,1,0 | -3,1,-1,1,0,0]
+R5: [0,0,0,1,0,-2 | 1,-1,1,0,1,0]
+R6: [0,0,0,-2,-1,5 | 4,-1,1,0,0,1]
+
+Step4: Eliminate column4 in rows5 and6 using pivot row4 (col4=1). We did:
+- R5 = R5 - R4
+- R6 = R6 + 2*R4 (since R6 col4 = -2, to zero it, add 2*R4)
+
+Apply:
+
+R5_new = R5 - R4:
+A: (0-0=0,0-0=0,0-0=0,1-1=0,0-1=-1, -2-0=-2)
+I: (1 - (-3)=4, -1-1=-2, 1-(-1)=2, 0-1=-1, 1-0=1, 0-0=0) => [4,-2,2,-1,1,0]
+So R5_new: [0,0,0,0,-1,-2 | 4,-2,2,-1,1,0]
+
+R6_new = R6 + 2*R4:
+Compute 2*R4: A: [0,0,0,2,2,0]; I: [-6,2,-2,2,0,0]
+R6 current: A: [0,0,0,-2,-1,5]; I: [4,-1,1,0,0,1]
+Add: A: (0,0,0, -2+2=0, -1+2=1, 5+0=5) ; I: (4-6=-2, -1+2=1, 1-2=-1, 0+2=2, 0+0=0, 1+0=1) => [-2,1,-1,2,0,1]
+So R6_new: [0,0,0,0,1,5 | -2,1,-1,2,0,1]
+
+Now matrix:
+
+R1: [1,0,-1,1,-2,-2 | 1,0,0,0,0,0]
+R2: [0,1,2,-1,-1,0 | -2,1,0,0,0,0]
+R3: [0,0,-1,2,-2,-2 | 3,-1,1,0,0,0]
+R4: [0,0,0,1,1,0 | -3,1,-1,1,0,0]
+R5: [0,0,0,0,-1,-2 | 4,-2,2,-1,1,0]
+R6: [0,0,0,0,1,5 | -2,1,-1,2,0,1]
+
+Step5: Eliminate column5 in row6 using pivot row5 (col5 = -1). We did R6 = R6 + R5 (since R6 col5=1, R5 col5=-1, adding gives 0). Actually we did earlier: R6 = R6 + R5. Let's apply:
+
+R6_new = R6 + R5:
+A: (0+0=0,0+0=0,0+0=0,0+0=0,1+(-1)=0,5+(-2)=3)
+I: (-2+4=2, 1+(-2)=-1, -1+2=1, 2+(-1)=1, 0+1=1, 1+0=1) => [2,-1,1,1,1,1]
+So R6_new: [0,0,0,0,0,3 | 2,-1,1,1,1,1]
+
+Now we have upper triangular A part. So the matrix after forward elimination:
+
+R1: [1,0,-1,1,-2,-2 | 1,0,0,0,0,0]
+R2: [0,1,2,-1,-1,0 | -2,1,0,0,0,0]
+R3: [0,0,-1,2,-2,-2 | 3,-1,1,0,0,0]
+R4: [0,0,0,1,1,0 | -3,1,-1,1,0,0]
+R5: [0,0,0,0,-1,-2 | 4,-2,2,-1,1,0]
+R6: [0,0,0,0,0,3 | 2,-1,1,1,1,1]
+
+Now we need to perform back substitution to get reduced row echelon form: we want identity on left. We can scale rows to make pivots 1. R3 has pivot -1, we can multiply R3 by -1. R5 has pivot -1, multiply by -1. R6 has pivot 3, multiply by 1/3? But we want exact rational, so we can keep fractions. Since we will later multiply by det=3 to get adj, we can work with fractions and then multiply by 3 to get integers. Or we can continue with integer arithmetic by scaling appropriately. Let's do back substitution step by step with rational numbers.
+
+First, scale rows:
+
+R3: multiply by -1: new R3 = -R3.
+A: [0,0,1,-2,2,2]; I: [-3,1,-1,0,0,0] (since multiplying I by -1: 3 becomes -3? Wait: R3 I was [3,-1,1,0,0,0]; multiply by -1 gives [-3,1,-1,0,0,0]).
+So R3: [0,0,1,-2,2,2 | -3,1,-1,0,0,0].
+
+R5: multiply by -1: R5 I was [4,-2,2,-1,1,0]; multiply by -1 gives [-4,2,-2,1,-1,0]; A: [0,0,0,0,1,2] since -1* [-1,-2] gives [1,2]? Wait: R5 A: [0,0,0,0,-1,-2]; multiply by -1: [0,0,0,0,1,2]. So R5: [0,0,0,0,1,2 | -4,2,-2,1,-1,0].
+
+R6: scale by 1/3? Alternatively, we can keep as is and then later eliminate above. Since we want to get identity, we can divide R6 by 3: R6 A: [0,0,0,0,0,3] -> divide by 3 gives [0,0,0,0,0,1]; I: [2,-1,1,1,1,1] /3 = [2/3, -1/3, 1/3, 1/3, 1/3, 1/3]. So R6: [0,0,0,0,0,1 | 2/3, -1/3, 1/3, 1/3, 1/3, 1/3].
+
+But we could also avoid fractions by not scaling R6 yet, and instead use it to eliminate above with integer operations and then scale later. Since we eventually need to multiply by 3, it might be easier to keep fractions explicit and then multiply by 3 to get integers. Let's proceed with fractions.
+
+So after scaling:
+
+R1: [1,0,-1,1,-2,-2 | 1,0,0,0,0,0]
+R2: [0,1,2,-1,-1,0 | -2,1,0,0,0,0]
+R3: [0,0,1,-2,2,2 | -3,1,-1,0,0,0]
+R4: [0,0,0,1,1,0 | -3,1,-1,1,0,0]
+R5: [0,0,0,0,1,2 | -4,2,-2,1,-1,0]
+R6: [0,0,0,0,0,1 | 2/3, -1/3, 1/3, 1/3, 1/3, 1/3]
+
+Now back substitution:
+
+We need to eliminate above the pivots. Starting from bottom.
+
+First, eliminate column6 in rows 1-5 using R6. For each row i (i=1..5), if there is an entry in column6, we do Ri = Ri - (entry) * R6.
+
+Compute entries in col6 for rows:
+
+R1: col6 = -2, so R1 = R1 - (-2)*R6 = R1 + 2*R6.
+R2: col6 = 0, no change.
+R3: col6 = 2, so R3 = R3 - 2*R6.
+R4: col6 = 0, no change.
+R5: col6 = 2, so R5 = R5 - 2*R6.
+
+Let's do these:
+
+First compute 2*R6: 2 * R6 = [0,0,0,0,0,2 | 4/3, -2/3, 2/3, 2/3, 2/3, 2/3] (since 2*(2/3)=4/3, etc.)
+
+R1_new = R1 + 2*R6:
+A part: [1,0,-1,1,-2,-2] + [0,0,0,0,0,2] = [1,0,-1,1,-2,0] because -2+2=0.
+I part: [1,0,0,0,0,0] + [4/3, -2/3, 2/3, 2/3, 2/3, 2/3] = [1+4/3 = 7/3, 0-2/3 = -2/3, 0+2/3=2/3, 0+2/3=2/3, 0+2/3=2/3, 0+2/3=2/3]. So R1_new: [1,0,-1,1,-2,0 | 7/3, -2/3, 2/3, 2/3, 2/3, 2/3].
+
+R3: R3 = R3 - 2*R6. R3 A: [0,0,1,-2,2,2] - [0,0,0,0,0,2] = [0,0,1,-2,2,0]. I: [-3,1,-1,0,0,0] - [4/3, -2/3, 2/3, 2/3, 2/3, 2/3] = [-3 - 4/3 = -9/3-4/3 = -13/3, 1 - (-2/3) = 1+2/3 = 5/3, -1 - 2/3 = -5/3, 0 - 2/3 = -2/3, 0 - 2/3 = -2/3, 0 - 2/3 = -2/3]. So R3_new: [0,0,1,-2,2,0 | -13/3, 5/3, -5/3, -2/3, -2/3, -2/3].
+
+R5: R5 = R5 - 2*R6. R5 A: [0,0,0,0,1,2] - [0,0,0,0,0,2] = [0,0,0,0,1,0]. I: [-4,2,-2,1,-1,0] - [4/3, -2/3, 2/3, 2/3, 2/3, 2/3] = [-4 - 4/3 = -12/3-4/3=-16/3, 2 - (-2/3)=2+2/3=8/3, -2 - 2/3 = -6/3-2/3=-8/3, 1 - 2/3 = 1/3, -1 - 2/3 = -5/3, 0 - 2/3 = -2/3]. So R5_new: [0,0,0,0,1,0 | -16/3, 8/3, -8/3, 1/3, -5/3, -2/3].
+
+R2 and R4 unchanged as they have col6=0. So now:
+
+R1: [1,0,-1,1,-2,0 | 7/3, -2/3, 2/3, 2/3, 2/3, 2/3]
+R2: [0,1,2,-1,-1,0 | -2,1,0,0,0,0]
+R3: [0,0,1,-2,2,0 | -13/3, 5/3, -5/3, -2/3, -2/3, -2/3]
+R4: [0,0,0,1,1,0 | -3,1,-1,1,0,0]
+R5: [0,0,0,0,1,0 | -16/3, 8/3, -8/3, 1/3, -5/3, -2/3]
+R6: [0,0,0,0,0,1 | 2/3, -1/3, 1/3, 1/3, 1/3, 1/3]
+
+Now eliminate column5 in rows 1-4 using R5. R5 has pivot in col5=1. For rows with col5 entries:
+
+R1: col5 = -2, so R1 = R1 - (-2)*R5 = R1 + 2*R5.
+R2: col5 = -1, so R2 = R2 - (-1)*R5 = R2 + R5.
+R3: col5 = 2, so R3 = R3 - 2*R5.
+R4: col5 = 1, so R4 = R4 - R5.
+R6 already has 0 col5.
+
+Compute 2*R5: R5 I: [-16/3, 8/3, -8/3, 1/3, -5/3, -2/3]; A: [0,0,0,0,1,0] times 2 gives [0,0,0,0,2,0]. But careful: we need to multiply the whole row. So 2*R5 (A part) = [0,0,0,0,2,0]; I part = [ -32/3, 16/3, -16/3, 2/3, -10/3, -4/3].
+
+R1_new = R1 + 2*R5:
+A: [1,0,-1,1,-2,0] + [0,0,0,0,2,0] = [1,0,-1,1,0,0].
+I: [7/3, -2/3, 2/3, 2/3, 2/3, 2/3] + [-32/3, 16/3, -16/3, 2/3, -10/3, -4/3] = [(7-32)/3 = -25/3, (-2+16)/3 = 14/3, (2-16)/3 = -14/3, (2+2)/3 = 4/3, (2-10)/3 = -8/3, (2-4)/3 = -2/3]. So R1_new: [1,0,-1,1,0,0 | -25/3, 14/3, -14/3, 4/3, -8/3, -2/3].
+
+R2_new = R2 + R5:
+R2 A: [0,1,2,-1,-1,0] + [0,0,0,0,1,0] = [0,1,2,-1,0,0].
+I: [-2,1,0,0,0,0] + [-16/3, 8/3, -8/3, 1/3, -5/3, -2/3] = [-2 -16/3 = -6/3-16/3=-22/3, 1+8/3=3/3+8/3=11/3, 0-8/3=-8/3, 0+1/3=1/3, 0-5/3=-5/3, 0-2/3=-2/3]. So R2_new: [0,1,2,-1,0,0 | -22/3, 11/3, -8/3, 1/3, -5/3, -2/3].
+
+R3_new = R3 - 2*R5:
+R3 A: [0,0,1,-2,2,0] - [0,0,0,0,2,0] = [0,0,1,-2,0,0].
+I: [-13/3, 5/3, -5/3, -2/3, -2/3, -2/3] - [-32/3, 16/3, -16/3, 2/3, -10/3, -4/3] = subtract: [-13/3 + 32/3 = 19/3, 5/3 - 16/3 = -11/3, -5/3 + 16/3 = 11/3, -2/3 - 2/3 = -4/3, -2/3 + 10/3 = 8/3, -2/3 + 4/3 = 2/3]. So R3_new: [0,0,1,-2,0,0 | 19/3, -11/3, 11/3, -4/3, 8/3, 2/3].
+
+R4_new = R4 - R5:
+R4 A: [0,0,0,1,1,0] - [0,0,0,0,1,0] = [0,0,0,1,0,0].
+I: [-3,1,-1,1,0,0] - [-16/3, 8/3, -8/3, 1/3, -5/3, -2/3] = [-3 + 16/3 = -9/3+16/3=7/3, 1 - 8/3 = 3/3-8/3=-5/3, -1 + 8/3 = -3/3+8/3=5/3, 1 - 1/3 = 2/3, 0 + 5/3 = 5/3, 0 + 2/3 = 2/3]. So R4_new: [0,0,0,1,0,0 | 7/3, -5/3, 5/3, 2/3, 5/3, 2/3].
+
+Now R5 and R6 remain as before, but we used R5 already. Now we have:
+
+R1: [1,0,-1,1,0,0 | -25/3, 14/3, -14/3, 4/3, -8/3, -2/3]
+R2: [0,1,2,-1,0,0 | -22/3, 11/3, -8/3, 1/3, -5/3, -2/3]
+R3: [0,0,1,-2,0,0 | 19/3, -11/3, 11/3, -4/3, 8/3, 2/3]
+R4: [0,0,0,1,0,0 | 7/3, -5/3, 5/3, 2/3, 5/3, 2/3]
+R5: [0,0,0,0,1,0 | -16/3, 8/3, -8/3, 1/3, -5/3, -2/3]
+R6: [0,0,0,0,0,1 | 2/3, -1/3, 1/3, 1/3, 1/3, 1/3]
+
+Now we need to eliminate column4 in rows 1-3 using R4. R4 pivot col4=1. For rows:
+
+R1: col4 = 1, so R1 = R1 - R4.
+R2: col4 = -1, so R2 = R2 - (-1)*R4 = R2 + R4.
+R3: col4 = -2, so R3 = R3 - (-2)*R4 = R3 + 2*R4.
+R5 and R6 already have 0 col4.
+
+Compute:
+
+R1_new = R1 - R4:
+A: [1,0,-1,1,0,0] - [0,0,0,1,0,0] = [1,0,-1,0,0,0].
+I: [-25/3, 14/3, -14/3, 4/3, -8/3, -2/3] - [7/3, -5/3, 5/3, 2/3, 5/3, 2/3] = [(-25-7)/3 = -32/3, (14 - (-5))/3 = (14+5)/3=19/3, (-14-5)/3 = -19/3, (4-2)/3 = 2/3, (-8-5)/3 = -13/3, (-2-2)/3 = -4/3]. So R1_new: [1,0,-1,0,0,0 | -32/3, 19/3, -19/3, 2/3, -13/3, -4/3].
+
+R2_new = R2 + R4:
+A: [0,1,2,-1,0,0] + [0,0,0,1,0,0] = [0,1,2,0,0,0].
+I: [-22/3, 11/3, -8/3, 1/3, -5/3, -2/3] + [7/3, -5/3, 5/3, 2/3, 5/3, 2/3] = [(-22+7)/3 = -15/3 = -5, (11-5)/3 = 6/3=2, (-8+5)/3 = -3/3 = -1, (1+2)/3=3/3=1, (-5+5)/3=0, (-2+2)/3=0]. So R2_new: [0,1,2,0,0,0 | -5, 2, -1, 1, 0, 0]. Nice integers!
+
+R3_new = R3 + 2*R4:
+First compute 2*R4: A: 2*[0,0,0,1,0,0] = [0,0,0,2,0,0]; I: 2*[7/3, -5/3, 5/3, 2/3, 5/3, 2/3] = [14/3, -10/3, 10/3, 4/3, 10/3, 4/3].
+R3 A: [0,0,1,-2,0,0] + [0,0,0,2,0,0] = [0,0,1,0,0,0].
+I: [19/3, -11/3, 11/3, -4/3, 8/3, 2/3] + [14/3, -10/3, 10/3, 4/3, 10/3, 4/3] = [(19+14)/3=33/3=11, (-11-10)/3=-21/3=-7, (11+10)/3=21/3=7, (-4+4)/3=0, (8+10)/3=18/3=6, (2+4)/3=6/3=2]. So R3_new: [0,0,1,0,0,0 | 11, -7, 7, 0, 6, 2].
+
+Now we have:
+
+R1: [1,0,-1,0,0,0 | -32/3, 19/3, -19/3, 2/3, -13/3, -4/3]
+R2: [0,1,2,0,0,0 | -5, 2, -1, 1, 0, 0]
+R3: [0,0,1,0,0,0 | 11, -7, 7, 0, 6, 2]
+R4: [0,0,0,1,0,0 | 7/3, -5/3, 5/3, 2/3, 5/3, 2/3]
+R5: [0,0,0,0,1,0 | -16/3, 8/3, -8/3, 1/3, -5/3, -2/3]
+R6: [0,0,0,0,0,1 | 2/3, -1/3, 1/3, 1/3, 1/3, 1/3]
+
+Next, eliminate column3 in rows1,2 using R3.
+
+R1: col3 = -1, so R1 = R1 - (-1)*R3 = R1 + R3.
+R2: col3 = 2, so R2 = R2 - 2*R3.
+
+Compute:
+
+R1_new = R1 + R3:
+A: [1,0,-1,0,0,0] + [0,0,1,0,0,0] = [1,0,0,0,0,0].
+I: [-32/3, 19/3, -19/3, 2/3, -13/3, -4/3] + [11, -7, 7, 0, 6, 2]. Convert 11 to 33/3, etc. Let's put everything over 3: R3 I: [33/3, -21/3, 21/3, 0, 18/3, 6/3]. So sum: [(-32+33)/3=1/3, (19-21)/3=-2/3, (-19+21)/3=2/3, (2+0)/3=2/3, (-13+18)/3=5/3, (-4+6)/3=2/3]. So R1_new: [1,0,0,0,0,0 | 1/3, -2/3, 2/3, 2/3, 5/3, 2/3].
+
+R2_new = R2 - 2*R3:
+First 2*R3: A: [0,0,2,0,0,0]; I: 2*[11,-7,7,0,6,2] = [22, -14, 14, 0, 12, 4].
+R2 A: [0,1,2,0,0,0] - [0,0,2,0,0,0] = [0,1,0,0,0,0].
+R2 I: [-5,2,-1,1,0,0] - [22, -14, 14, 0, 12, 4] = [-5-22=-27, 2-(-14)=2+14=16, -1-14=-15, 1-0=1, 0-12=-12, 0-4=-4]. So R2_new: [0,1,0,0,0,0 | -27, 16, -15, 1, -12, -4]. These are integers.
+
+Now we have:
+
+R1: [1,0,0,0,0,0 | 1/3, -2/3, 2/3, 2/3, 5/3, 2/3]
+R2: [0,1,0,0,0,0 | -27, 16, -15, 1, -12, -4]
+R3: [0,0,1,0,0,0 | 11, -7, 7, 0, 6, 2]
+R4: [0,0,0,1,0,0 | 7/3, -5/3, 5/3, 2/3, 5/3, 2/3]
+R5: [0,0,0,0,1,0 | -16/3, 8/3, -8/3, 1/3, -5/3, -2/3]
+R6: [0,0,0,0,0,1 | 2/3, -1/3, 1/3, 1/3, 1/3, 1/3]
+
+Now the left side is identity. So A^{-1} is the right side. So A^{-1} = 
+
+Row1: [1/3, -2/3, 2/3, 2/3, 5/3, 2/3]
+Row2: [-27, 16, -15, 1, -12, -4]
+Row3: [11, -7, 7, 0, 6, 2]
+Row4: [7/3, -5/3, 5/3, 2/3, 5/3, 2/3]
+Row5: [-16/3, 8/3, -8/3, 1/3, -5/3, -2/3]
+Row6: [2/3, -1/3, 1/3, 1/3, 1/3, 1/3]
+
+But note: Row2, Row3 are integers. Row1,4,5,6 have fractions with denominator 3. Since det(A)=3, adj(A)=3 * A^{-1}. So multiply each entry by 3 to get adj(A).
+
+Thus adj(A) = 3 * A^{-1} =
+
+Row1: (3*(1/3)=1, 3*(-2/3)=-2, 3*(2/3)=2, 3*(2/3)=2, 3*(5/3)=5, 3*(2/3)=2) => [1, -2, 2, 2, 5, 2]
+Row2: (3*(-27)=-81, 3*16=48, 3*(-15)=-45, 3*1=3, 3*(-12)=-36, 3*(-4)=-12) => [-81, 48, -45, 3, -36, -12]
+Row3: (3*11=33, 3*(-7)=-21, 3*7=21, 3*0=0, 3*6=18, 3*2=6) => [33, -21, 21, 0, 18, 6]
+Row4: (3*(7/3)=7, 3*(-5/3)=-5, 3*(5/3)=5, 3*(2/3)=2, 3*(5/3)=5, 3*(2/3)=2) => [7, -5, 5, 2, 5, 2]
+Row5: (3*(-16/3)=-16, 3*(8/3)=8, 3*(-8/3)=-8, 3*(1/3)=1, 3*(-5/3)=-5, 3*(-2/3)=-2) => [-16, 8, -8, 1, -5, -2]
+Row6: (3*(2/3)=2, 3*(-1/3)=-1, 3*(1/3)=1, 3*(1/3)=1, 3*(1/3)=1, 3*(1/3)=1) => [2, -1, 1, 1, 1, 1]
+
+So adj(A) is the matrix:
+
+row1: 1, -2, 2, 2, 5, 2
+row2: -81, 48, -45, 3, -36, -12
+row3: 33, -21, 21, 0, 18, 6
+row4: 7, -5, 5, 2, 5, 2
+row5: -16, 8, -8, 1, -5, -2
+row6: 2, -1, 1, 1, 1, 1
+
+Let's verify that A * adj(A) = det(A) I = 3I. We can do a quick spot check. For instance, the first row of A times first column of adj(A) should be 3. Compute A row1 = [1,0,-1,1,-2,-2]. Adj first column = [1, -81, 33, 7, -16, 2]^T? Actually first column of adj(A) is (1, -81, 33, 7, -16, 2). Dot product: 1*1 + 0*(-81) + (-1)*33 + 1*7 + (-2)*(-16) + (-2)*2 = 1 + 0 -33 + 7 + 32 -4 = 1-33+7+32-4 = (1+7+32) - (33+4) = 40 - 37 = 3. Good. Also off-diagonal should be 0. For A row1 * adj column2: adj column2 = [-2, 48, -21, -5, 8, -1]^T. Dot: 1*(-2) + 0*48 + (-1)*(-21) + 1*(-5) + (-2)*8 + (-2)*(-1) = -2 + 0 + 21 -5 -16 +2 = 0. Good. So it's consistent.
+
+Thus adj(A) entries as above.
+
+Now we need to output all 36 entries row by row as a comma-separated list. So first row: 1, -2, 2, 2, 5, 2; second row: -81, 48, -45, 3, -36, -12; third: 33, -21, 21, 0, 18, 6; fourth: 7, -5, 5, 2, 5, 2; fifth: -16, 8, -8, 1, -5, -2; sixth: 2, -1, 1, 1, 1, 1.
+
+Thus the list: 1,-2,2,2,5,2,-81,48,-45,3,-36,-12,33,-21,21,0,18,6,7,-5,5,2,5,2,-16,8,-8,1,-5,-2,2,-1,1,1,1,1
+
+We should double-check if any signs or numbers are correct. Possibly there might be errors in the row operations. Let's verify some more entries using the property A * adj(A) = 3I. We can compute a couple more dot products.
+
+For example, compute A row2 * adj column1: A row2 = [2,1,0,1,-5,-4]; adj col1 = [1,-81,33,7,-16,2]. Dot: 2*1 + 1*(-81) + 0*33 + 1*7 + (-5)*(-16) + (-4)*2 = 2 -81 + 0 +7 +80 -8 = (2+7+80) - (81+8) = 89 - 89 = 0. Good. Row2 * col2: adj col2 = [-2,48,-21,-5,8,-1]; dot: 2*(-2) + 1*48 + 0*(-21) + 1*(-5) + (-5)*8 + (-4)*(-1) = -4+48-5-40+4 = 3. Good. So row2 col2 gives 3. So off-diagonals zero? Row2 * col3: adj col3 = [2,-45,21,5,-8,1]; dot: 2*2 + 1*(-45)+0*21+1*5+(-5)*(-8)+(-4)*1 = 4 -45 +5 +40 -4 = 0. Good. So it seems consistent.
+
+Thus answer is correct.
+
+Now output as required: "ANSWER: 1,-2,2,2,5,2,-81,48,-45,3,-36,-12,33,-21,21,0,18,6,7,-5,5,2,5,2,-16,8,-8,1,-5,-2,2,-1,1,1,1,1"
+
+Make sure to format exactly.
+
+So final answer.

@@ -1,0 +1,675 @@
+We are given a 7x7 integer matrix A, invertible. We want the QR decomposition via Gram-Schmidt (columns from left to right), Q orthogonal, R upper triangular positive diagonal. We need the squares of the diagonal entries of R: R11^2, ..., R77^2.
+
+We must compute them exactly, likely as integers or fractions. Since A is integer, the Gram-Schmidt process will involve projecting columns onto orthonormal basis; but the squares of the diagonal entries of R are the squared norms of the vectors after orthogonalization? Actually recall: In the QR decomposition via Gram-Schmidt, we take columns of A, say a1,...,an. We set u1 = a1; then r11 = ||u1||; q1 = u1/r11. Then for j>1: uj = aj - sum_{i<j} (aj·qi) qi; then rjj = ||uj||; qj = uj/rjj. So the diagonal entries rjj are the norms of the orthogonalized vectors (the ones before normalization). So rjj^2 = ||uj||^2 = the squared length of the projection residual.
+
+We could compute these directly by performing Gram-Schmidt on the columns, but careful: The matrix is 7x7, so we can compute the norms squared manually using rational arithmetic? But the numbers are moderate, so we can compute systematically.
+
+Alternatively, we can compute the Cholesky decomposition of A^T A? Because in QR, A^T A = R^T Q^T Q R = R^T R. So R is the upper triangular Cholesky factor of A^T A (with positive diagonal). So rjj^2 are the diagonal entries of R^T R? Actually R^T R = A^T A. The diagonal entries of R^T R are sum_{k=1}^j r_{kj}^2? Not directly the squares of rjj. However, we can compute Cholesky decomposition of A^T A and get the diagonal entries of R (the Cholesky factor) as the square roots of the successive Schur complements? Actually the Cholesky factorization: Given B = A^T A (symmetric positive definite), we compute lower triangular L such that B = L L^T; then L is lower triangular with positive diagonal; then if we set R = L^T, then R is upper triangular. So the diagonal entries of R are the same as diagonal of L^T, i.e., the diagonal entries of L (since L^T diagonal = L diagonal). So rjj = ljj. And ljj^2 = b_{jj} - sum_{k<j} l_{jk}^2. So rjj^2 = ljj^2 is the diagonal entry of the Schur complement at step j. So we could compute the Cholesky decomposition of the 7x7 Gram matrix G = A^T A, which is symmetric positive definite, and extract the diagonal entries of the Cholesky factor L (or R). That will give rjj. Then we square them.
+
+Given that A is 7x7 integer, G = A^T A is 7x7 integer matrix. We can compute G exactly. Then perform Cholesky decomposition: for j=1..7, compute ljj = sqrt( G_{jj} - sum_{k=1}^{j-1} l_{jk}^2 ), and for i>j: lij = (G_{ij} - sum_{k=1}^{j-1} l_{ik} l_{jk}) / ljj. However, we need exact rational values (since rjj may be sqrt of integer? Actually rjj^2 may be integer or rational? Since A integer, the Gram-Schmidt process yields vectors with rational components? The orthogonalization yields u_j as combination of columns; the norms squared might be rational numbers? Actually u_j are integer combinations of columns? The columns are integer vectors; the projection coefficients (dot products with q_i) may be rational because q_i are orthonormal but not necessarily rational. However, the norm squared of u_j = ||aj - proj||^2; since q_i are orthonormal but derived from previous columns, the coefficients (aj·qi) are rational? Let's think: q_i are orthonormal, but they may involve square roots. However, the squared norm of u_j is something like the determinant of a Gram submatrix? There is relation: rjj^2 = det(G_j)/det(G_{j-1}) where G_k is the Gram matrix of first k columns. Indeed, for Gram-Schmidt, the squared length of the orthogonalized vector is the ratio of consecutive principal minors: rjj^2 = det(A_{:,[1:j]}^T A_{:,[1:j]}) / det(A_{:,[1:j-1]}^T A_{:,[1:j-1]}). That is a well-known fact: the squared norms of the orthogonalized vectors equal the ratio of successive determinants of Gram matrices. So we can compute Rjj^2 = det( A_j^T A_j ) / det( A_{j-1}^T A_{j-1} ), where A_j is the submatrix of first j columns. Since A is integer, these determinants are integers, so rjj^2 is rational? Actually rjj^2 = (det(G_j))/(det(G_{j-1})). Since both determinants are integers, rjj^2 may be fraction if det(G_{j-1}) does not divide det(G_j) exactly? But from property, rjj^2 should be a rational number that is the squared norm of u_j. Since u_j has rational components? Let's test with simple 2x2: A = [a b; c d]; then Gram: G1 = a^2+c^2; G2 = det([a^2+c^2, ab+cd; ab+cd, b^2+d^2]) = (a^2+c^2)(b^2+d^2)-(ab+cd)^2 = (ad-bc)^2; then r11^2 = a^2+c^2; r22^2 = det(G2)/det(G1)= (ad-bc)^2/(a^2+c^2). So r22^2 is rational (could be fraction). So indeed rjj^2 may be fractions. So we can compute integer determinants of Gram submatrices and take ratios. That might be easier than performing Cholesky with square roots.
+
+So procedure: For each j=1..7, compute the Gram matrix of the first j columns of A: G_j = (A_{:,1:j})^T (A_{:,1:j}) which is j×j symmetric positive definite integer matrix. Compute det(G_j). Then r11^2 = det(G_1) = G_1 (since 1x1). Then for j>=2: rjj^2 = det(G_j) / det(G_{j-1}). That's exact rational numbers, and since all dets are integers, the ratio might be integer or fraction. We need to simplify fractions.
+
+Thus we need to compute determinants of integer matrices up to size 7. A is given explicitly. Let's list columns of A:
+
+Matrix A (7x7):
+Row1: [1, -1, 1, 1, 1, -1, -1]
+Row2: [1, -1, 0, 1, -1, -1, 0]
+Row3: [-1, 2, -1, 0, -1, 0, 0]
+Row4: [0, -1, -1, -2, -1, 1, 1]
+Row5: [1, 1, 0, 1, 0, -2, -1]
+Row6: [-2, -1, -1, -2, -1, 3, 3]
+Row7: [-1, 2, -1, 0, -1, 1, 0]
+
+We'll denote column vectors a1,...,a7.
+
+We need to compute Gram matrices G_j for j=1 to 7. Since the matrix is 7x7, we can compute all determinants via careful integer arithmetic, perhaps using elimination or symbolic computation by hand? Given it's a contest problem, there might be a pattern; but we can compute step by step.
+
+Let's write columns as 7-dimensional vectors:
+
+a1 = (1, 1, -1, 0, 1, -2, -1)^T? But careful: The matrix rows: row1 is first row entries for each column. So column vectors are:
+
+a1 = [1, 1, -1, 0, 1, -2, -1]^T (since first column: entries from row1 to row7: 1,1,-1,0,1,-2,-1)
+a2 = [-1, -1, 2, -1, 1, -1, 2]^T? Wait: second column: row1: -1, row2: -1, row3: 2, row4: -1, row5: 1, row6: -1, row7: 2 → yes.
+a3 = [1, 0, -1, -1, 0, -1, -1]^T? third column: row1:1, row2:0, row3:-1, row4:-1, row5:0, row6:-1, row7:-1.
+a4 = [1, 1, 0, -2, 1, -2, 0]^T? fourth column: row1:1, row2:1, row3:0, row4:-2, row5:1, row6:-2, row7:0.
+a5 = [1, -1, -1, -1, 0, -1, -1]^T? fifth column: row1:1, row2:-1, row3:-1, row4:-1, row5:0, row6:-1, row7:-1.
+a6 = [-1, -1, 0, 1, -2, 3, 1]^T? sixth column: row1:-1, row2:-1, row3:0, row4:1, row5:-2, row6:3, row7:1.
+a7 = [-1, 0, 0, 1, -1, 3, 0]^T? seventh column: row1:-1, row2:0, row3:0, row4:1, row5:-1, row6:3, row7:0.
+
+Check row4: [0,-1,-1,-2,-1,1,1] gives a4[4]= -2, a5[4]= -1, a6[4]=1, a7[4]=1 okay.
+
+So columns:
+
+a1 = (1,1,-1,0,1,-2,-1)
+a2 = (-1,-1,2,-1,1,-1,2)
+a3 = (1,0,-1,-1,0,-1,-1)
+a4 = (1,1,0,-2,1,-2,0)
+a5 = (1,-1,-1,-1,0,-1,-1)
+a6 = (-1,-1,0,1,-2,3,1)
+a7 = (-1,0,0,1,-1,3,0)
+
+Now compute Gram matrices: G_j = [a_i·a_k] for i,k=1..j. So we need dot products.
+
+First compute all pairwise dot products between these vectors. Since numbers small, we can compute by hand.
+
+Let's compute each vector's components and dot products.
+
+I'll compute squared norms and dot products systematically.
+
+Define vectors:
+
+a1: (1,1,-1,0,1,-2,-1)
+a2: (-1,-1,2,-1,1,-1,2)
+a3: (1,0,-1,-1,0,-1,-1)
+a4: (1,1,0,-2,1,-2,0)
+a5: (1,-1,-1,-1,0,-1,-1) // careful: row5: a5[5]=0? Actually row5 of column5: row5 value is 0? From matrix: row5: [1,1,0,1,0,-2,-1] so for a5 (col5) row5 is 0, yes.
+a6: (-1,-1,0,1,-2,3,1)
+a7: (-1,0,0,1,-1,3,0)
+
+Now compute dot product = sum of product of components.
+
+Let's compute sq norms:
+
+||a1||^2 = 1^2+1^2+(-1)^2+0^2+1^2+(-2)^2+(-1)^2 = 1+1+1+0+1+4+1 = 9.
+||a2||^2 = (-1)^2+(-1)^2+2^2+(-1)^2+1^2+(-1)^2+2^2 = 1+1+4+1+1+1+4 = 13.
+||a3||^2 = 1^2+0^2+(-1)^2+(-1)^2+0^2+(-1)^2+(-1)^2 = 1+0+1+1+0+1+1 = 5.
+||a4||^2 = 1^2+1^2+0^2+(-2)^2+1^2+(-2)^2+0^2 = 1+1+0+4+1+4+0 = 11.
+||a5||^2 = 1^2+(-1)^2+(-1)^2+(-1)^2+0^2+(-1)^2+(-1)^2 = 1+1+1+1+0+1+1 = 6.
+||a6||^2 = (-1)^2+(-1)^2+0^2+1^2+(-2)^2+3^2+1^2 = 1+1+0+1+4+9+1 = 17.
+||a7||^2 = (-1)^2+0^2+0^2+1^2+(-1)^2+3^2+0^2 = 1+0+0+1+1+9+0 = 12.
+
+Now dot products between different vectors:
+
+a1·a2 = (1)(-1)+(1)(-1)+(-1)(2)+(0)(-1)+(1)(1)+(-2)(-1)+(-1)(2) = -1 -1 -2 +0 +1 +2 -2 = (-1-1-2)+ (1+2-2) = -4 +1 = -3? Let's compute stepwise: -1-1=-2; -2-2=-4; then +0 = -4; +1 = -3; +2 = -1; -2 = -3. Yes -3.
+a1·a3 = (1)(1)+(1)(0)+(-1)(-1)+(0)(-1)+(1)(0)+(-2)(-1)+(-1)(-1) = 1+0+1+0+0+2+1 = 5.
+a1·a4 = (1)(1)+(1)(1)+(-1)(0)+(0)(-2)+(1)(1)+(-2)(-2)+(-1)(0) = 1+1+0+0+1+4+0 = 7.
+a1·a5 = (1)(1)+(1)(-1)+(-1)(-1)+(0)(-1)+(1)(0)+(-2)(-1)+(-1)(-1) = 1 -1 +1 +0 +0 +2 +1 = 4.
+a1·a6 = (1)(-1)+(1)(-1)+(-1)(0)+(0)(1)+(1)(-2)+(-2)(3)+(-1)(1) = -1 -1 +0 +0 -2 -6 -1 = -11.
+a1·a7 = (1)(-1)+(1)(0)+(-1)(0)+(0)(1)+(1)(-1)+(-2)(3)+(-1)(0) = -1+0+0+0-1-6+0 = -8.
+
+a2·a3 = (-1)(1)+(-1)(0)+(2)(-1)+(-1)(-1)+(1)(0)+(-1)(-1)+(2)(-1) = -1+0-2+1+0+1-2 = -3? Compute: -1+0=-1; -1-2=-3; +1=-2; +0=-2; +1=-1; -2=-3. Yes -3.
+a2·a4 = (-1)(1)+(-1)(1)+(2)(0)+(-1)(-2)+(1)(1)+(-1)(-2)+(2)(0) = -1 -1 +0 +2 +1 +2 +0 = 3? (-1-1=-2; +0=-2; +2=0; +1=1; +2=3) yes 3.
+a2·a5 = (-1)(1)+(-1)(-1)+(2)(-1)+(-1)(-1)+(1)(0)+(-1)(-1)+(2)(-1) = -1 +1 -2 +1 +0 +1 -2 = -2? Compute: -1+1=0; 0-2=-2; -2+1=-1; -1+0=-1; -1+1=0; 0-2=-2. Yes -2.
+a2·a6 = (-1)(-1)+(-1)(-1)+(2)(0)+(-1)(1)+(1)(-2)+(-1)(3)+(2)(1) = 1+1+0-1-2-3+2 = -2? 1+1=2; +0=2; -1=1; -2=-1; -3=-4; +2=-2. Yes -2.
+a2·a7 = (-1)(-1)+(-1)(0)+(2)(0)+(-1)(1)+(1)(-1)+(-1)(3)+(2)(0) = 1+0+0-1-1-3+0 = -4.
+
+a3·a4 = (1)(1)+(0)(1)+(-1)(0)+(-1)(-2)+(0)(1)+(-1)(-2)+(-1)(0) = 1+0+0+2+0+2+0 = 5.
+a3·a5 = (1)(1)+(0)(-1)+(-1)(-1)+(-1)(-1)+(0)(0)+(-1)(-1)+(-1)(-1) = 1+0+1+1+0+1+1 = 5.
+a3·a6 = (1)(-1)+(0)(-1)+(-1)(0)+(-1)(1)+(0)(-2)+(-1)(3)+(-1)(1) = -1+0+0-1+0-3-1 = -6.
+a3·a7 = (1)(-1)+(0)(0)+(-1)(0)+(-1)(1)+(0)(-1)+(-1)(3)+(-1)(0) = -1+0+0-1+0-3+0 = -5.
+
+a4·a5 = (1)(1)+(1)(-1)+(0)(-1)+(-2)(-1)+(1)(0)+(-2)(-1)+(0)(-1) = 1 -1 +0 +2 +0 +2 +0 = 4.
+a4·a6 = (1)(-1)+(1)(-1)+(0)(0)+(-2)(1)+(1)(-2)+(-2)(3)+(0)(1) = -1 -1 +0 -2 -2 -6 +0 = -12.
+a4·a7 = (1)(-1)+(1)(0)+(0)(0)+(-2)(1)+(1)(-1)+(-2)(3)+(0)(0) = -1+0+0-2-1-6+0 = -10.
+
+a5·a6 = (1)(-1)+(-1)(-1)+(-1)(0)+(-1)(1)+(0)(-2)+(-1)(3)+(-1)(1) = -1+1+0-1+0-3-1 = -5.
+a5·a7 = (1)(-1)+(-1)(0)+(-1)(0)+(-1)(1)+(0)(-1)+(-1)(3)+(-1)(0) = -1+0+0-1+0-3+0 = -5.
+
+a6·a7 = (-1)(-1)+(-1)(0)+(0)(0)+(1)(1)+(-2)(-1)+(3)(3)+(1)(0) = 1+0+0+1+2+9+0 = 13.
+
+So we have dot products:
+
+Let's list them:
+
+a1·a1=9
+a2·a2=13
+a3·a3=5
+a4·a4=11
+a5·a5=6
+a6·a6=17
+a7·a7=12
+
+Cross:
+(1,2): -3
+(1,3): 5
+(1,4): 7
+(1,5): 4
+(1,6): -11
+(1,7): -8
+(2,3): -3
+(2,4): 3
+(2,5): -2
+(2,6): -2
+(2,7): -4
+(3,4): 5
+(3,5): 5
+(3,6): -6
+(3,7): -5
+(4,5): 4
+(4,6): -12
+(4,7): -10
+(5,6): -5
+(5,7): -5
+(6,7): 13
+
+Check symmetric: (i,j) = (j,i). Good.
+
+Now we need determinants of Gram matrices G_j for j=1..7.
+
+Let’s denote G_j = matrix with entries g_{ik} = a_i·a_k, i,k=1..j.
+
+We need det(G_j) for j=1..7.
+
+We'll compute these determinants recursively, maybe using Cholesky or LU, but since they are symmetric positive definite, we can compute by Gaussian elimination by hand, perhaps with fractions. But we only need the ratios of successive determinants, which equal rjj^2. So we could compute directly the rjj^2 using Gram-Schmidt process (the squared norms of orthogonalized vectors). This might be simpler: we can perform Gram-Schmidt with rational arithmetic (keeping vectors as rational combinations) and compute squared norms. Because the numbers might be manageable. However, we need exact values; we can treat vectors as combinations of integers and compute squared lengths after orthogonalization using dot products.
+
+We can compute the orthogonalization step by step using Gram-Schmidt but without normalizing to unit vectors; we compute u1 = a1, r11^2 = ||u1||^2 = 9. Then q1 = u1/||u1|| = a1/3. But we could continue with u2 = a2 - (a2·q1)q1 = a2 - (a2·a1/||a1||^2) a1 = a2 - (a2·a1 / |a1|^2) a1. Since a2·a1 = -3, ||a1||^2=9, so coefficient = -3/9 = -1/3. So u2 = a2 - (-1/3) a1? Wait: projection = (a2·q1) q1 = (a2·a1/||a1||) * (a1/||a1||) = (a2·a1/||a1||^2) a1 = (-3/9) a1 = -1/3 a1. So u2 = a2 - (-1/3 a1) = a2 + (1/3) a1. Then r22^2 = ||u2||^2. So we can compute u2 exactly as rational combination, then compute its squared norm. That might be easier than computing determinants.
+
+We can continue stepwise. Because the matrix is 7x7, but we can compute u_j using rational arithmetic. Since Q is orthogonal, the process is numerical but we can do exact fractions.
+
+So approach: For each j, u_j = a_j - sum_{i<j} (a_j·q_i) q_i, but q_i = u_i / ||u_i||. So equivalently, u_j = a_j - sum_{i<j} (a_j·u_i / ||u_i||^2) u_i. So we can compute u_j using the u_i vectors and dot products. So we'll maintain u_i as rational vectors (since a_i integer, coefficients rational). Then we compute squared norm of u_j. This is the same as rjj^2.
+
+We need rjj^2 for j=1..7. Let's compute.
+
+Set u1 = a1. r11^2 = ||u1||^2 = 9.
+
+Now compute u2 = a2 - (a2·u1 / ||u1||^2) u1.
+We have a2·u1 = a2·a1 = -3.
+||u1||^2 = 9.
+So coefficient = -3/9 = -1/3. So u2 = a2 - (-1/3) u1 = a2 + (1/3) a1.
+Thus u2 = a2 + (1/3)a1. Compute in rational components:
+
+a1 = (1,1,-1,0,1,-2,-1)
+a2 = (-1,-1,2,-1,1,-1,2)
+So u2 = (-1 + 1/3, -1 + 1/3, 2 -1/3, -1+0, 1+1/3, -1 -2/3? Actually careful: u2 = a2 + (1/3)a1: for each component: u2_i = a2_i + (1/3)*a1_i.
+So compute:
+component1: -1 + (1/3)*1 = -1 + 1/3 = -2/3.
+c2: -1 + (1/3)*1 = -1 + 1/3 = -2/3.
+c3: 2 + (1/3)*(-1) = 2 - 1/3 = 5/3.
+c4: -1 + (1/3)*0 = -1.
+c5: 1 + (1/3)*1 = 1 + 1/3 = 4/3.
+c6: -1 + (1/3)*(-2) = -1 - 2/3 = -5/3.
+c7: 2 + (1/3)*(-1) = 2 - 1/3 = 5/3.
+So u2 = (-2/3, -2/3, 5/3, -1, 4/3, -5/3, 5/3). Multiply by 3 to clear denominator: u2_scaled = (-2, -2, 5, -3, 4, -5, 5). But we keep rational.
+
+Now compute r22^2 = ||u2||^2 = sum of squares of components.
+Compute squares:
+(-2/3)^2 = 4/9
+(-2/3)^2 = 4/9
+(5/3)^2 = 25/9
+(-1)^2 = 1 = 9/9
+(4/3)^2 = 16/9
+(-5/3)^2 = 25/9
+(5/3)^2 = 25/9
+Sum = (4+4+25+9+16+25+25)/9 = (108)/9? Let's sum numerators: 4+4=8; +25=33; +9=42; +16=58; +25=83; +25=108. So 108/9 = 12. So r22^2 = 12.
+
+Thus r22^2 = 12.
+
+Now u3 = a3 - (a3·u1/||u1||^2) u1 - (a3·u2/||u2||^2) u2.
+We need a3·u1 = a3·a1 = 5 (since computed earlier). ||u1||^2 = 9.
+So coefficient1 = 5/9.
+We need a3·u2. Since u2 = (-2/3, -2/3, 5/3, -1, 4/3, -5/3, 5/3). Compute dot product with a3 = (1,0,-1,-1,0,-1,-1). Compute a3·u2 = sum a3_i * u2_i.
+Compute:
+1 * (-2/3) = -2/3
+0 * (-2/3) = 0
+(-1)*(5/3) = -5/3
+(-1)*(-1) = 1? Wait c4: a3[4] = -1, u2[4] = -1, product = (-1)*(-1)=1.
+0 * (4/3) = 0
+(-1)*(-5/3) = 5/3
+(-1)*(5/3) = -5/3
+Sum: (-2/3) + 0 + (-5/3) + 1 + 0 + (5/3) + (-5/3) = combine fractions: -2/3 -5/3 +5/3 -5/3 = (-2/3 -5/3 +5/3 -5/3) = (-2/3 -5/3) because +5/3 cancels -5/3? Actually: -2/3 -5/3 = -7/3; then +5/3 = -2/3; then -5/3 = -7/3. Then +1 = 1 - 7/3 = (3/3 - 7/3) = -4/3. So a3·u2 = -4/3.
+Now ||u2||^2 = 12. So coefficient2 = (a3·u2)/||u2||^2 = (-4/3)/12 = -4/(36) = -1/9. So coefficient2 = -1/9.
+
+Thus u3 = a3 - (5/9) u1 - (-1/9) u2 = a3 - (5/9) u1 + (1/9) u2.
+
+Now compute u3 explicitly in rational terms; we can compute u3 scaled by 9 to avoid fractions. Let's compute u3 = a3 - (5/9)a1 + (1/9) u2. But u2 itself is rational; combine denominators.
+
+Better: Let’s compute u3 in terms of integer multiples by using a common denominator. Since u1 = a1 (integer) and u2 has denominator 3. We'll use denominator 9.
+
+Let’s express u1, u2, a3 with denominator 9.
+
+u1 = a1 = (9/9)*a1? Actually a1 integer: we can write u1 = (9/9) a1. But we'll compute u3 as rational combination and then simplify.
+
+Set v = 9 * u3 (to clear denominators). Then v = 9 a3 - 5 u1 + u2? Because 9*(a3 - (5/9)u1 + (1/9)u2) = 9a3 -5u1 + u2. So yes, v = 9 a3 -5 a1 + u2. Since u1 = a1. So compute v as integer vector using a3, a1, and u2 (which we have as fractions but we can use its scaled version by 3? Actually u2 = (1/3)*(-2,-2,5,-3,4,-5,5). Let's keep u2 as rational but express u2 = (1/3)*u2_int where u2_int = (-2,-2,5,-3,4,-5,5). Then v = 9a3 -5a1 + (1/3) u2_int. Multiply v by 3 to avoid fraction: w = 3v = 27 a3 -15 a1 + u2_int. Then u3 = v/9 = (w/3)/9 = w/27. But may be easier to compute u3 directly with fractions then compute squared norm.
+
+Better: Compute u3 directly using rational arithmetic and then compute its squared norm. Since we have all dot products, we can compute r33^2 = ||u3||^2 using formula: r33^2 = (a3 - sum coefficients * u_i) · itself. We can compute using the Gram-Schmidt formula for squared norm: r33^2 = ||a3||^2 - sum_{i<3} (a3·u_i)^2 / ||u_i||^2. Because the projection onto the subspace reduces the squared norm: For any vector v, the squared norm of its orthogonal projection onto the orthogonal complement of span{u1,...,u_{k-1}} is ||v||^2 - sum_{i=1}^{k-1} (v·u_i)^2/||u_i||^2. This is easier: we don't need to compute u3 explicitly; we just compute rjj^2 = ||a_j||^2 - sum_{i=1}^{j-1} (a_j·u_i)^2 / ||u_i||^2. Because u_i are orthogonal. Since we have already computed u_i, we can compute dot products a_j·u_i.
+
+We already have a3·u1 = a3·a1 = 5. ||u1||^2 = 9. So (a3·u1)^2/||u1||^2 = 25/9.
+
+We have a3·u2 = -4/3 (computed). ||u2||^2 = 12. So (a3·u2)^2/||u2||^2 = (16/9)/12 = 16/(108) = 4/27? Let's compute: (16/9) / 12 = 16/(9*12) = 16/108 = simplify divide by 4: 4/27. Yes 4/27.
+
+Now ||a3||^2 = 5.
+
+Thus r33^2 = ||a3||^2 - (a3·u1)^2/||u1||^2 - (a3·u2)^2/||u2||^2 = 5 - 25/9 - 4/27 = convert to 27 denominator: 5 = 135/27; 25/9 = 75/27; 4/27 = 4/27. So 135/27 - 75/27 - 4/27 = (135-75-4)/27 = 56/27. So r33^2 = 56/27.
+
+Thus r33^2 = 56/27.
+
+Now u4: r44^2 = ||a4||^2 - sum_{i=1}^{3} (a4·u_i)^2 / ||u_i||^2.
+
+We need a4·u1, a4·u2, a4·u3.
+
+We have a4·u1 = a4·a1 = 7 (from earlier). ||u1||^2=9.
+
+a4·u2 = a4·(a2 + (1/3)a1) = a4·a2 + (1/3) a4·a1 = 3 + (1/3)*7 = 3 + 7/3 = 9/3+7/3 = 16/3. But let's verify: a4·a2 = a2·a4 = 3; a4·a1=7; yes. So a4·u2 = 16/3.
+
+a4·u3: we need to compute a4·u3. u3 = a3 - (5/9)a1 + (1/9)u2. So a4·u3 = a4·a3 - (5/9) a4·a1 + (1/9) a4·u2. We have a4·a3 = a3·a4 = 5. a4·a1 = 7. a4·u2 = 16/3. So compute: a4·u3 = 5 - (5/9)*7 + (1/9)*(16/3) = 5 - 35/9 + 16/27. Convert to 27: 5 = 135/27; 35/9 = 105/27; 16/27 = 16/27. So sum = 135/27 - 105/27 + 16/27 = (135-105+16)/27 = 46/27. So a4·u3 = 46/27.
+
+Check? Possibly compute using alternative method: we can also compute a4·u3 directly from orthogonalization; but it's fine.
+
+Now we need ||u3||^2 = r33^2 = 56/27.
+
+Now compute contributions:
+
+Term1: (a4·u1)^2 / ||u1||^2 = 7^2 / 9 = 49/9.
+
+Term2: (a4·u2)^2 / ||u2||^2 = (16/3)^2 / 12 = (256/9) / 12 = 256/(108) = simplify divide by 4: 64/27? 256/108 = divide numerator and denominator by 4: 64/27. Yes.
+
+Term3: (a4·u3)^2 / ||u3||^2 = (46/27)^2 / (56/27) = (2116/729) / (56/27) = (2116/729) * (27/56) = (2116 * 27) / (729 * 56). Simplify: 27/729 = 1/27 because 729=27*27? Actually 27^2=729. So 27/729 = 1/27. So = 2116/(27*56) = 2116/(1512). Simplify fraction: divide numerator and denominator by 4: 2116/4 = 529; 1512/4 = 378; so = 529/378. Check if further simplification: 529=23^2? 23*23=529. 378=2*3^3*7? 378=2*189=2*3*63=2*3*7*9=2*3*7*3^2=2*3^3*7. 529 not divisible by 2,3,7. So term3 = 529/378.
+
+Now ||a4||^2 = 11.
+
+So r44^2 = 11 - 49/9 - 64/27 - 529/378.
+
+We need to compute this as a rational number. Compute common denominator maybe 378? Let's get all terms with denominator 378:
+
+11 = 11 * 378/378 = 4158/378? Actually 11*378 = 4158. So 4158/378.
+
+49/9 = convert: 9 divides 378: 378/9=42, so 49/9 = 49*42/378 = 2058/378.
+
+64/27: 27*14=378? 27*14=378, so 64/27 = 64*14/378 = 896/378.
+
+529/378 stays as 529/378.
+
+Now r44^2 = (4158 - 2058 - 896 - 529)/378 = (4158 - 2058 = 2100; 2100 - 896 = 1204; 1204 - 529 = 675)/378 = 675/378. Simplify: divide by 3: 675/3=225, 378/3=126; divide by 3 again: 225/3=75, 126/3=42; divide by 3? 75/3=25, 42/3=14; so 25/14. Check: 675/378 = 225/126 = 75/42 = 25/14. So r44^2 = 25/14.
+
+Thus r44^2 = 25/14.
+
+Now u5: r55^2 = ||a5||^2 - sum_{i=1}^{4} (a5·u_i)^2 / ||u_i||^2.
+
+We need a5·u1, a5·u2, a5·u3, a5·u4. We have u1, u2, u3, and u4? We might need to compute u4 or at least a5·u4. But we can compute a5·u_i using the orthogonal vectors u_i we have (u1, u2, u3) and then u4? Actually we have not computed u4 yet, but we can compute a5·u4 if we know u4. But we can compute u4 similarly as a4 minus projection, but we may not need the whole vector; we can compute a5·u4 using the formula for u4 in terms of a4 and previous u's. Since u4 = a4 - (a4·u1/||u1||^2) u1 - (a4·u2/||u2||^2) u2 - (a4·u3/||u3||^2) u3. Then a5·u4 = a5·a4 - sum_{i=1}^{3} (a4·u_i/||u_i||^2) (a5·u_i). Because u4 is orthogonal to u1,u2,u3; but a5·u4 = a5·(a4 - Σ c_i u_i) = a5·a4 - Σ c_i (a5·u_i), where c_i = (a4·u_i)/||u_i||^2. So we can compute a5·u4 using dot products we already have or can compute: a5·a4 = 4 (from earlier); a5·u_i we can compute. Similarly we need (a5·u4)^2 / ||u4||^2. So we need a5·u4 and we already have r44^2 = ||u4||^2 = 25/14.
+
+So we need to compute a5·u1, a5·u2, a5·u3, a5·u4.
+
+First compute a5·u1 = a5·a1 = 4 (from earlier). ||u1||^2=9.
+
+a5·u2 = a5·(a2 + (1/3)a1) = a5·a2 + (1/3) a5·a1 = (-2) + (1/3)*4 = -2 + 4/3 = -6/3+4/3 = -2/3. So a5·u2 = -2/3.
+
+a5·u3: u3 = a3 - (5/9)a1 + (1/9)u2. So a5·u3 = a5·a3 - (5/9) a5·a1 + (1/9) a5·u2. We have a5·a3 = a3·a5 = 5 (from earlier: a3·a5=5). a5·a1 = 4. a5·u2 = -2/3. So compute: a5·u3 = 5 - (5/9)*4 + (1/9)*(-2/3) = 5 - 20/9 - 2/27 = convert to 27: 5 = 135/27; 20/9 = 60/27; 2/27 = 2/27. So = 135/27 - 60/27 - 2/27 = 73/27? Wait 135-60=75; 75-2=73. So a5·u3 = 73/27. But we must be careful: sign: (1/9)*(-2/3) = -2/27. So yes 5 - 20/9 - 2/27 = 5 - (60/27) - (2/27) = (135-60-2)/27 = 73/27. So a5·u3 = 73/27.
+
+Now we need a5·u4. For that, we need u4 = a4 - c1 u1 - c2 u2 - c3 u3, where c1 = (a4·u1)/||u1||^2 = 7/9, c2 = (a4·u2)/||u2||^2 = (16/3)/12 = 16/(36) = 4/9? Let's compute: (16/3)/12 = 16/(3*12)=16/36=4/9. Yes c2 = 4/9. c3 = (a4·u3)/||u3||^2 = (46/27) / (56/27) = 46/56 = 23/28. So c3 = 23/28. So u4 = a4 - (7/9) u1 - (4/9) u2 - (23/28) u3.
+
+Then a5·u4 = a5·a4 - (7/9)(a5·u1) - (4/9)(a5·u2) - (23/28)(a5·u3). We have a5·a4 = 4. a5·u1 = 4. a5·u2 = -2/3. a5·u3 = 73/27. So compute:
+
+Term1: (7/9)*4 = 28/9.
+Term2: (4/9)*(-2/3) = -8/27.
+Term3: (23/28)*(73/27) = (23*73)/(28*27). So a5·u4 = 4 - 28/9 - (-8/27?) careful: minus (4/9)(a5·u2) is - (4/9)*(-2/3) = - ( -8/27 ) = +8/27? Actually the expression: a5·u4 = a5·a4 - (7/9)(a5·u1) - (4/9)(a5·u2) - (23/28)(a5·u3). So we subtract each term. So:
+
+- (4/9)*(a5·u2) = - (4/9)*(-2/3) = +8/27. So actually it's +8/27. And - (23/28)*(a5·u3) = - (23/28)*(73/27) = -(23*73)/(756) since 28*27=756. So let's compute:
+
+a5·u4 = 4 - 28/9 + 8/27 - (23*73)/(756). Now convert to common denominator 756 maybe. Compute 4 = 4*756/756 = 3024/756. 28/9 = (28*84)/756? Since 756/9=84, so 28*84=2352, so 28/9 = 2352/756. 8/27 = (8*28)/756? Since 756/27=28, so 8*28=224, so 8/27 = 224/756. And (23*73) = 1679? Compute 23*70=1610, 23*3=69, total 1679. So term = 1679/756. So a5·u4 = 3024/756 - 2352/756 + 224/756 - 1679/756 = (3024 - 2352 = 672; 672+224=896; 896-1679 = -783)/756 = -783/756. Simplify: divide by 3: -261/252; divide by 3 again: -87/84; divide by 3? 87/3=29,84/3=28 -> -29/28. So a5·u4 = -29/28.
+
+Check: -783/756 = -261/252 = -87/84 = -29/28 yes.
+
+Thus a5·u4 = -29/28.
+
+Now we have:
+
+||u1||^2 = 9
+||u2||^2 = 12
+||u3||^2 = 56/27
+||u4||^2 = 25/14
+
+Now compute contributions:
+
+Term1: (a5·u1)^2 / ||u1||^2 = 4^2 / 9 = 16/9.
+Term2: (a5·u2)^2 / ||u2||^2 = (-2/3)^2 / 12 = (4/9)/12 = 4/(108) = 1/27? 4/108 = 1/27 yes.
+Term3: (a5·u3)^2 / ||u3||^2 = (73/27)^2 / (56/27) = (5329/729) / (56/27) = (5329/729) * (27/56) = (5329*27)/(729*56) = 5329/(27*56) because 27/729=1/27. So = 5329/(1512). 5329? 73^2=5329. So term3 = 5329/1512. Simplify? Possibly later.
+Term4: (a5·u4)^2 / ||u4||^2 = (-29/28)^2 / (25/14) = (841/784) / (25/14) = (841/784)*(14/25) = (841*14)/(784*25). Simplify: 14/784 = 1/56 (since 784/14=56). So = 841/(56*25) = 841/1400? Wait: 56*25=1400. So term4 = 841/1400.
+
+Now ||a5||^2 = 6.
+
+So r55^2 = 6 - 16/9 - 1/27 - 5329/1512 - 841/1400.
+
+We need to compute this as a rational number. It may simplify. Let's get common denominator. The denominators: 9,27,1512,1400. We'll compute exact arithmetic.
+
+First, simplify fractions where possible. Note 1512 factorization: 1512 = 2^3 * 3^3 * 7? Let's compute: 1512/8=189, 189=3^3*7 = 27*7. So 1512 = 8*189 = 2^3 * 3^3 * 7 = 8*27*7=1512. 1400 = 14*100 = 2*7*2^2*5^2 = 2^3*5^2*7? Actually 1400= 14*100 = (2*7)*(4*25)= 2*7*4*25=2*7*2^2*5^2=2^3*5^2*7. So 1400=2^3*5^2*7. 9=3^2, 27=3^3.
+
+So lcm of denominators: need max powers: 2^3, 3^3, 5^2, 7. So lcm = 8 * 27 * 25 * 7 = 8*27=216; 216*25=5400; 5400*7=37800. So common denominator 37800.
+
+Alternatively, we could compute numerically and then simplify fraction. Let's compute each term as fraction with denominator 37800.
+
+6 = 6 * 37800/37800 = 226800/37800.
+
+16/9 = (16 * 4200)/37800? Since 37800/9=4200, so 16*4200=67200; thus 67200/37800.
+
+1/27 = (1*1400)/37800? 37800/27=1400, so 1400/37800.
+
+5329/1512: 37800/1512 = ? Compute 1512 * 25 = 37800? 1512*20=30240, 1512*5=7560, sum=37800 exactly. So 5329/1512 = (5329*25)/37800 = 133225/37800? 5329*25 = 5329*100/4 = 532900/4=133225. Yes.
+
+841/1400: 37800/1400 = 27? Because 1400*27=37800. So 841/1400 = (841*27)/37800 = 22707/37800? Compute 841*27 = 841*20=16820, 841*7=5887, total 22707. Yes.
+
+Now combine:
+
+r55^2 = (226800 - 67200 - 1400 - 133225 - 22707) / 37800.
+
+Compute numerator stepwise:
+
+226800 - 67200 = 159600.
+159600 - 1400 = 158200.
+158200 - 133225 = 24975? 158200 - 133225 = 24975.
+24975 - 22707 = 2268? 24975-22707=2268.
+
+So numerator = 2268. Denominator = 37800. Simplify fraction: divide numerator and denominator by common factors. 2268 and 37800.
+
+Compute gcd. 2268 factors: 2268/2=1134, /2=567, so 2268=2^2 *567=4*567, 567=3*189=3*3*63=3^4*7? Actually 567= 3^4 *7? 3^4=81, 81*7=567. So 2268=2^2 * 3^4 *7. 37800 = 378*100 = (2*3^3*7)*(2^2*5^2) = 2^3*3^3*5^2*7? Wait 378=2*189=2*3^3*7, times 100=2^2*5^2, so total 2^3*3^3*5^2*7. Yes 2^3*3^3*5^2*7. So gcd: common factors: 2^2 (since 2268 has 2^2, 37800 has 2^3, min=2^2), 3^3 (2268 has 3^4, 37800 has 3^3, min=3^3), and 7 (both have 7). So gcd = 2^2 * 3^3 * 7 = 4 * 27 * 7 = 4*189 = 756. So divide numerator and denominator by 756: 2268/756=3? 756*3=2268, yes. 37800/756 = 50? 756*50=37800 yes. So r55^2 = 3/50 = 0.06? But check: 3/50 = 6/100 = 0.06. So r55^2 = 3/50.
+
+Thus r55^2 = 3/50.
+
+Now r66^2: For j=6, we need r66^2 = ||a6||^2 - sum_{i=1}^{5} (a6·u_i)^2 / ||u_i||^2.
+
+We have a6 (col6) = (-1,-1,0,1,-2,3,1). ||a6||^2 = 17 (from earlier). Need a6·u_i for i=1..5. We have u1, u2, u3, u4, u5? We have not computed u5 yet. But we need a6·u5. We can compute u5 in terms of a5 and previous u's, then compute a6·u5 similarly as before. Or we can use recurrence: For each u5 we can compute a6·u5 using the formula: a6·u5 = a6·a5 - sum_{i=1}^{4} (a5·u_i/||u_i||^2) (a6·u_i). Because u5 = a5 - Σ_{i=1}^{4} (a5·u_i/||u_i||^2) u_i. So a6·u5 = a6·a5 - Σ (a5·u_i/||u_i||^2)(a6·u_i). So we can compute a6·u5 if we have a6·u_i for i=1..4 and the coefficients. So we need first to compute a6·u1, a6·u2, a6·u3, a6·u4. Then use them to compute a6·u5, and then compute term5.
+
+Also need a6·u5 squared over ||u5||^2, where ||u5||^2 = r55^2 = 3/50.
+
+Let's compute stepwise.
+
+First compute a6·u1 = a6·a1 = -11 (from earlier: a1·a6 = -11). So a6·u1 = -11.
+
+a6·u2 = a6·(a2 + (1/3)a1) = a6·a2 + (1/3) a6·a1 = (-2) + (1/3)*(-11) = -2 - 11/3 = -6/3 -11/3 = -17/3. Check a6·a2 = -2 (from earlier a2·a6 = -2). Yes.
+
+So a6·u2 = -17/3.
+
+a6·u3: u3 = a3 - (5/9)a1 + (1/9)u2. So a6·u3 = a6·a3 - (5/9) a6·a1 + (1/9) a6·u2. We have a6·a3 = a3·a6 = -6 (from earlier). a6·a1 = -11. a6·u2 = -17/3. So compute: a6·u3 = -6 - (5/9)*(-11) + (1/9)*(-17/3) = -6 + (55/9) - (17/27). Convert to 27: -6 = -162/27; 55/9 = 165/27; 17/27 = 17/27. So sum = (-162 + 165 - 17)/27 = (-14)/27?  -162+165=3; 3-17=-14. So a6·u3 = -14/27.
+
+Now a6·u4: u4 = a4 - (7/9)u1 - (4/9)u2 - (23/28)u3. So a6·u4 = a6·a4 - (7/9) a6·u1 - (4/9) a6·u2 - (23/28) a6·u3. Compute a6·a4 = a4·a6 = -12 (from earlier). a6·u1 = -11. a6·u2 = -17/3. a6·u3 = -14/27. So:
+
+Term1: (7/9)*(-11) = -77/9? Actually (7/9)*a6·u1 = (7/9)*(-11) = -77/9.
+Term2: (4/9)*a6·u2 = (4/9)*(-17/3) = -68/27.
+Term3: (23/28)*a6·u3 = (23/28)*(-14/27) = -(23*14)/(28*27) = -(23*14)/(756) because 28*27=756. Simplify 14/28=1/2, so = -(23*1)/(2*27) = -23/54? Actually (23/28)*(-14/27) = -23*14/(28*27) = -23*(14/28)/27 = -23*(1/2)/27 = -23/(54). Yes, because 14/28=1/2, so -23/(2*27) = -23/54.
+
+Now a6·u4 = a6·a4 - (7/9)a6·u1 - (4/9)a6·u2 - (23/28)a6·u3 = (-12) - (-77/9) - (-68/27) - (-23/54)? Wait careful: The expression is a6·a4 - (7/9) a6·u1 - (4/9) a6·u2 - (23/28) a6·u3. So we subtract each term. So:
+
+a6·u4 = -12 - [ -77/9 ] - [ -68/27 ] - [ -23/54 ] = -12 + 77/9 + 68/27 + 23/54.
+
+Now compute sum of fractions. Convert to denominator 54: -12 = -648/54; 77/9 = (77*6)/54 = 462/54; 68/27 = (68*2)/54 = 136/54; 23/54 = 23/54. Sum: (-648 + 462 + 136 + 23)/54 = (-648 + 462 = -186; -186+136 = -50; -50+23 = -27)/54 = -27/54 = -1/2. So a6·u4 = -1/2.
+
+Great! So a6·u4 = -1/2.
+
+Now we need a6·u5. u5 = a5 - c1 u1 - c2 u2 - c3 u3 - c4 u4, where c_i = (a5·u_i)/||u_i||^2 for i=1..4. We have already computed these c_i values when we computed a5·u4? Actually we computed a5·u4 but we need the coefficients c_i = (a5·u_i)/||u_i||^2. Let's recall them:
+
+c1 = (a5·u1)/||u1||^2 = 4/9.
+c2 = (a5·u2)/||u2||^2 = (-2/3)/12 = -2/36 = -1/18? Let's compute: (-2/3) /12 = -2/(36) = -1/18.
+c3 = (a5·u3)/||u3||^2 = (73/27) / (56/27) = 73/56.
+c4 = (a5·u4)/||u4||^2 = (-29/28) / (25/14) = (-29/28)*(14/25) = (-29*14)/(28*25) = (-29*1)/(2*25) = -29/50. Because 14/28=1/2. So c4 = -29/50.
+
+Thus u5 = a5 - (4/9)u1 - (-1/18)u2? Wait careful: u5 = a5 - c1 u1 - c2 u2 - c3 u3 - c4 u4. So:
+c1 = 4/9
+c2 = -1/18 (so - c2 u2 = -(-1/18) u2 = + (1/18) u2? Actually it's minus c2 u2, so -(-1/18)u2 = +1/18 u2)
+c3 = 73/56
+c4 = -29/50, so -c4 u4 = -(-29/50) u4 = +29/50 u4.
+
+But for a6·u5 we can use the formula: a6·u5 = a6·a5 - Σ_{i=1}^{4} c_i (a6·u_i). Because u5 = a5 - Σ c_i u_i, so a6·u5 = a6·a5 - Σ c_i (a6·u_i). The c_i are the same as above. So we can compute a6·u5 = a6·a5 - [c1*(a6·u1) + c2*(a6·u2) + c3*(a6·u3) + c4*(a6·u4)].
+
+We need a6·a5 = a5·a6 = -5 (from earlier: a5·a6 = -5). Good.
+
+Now we have:
+a6·u1 = -11
+a6·u2 = -17/3
+a6·u3 = -14/27
+a6·u4 = -1/2
+
+c1 = 4/9
+c2 = -1/18
+c3 = 73/56
+c4 = -29/50
+
+Compute the sum S = c1*(a6·u1) + c2*(a6·u2) + c3*(a6·u3) + c4*(a6·u4).
+
+Compute each term:
+
+Term1: c1*(a6·u1) = (4/9)*(-11) = -44/9.
+
+Term2: c2*(a6·u2) = (-1/18)*(-17/3) = (1/18)*(17/3) = 17/54? Because negative times negative = positive: (-1/18)*(-17/3)= (1*17)/(18*3)=17/54.
+
+Term3: c3*(a6·u3) = (73/56)*(-14/27) = - (73*14)/(56*27). Simplify 14/56=1/4, so = - (73*1)/(4*27) = -73/108.
+
+Term4: c4*(a6·u4) = (-29/50)*(-1/2) = (29/50)*(1/2) = 29/100? Because negative times negative = positive: (-29/50)*(-1/2)=29/100.
+
+So S = -44/9 + 17/54 - 73/108 + 29/100.
+
+Now compute S. Let's find common denominator for these fractions: denominators 9,54,108,100. LCM of 9,54,108: 108. Then with 100, LCM of 108 and 100 = 2700? Since 108=2^2*3^3, 100=2^2*5^2, LCM=2^2*3^3*5^2=4*27*25=2700. So use denominator 2700.
+
+Convert each term:
+
+-44/9 = -44 * (300)/2700? 2700/9=300, so -44*300 = -13200/2700.
+17/54 = 17 * (50)/2700? 2700/54=50, so 17*50=850/2700.
+-73/108 = -73 * (25)/2700? 2700/108=25, so -73*25 = -1825/2700.
+29/100 = 29 * (27)/2700? 2700/100=27, so 29*27=783/2700.
+
+Now sum: (-13200 + 850 = -12350; -12350 -1825 = -14175; -14175 + 783 = -13392)/2700. So S = -13392/2700. Simplify fraction: divide numerator and denominator by? both divisible by 12? 13392/12=1116, 2700/12=225. So = -1116/225. Further simplify: divide by 3: 1116/3=372, 225/3=75 => -372/75. Can we simplify more? 372 and 75 gcd? 372 factors: 2^2*3*31? 372=4*93=4*3*31=12*31; 75=3*25; gcd=3. So divide by 3: -124/25. So S = -124/25.
+
+Thus a6·u5 = a6·a5 - S = (-5) - (-124/25) = -5 + 124/25 = -125/25 + 124/25 = -1/25. So a6·u5 = -1/25.
+
+Now we have a6·u5 = -1/25. And ||u5||^2 = r55^2 = 3/50.
+
+Now we need also terms for i=1..5:
+
+We have:
+a6·u1 = -11
+a6·u2 = -17/3
+a6·u3 = -14/27
+a6·u4 = -1/2
+a6·u5 = -1/25
+
+Now compute each (a6·u_i)^2 / ||u_i||^2:
+
+Term1: (a6·u1)^2 / ||u1||^2 = (-11)^2 / 9 = 121/9.
+
+Term2: (a6·u2)^2 / ||u2||^2 = (-17/3)^2 / 12 = (289/9) / 12 = 289/(108) = simplify? 289/108 = 289/108. No simplification (289=17^2). Keep as fraction.
+
+Term3: (a6·u3)^2 / ||u3||^2 = (-14/27)^2 / (56/27) = (196/729) / (56/27) = (196/729)*(27/56) = (196*27)/(729*56) = simplify: 27/729 = 1/27, so (196)/(27*56) = 196/(1512). Simplify: 196/1512 = divide by 28? 28*7=196, 28*54=1512? Actually 28*54=1512, so 196/1512 = 7/54? Check: 196/28=7, 1512/28=54, so yes = 7/54. So term3 = 7/54.
+
+Term4: (a6·u4)^2 / ||u4||^2 = (-1/2)^2 / (25/14) = (1/4) / (25/14) = (1/4)*(14/25) = 14/(100) = 7/50? Actually 14/100 = 7/50. So term4 = 7/50.
+
+Term5: (a6·u5)^2 / ||u5||^2 = (-1/25)^2 / (3/50) = (1/625) / (3/50) = (1/625)*(50/3) = 50/(1875) = simplify: divide by 25: 50/25=2, 1875/25=75, so = 2/75. Or 50/1875 = 2/75 yes.
+
+Now ||a6||^2 = 17.
+
+So r66^2 = 17 - 121/9 - 289/108 - 7/54 - 7/50 - 2/75.
+
+We need to compute this rational expression. Let's get common denominator. Denominators: 9,108,54,50,75. Let's factor them:
+
+9=3^2
+108=2^2*3^3? Actually 108= 4*27=2^2 *3^3.
+54=2*3^3.
+50=2*5^2.
+75=3*5^2.
+
+LCM = max powers: 2^2, 3^3, 5^2 = 4*27*25 = 2700. So denominator 2700. Convert each term to /2700.
+
+First, 17 = 17*2700/2700 = 45900/2700? 17*2700=45900.
+
+121/9: 2700/9=300, so 121*300=36300, so 36300/2700.
+
+289/108: 2700/108 = 25 (since 108*25=2700), so 289*25=7225, so 7225/2700.
+
+7/54: 2700/54 = 50, so 7*50=350, so 350/2700.
+
+7/50: 2700/50=54, so 7*54=378, so 378/2700.
+
+2/75: 2700/75=36, so 2*36=72, so 72/2700.
+
+Now r66^2 = (45900 - 36300 - 7225 - 350 - 378 - 72) / 2700.
+
+Compute numerator: 45900 - 36300 = 9600; 9600 - 7225 = 2375; 2375 - 350 = 2025; 2025 - 378 = 1647; 1647 - 72 = 1575. So numerator = 1575. So r66^2 = 1575/2700. Simplify: divide by 75: 1575/75=21, 2700/75=36, so = 21/36 = 7/12? Actually 21/36 simplify by 3: 7/12. So r66^2 = 7/12.
+
+Check: 1575/2700 = reduce by 15: 1575/15=105, 2700/15=180 =>105/180=21/36=7/12. Yes.
+
+Thus r66^2 = 7/12.
+
+Now r77^2: For last column j=7, r77^2 = ||a7||^2 - sum_{i=1}^{6} (a7·u_i)^2 / ||u_i||^2.
+
+We need a7·u_i for i=1..6. We have u1..u6. We have u6 perhaps? We need a7·u6. We'll compute similarly: first compute a7·u_i for i=1..5 using previous, then compute u6 and a7·u6, then compute term.
+
+We have a7 = (-1,0,0,1,-1,3,0). ||a7||^2 = 12.
+
+Compute a7·u1 = a7·a1 = -8 (from earlier: a1·a7 = -8). So a7·u1 = -8.
+
+a7·u2 = a7·(a2 + (1/3)a1) = a7·a2 + (1/3) a7·a1 = (-4) + (1/3)*(-8) = -4 -8/3 = -12/3 -8/3 = -20/3. (Check a7·a2 = -4 from earlier.)
+
+a7·u3 = a7·a3 - (5/9) a7·a1 + (1/9) a7·u2. We have a7·a3 = a3·a7 = -5 (from earlier). a7·a1 = -8. a7·u2 = -20/3. So compute: a7·u3 = -5 - (5/9)*(-8) + (1/9)*(-20/3) = -5 + 40/9 -20/27. Convert to 27: -5 = -135/27; 40/9 = 120/27; -20/27 = -20/27. So sum = (-135+120-20)/27 = (-35)/27?  -135+120=-15; -15-20=-35. So a7·u3 = -35/27.
+
+a7·u4 = a7·a4 - (7/9) a7·u1 - (4/9) a7·u2 - (23/28) a7·u3. Compute a7·a4 = a4·a7 = -10 (from earlier). a7·u1 = -8. a7·u2 = -20/3. a7·u3 = -35/27. Compute each term:
+
+(7/9)*a7·u1 = (7/9)*(-8) = -56/9.
+(4/9)*a7·u2 = (4/9)*(-20/3) = -80/27.
+(23/28)*a7·u3 = (23/28)*(-35/27) = - (23*35)/(28*27). Simplify 35/28=5/4 (since divide by 7: 35/7=5,28/7=4), so = - (23*5)/(4*27) = -115/108.
+Now a7·u4 = a7·a4 - (7/9)a7·u1 - (4/9)a7·u2 - (23/28)a7·u3 = (-10) - (-56/9) - (-80/27) - (-115/108) = -10 + 56/9 + 80/27 + 115/108.
+
+Convert to denominator 108: -10 = -1080/108; 56/9 = (56*12)/108 = 672/108; 80/27 = (80*4)/108 = 320/108; 115/108 = 115/108. Sum = (-1080 + 672 = -408; -408+320 = -88; -88+115 = 27)/108 = 27/108 = 1/4. So a7·u4 = 1/4.
+
+Now a7·u5: u5 = a5 - c1 u1 - c2 u2 - c3 u3 - c4 u4, with c_i as before: c1=4/9, c2=-1/18, c3=73/56, c4=-29/50. So a7·u5 = a7·a5 - [c1*a7·u1 + c2*a7·u2 + c3*a7·u3 + c4*a7·u4]. Compute a7·a5 = a5·a7 = -5 (from earlier: a5·a7 = -5). a7·u1 = -8; a7·u2 = -20/3; a7·u3 = -35/27; a7·u4 = 1/4.
+
+Compute S5 = c1*a7·u1 + c2*a7·u2 + c3*a7·u3 + c4*a7·u4.
+
+c1*a7·u1 = (4/9)*(-8) = -32/9.
+c2*a7·u2 = (-1/18)*(-20/3) = (20)/(54) = 10/27? Actually (-1/18)*(-20/3)= (20)/(54)=10/27? 20/54 simplifies to 10/27 yes.
+c3*a7·u3 = (73/56)*(-35/27) = - (73*35)/(56*27). Simplify 35/56=5/8 (divide by 7: 35/7=5,56/7=8), so = - (73*5)/(8*27) = -365/(216). Because 8*27=216. So c3 term = -365/216.
+c4*a7·u4 = (-29/50)*(1/4) = -29/200.
+
+So S5 = -32/9 + 10/27 - 365/216 - 29/200.
+
+We need common denominator. Let's find LCM of 9,27,216,200. 9=3^2; 27=3^3; 216=2^3*3^3? Actually 216=6^3=2^3*3^3; 200=2^3*5^2. So LCM = 2^3*3^3*5^2 = 8*27*25 = 5400. So use denominator 5400.
+
+Compute each term:
+
+-32/9: 5400/9=600, so -32*600 = -19200/5400.
+10/27: 5400/27=200, so 10*200=2000/5400.
+-365/216: 5400/216 = 25? 216*25=5400 yes, so -365*25 = -9125/5400.
+-29/200: 5400/200=27, so -29*27 = -783/5400.
+
+Sum = (-19200 + 2000 = -17200; -17200 -9125 = -26325; -26325 -783 = -27108)/5400. So S5 = -27108/5400. Simplify: divide numerator and denominator by? Both divisible by 12? 27108/12=2259? 12*2259=27108? 12*2250=27000, 12*9=108, sum=27108 yes. 5400/12=450. So = -2259/450. Further divide by 3: 2259/3=753, 450/3=150 => -753/150. Divide by 3 again? 753/3=251, 150/3=50 => -251/50. So S5 = -251/50.
+
+Thus a7·u5 = a7·a5 - S5 = (-5) - (-251/50) = -5 + 251/50 = -250/50 + 251/50 = 1/50. So a7·u5 = 1/50.
+
+Now a7·u6: We need u6 = a6 - Σ_{i=1}^{5} d_i u_i, where d_i = (a6·u_i)/||u_i||^2. So we need to compute these coefficients d_i for i=1..5. Then a7·u6 = a7·a6 - Σ d_i (a7·u_i). So we need d_i and a7·u_i for i=1..5. We have a7·u_i already for i=1..5: a7·u1=-8, a7·u2=-20/3, a7·u3=-35/27, a7·u4=1/4, a7·u5=1/50. And we have a7·a6 = a6·a7 = 13 (from earlier: a6·a7=13). So we need d_i = (a6·u_i)/||u_i||^2.
+
+We have a6·u_i from earlier calculations: a6·u1=-11, a6·u2=-17/3, a6·u3=-14/27, a6·u4=-1/2, a6·u5=-1/25. And we have ||u_i||^2: ||u1||^2=9, ||u2||^2=12, ||u3||^2=56/27, ||u4||^2=25/14, ||u5||^2=3/50.
+
+So compute d_i = (a6·u_i) / ||u_i||^2:
+
+d1 = (-11)/9 = -11/9.
+d2 = (-17/3) / 12 = -17/(36) = -17/36.
+d3 = (-14/27) / (56/27) = (-14/27)*(27/56) = -14/56 = -1/4.
+d4 = (-1/2) / (25/14) = (-1/2)*(14/25) = -14/50 = -7/25.
+d5 = (-1/25) / (3/50) = (-1/25)*(50/3) = -50/(75) = -2/3? Actually 50/25=2, so (-1*2)/3 = -2/3. So d5 = -2/3.
+
+Now compute sum S6 = Σ d_i (a7·u_i) = d1*a7·u1 + d2*a7·u2 + d3*a7·u3 + d4*a7·u4 + d5*a7·u5.
+
+Compute each:
+
+d1*a7·u1 = (-11/9)*(-8) = 88/9.
+d2*a7·u2 = (-17/36)*(-20/3) = (17/36)*(20/3) = (17*20)/(108) = 340/108 = simplify divide by 4: 85/27? 340/108 = divide numerator and denominator by 4: 85/27 yes.
+d3*a7·u3 = (-1/4)*(-35/27) = 35/(108) because 1/4 * 35/27 = 35/108, positive.
+d4*a7·u4 = (-7/25)*(1/4) = -7/100.
+d5*a7·u5 = (-2/3)*(1/50) = -2/150 = -1/75.
+
+Now sum S6 = 88/9 + 85/27 + 35/108 - 7/100 - 1/75.
+
+We need common denominator for these fractions. Denominators: 9,27,108,100,75. Let's find LCM. 108=2^2*3^3; 100=2^2*5^2; 75=3*5^2; 9=3^2; 27=3^3. So LCM = 2^2 * 3^3 * 5^2 = 4*27*25 = 2700. So denominator 2700.
+
+Convert each term:
+
+88/9 = (88*300)/2700 = 26400/2700? 9*300=2700, so 88*300=26400.
+85/27 = (85*100)/2700 = 8500/2700? 27*100=2700, yes 85*100=8500.
+35/108 = (35*25)/2700 = 875/2700? 108*25=2700, so 35*25=875.
+-7/100 = -(7*27)/2700 = -189/2700.
+-1/75 = -(1*36)/2700 = -36/2700 (since 75*36=2700).
+
+Sum = (26400 + 8500 = 34900; 34900+875=35775; 35775 - 189 = 35586; 35586 - 36 = 35550)/2700 = 35550/2700. Simplify: divide by 50? 35550/50=711, 2700/50=54 -> 711/54 = simplify by 3: 237/18 = simplify by 3: 79/6. Actually 711/54 = divide by 3: 237/18 = divide by 3: 79/6. So 35550/2700 = 79/6? Let's check: 79/6 = 13.1667; 35550/2700 = 13.1667 indeed. So S6 = 79/6.
+
+Then a7·u6 = a7·a6 - S6 = 13 - 79/6 = 78/6 - 79/6 = -1/6. So a7·u6 = -1/6.
+
+Now we have a7·u6. We also need a7·u_i for i=1..6, and ||u_i||^2.
+
+We have:
+a7·u1 = -8
+a7·u2 = -20/3
+a7·u3 = -35/27
+a7·u4 = 1/4
+a7·u5 = 1/50
+a7·u6 = -1/6
+
+And ||u_i||^2:
+||u1||^2 = 9
+||u2||^2 = 12
+||u3||^2 = 56/27
+||u4||^2 = 25/14
+||u5||^2 = 3/50
+||u6||^2 = r66^2 = 7/12.
+
+Now compute each term (a7·u_i)^2 / ||u_i||^2:
+
+Term1: ( -8 )^2 / 9 = 64/9.
+
+Term2: (-20/3)^2 / 12 = (400/9) / 12 = 400/(108) = simplify: divide by 4: 100/27. So term2 = 100/27.
+
+Term3: (-35/27)^2 / (56/27) = (1225/729) / (56/27) = (1225/729)*(27/56) = (1225*27)/(729*56). Simplify 27/729 = 1/27, so = 1225/(27*56) = 1225/(1512). Simplify? 1225=35^2? 35^2=1225. 1512= 8*189= 2^3*3^3*7? Actually 1512= 1512/7=216, so 1512=7*216=7*6^3? Anyway. We can simplify fraction 1225/1512. Check gcd: 1225 mod 7 = 0? 7*175=1225, yes 1225=7*175; 1512=7*216; so =175/216. Because 1225/7=175, 1512/7=216. So term3 = 175/216.
+
+Term4: (1/4)^2 / (25/14) = (1/16) / (25/14) = (1/16)*(14/25) = 14/(400) = 7/200? Actually 14/400 = 7/200. So term4 = 7/200.
+
+Term5: (1/50)^2 / (3/50) = (1/2500) / (3/50) = (1/2500)*(50/3) = 50/(7500) = 1/150? Because 50/7500 = 1/150. So term5 = 1/150.
+
+Term6: (-1/6)^2 / (7/12) = (1/36) / (7/12) = (1/36)*(12/7) = 12/(252) = 1/21? Because 12/252 = 1/21. So term6 = 1/21.
+
+Now ||a7||^2 = 12.
+
+So r77^2 = 12 - (64/9 + 100/27 + 175/216 + 7/200 + 1/150 + 1/21).
+
+We need to compute this sum of fractions and subtract from 12. Let's compute the sum S = 64/9 + 100/27 + 175/216 + 7/200 + 1/150 + 1/21.
+
+Find common denominator. Denominators: 9,27,216,200,150,21. Factor each:
+
+9=3^2
+27=3^3
+216=2^3 * 3^3 (since 216=8*27)
+200=2^3 * 5^2
+150=2 * 3 * 5^2
+21=3 * 7
+
+So LCM = 2^3 * 3^3 * 5^2 * 7 = 8 * 27 * 25 * 7 = 8*27=216, 216*25=5400, 5400*7=37800. So denominator 37800.
+
+Convert each term:
+
+64/9: 37800/9=4200, so 64*4200=268800/37800.
+100/27: 37800/27=1400, so 100*1400=140000/37800.
+175/216: 37800/216=175? Because 216*175 = 216*100=21600, 216*75=16200, sum=37800. So 175*175=30625? Wait: 175 * 175 = 30625? Actually term is 175/216, so numerator becomes 175 * (37800/216) = 175 * 175 = 30625. Because 37800/216 = 175. So term = 30625/37800.
+7/200: 37800/200=189, so 7*189=1323/37800.
+1/150: 37800/150=252, so 1*252=252/37800.
+1/21: 37800/21=1800, so 1*1800=1800/37800.
+
+Now sum these numerators: 268800 + 140000 = 408800; +30625 = 439425; +1323 = 440748; +252 = 441000; +1800 = 442800. So S = 442800/37800.
+
+Simplify S: divide numerator and denominator by 100? 442800/100=4428, 37800/100=378, so = 4428/378. Simplify further: divide by 2: 2214/189; divide by 3: 738/63; divide by 3: 246/21; divide by 3: 82/7. So S = 82/7? Let's verify: 442800/37800 = divide numerator and denominator by 600? Actually 37800/600=63, 442800/600=738, so 738/63 = 82/7 (since 738/9=82, 63/9=7). Yes S = 82/7.
+
+Thus S = 82/7 ≈ 11.7142857.
+
+Now r77^2 = 12 - 82/7 = (84/7 - 82/7) = 2/7.
+
+So r77^2 = 2/7.
+
+Thus we have all squares:
+
+r11^2 = 9
+r22^2 = 12
+r33^2 = 56/27
+r44^2 = 25/14
+r55^2 = 3/50
+r66^2 = 7/12
+r77^2 = 2/7
+
+We should verify if these are consistent with the determinant ratio property: det(G1)=9; det(G2)=? Should be r11^2 * r22^2 = 9*12=108; Let's compute det(G2) directly: G2 = [[9, -3],[-3,13]]; determinant = 9*13 - (-3)^2 = 117-9=108, correct. det(G3)=det(G2)*r33^2 =108*(56/27)=108*56/27 = (108/27)*56=4*56=224. We can verify later if needed. G3 = [[9,-3,5],[-3,13,-3],[5,-3,5]]; det? Maybe 224; plausible. So our computed values are plausible.
+
+Now we need to list the squares in order: R11^2, R22^2, ..., R77^2 as comma-separated list of exact numbers (integers or fractions). So we have: 9, 12, 56/27, 25/14, 3/50, 7/12, 2/7. But maybe we should simplify fractions to lowest terms: 56/27 is already reduced? 56 and 27 share no common factor (27=3^3, 56=2^3*7). So ok. 25/14 is reduced. 3/50 reduced. 7/12 reduced. 2/7 reduced. So answer.
+
+We should check if any of these can be written as integers? 9 and 12 are integers. Others fractions.
+
+Thus final answer: 9, 12, 56/27, 25/14, 3/50, 7/12, 2/7.
+
+We present as comma-separated list.
+
+Now produce final output: ANSWER: 9, 12, 56/27, 25/14, 3/50, 7/12, 2/7
+
+Make sure formatting: maybe spaces after commas? Typically no spaces, but we can include spaces for readability? The problem says "one comma-separated list". We'll give exactly as "9, 12, 56/27, 25/14, 3/50, 7/12, 2/7". We'll put that after ANSWER:.
+
+Thus final.

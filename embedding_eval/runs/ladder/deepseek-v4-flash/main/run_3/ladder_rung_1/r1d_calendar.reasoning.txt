@@ -1,0 +1,675 @@
+We need to compute answers for 50 calendar questions. All dates are in 2014, Gregorian calendar, business days Monday-Friday, no holidays. Each question asks for counts of specific days or business days between two dates inclusive. We need to answer with just the number for each, and final output as comma-separated list.
+
+Because there are many, we'll compute systematically. We can use date calculations. Since all are in same year, we can compute day-of-week for each date, and then count numbers of days of a given weekday in a range.
+
+We need to be careful: inclusive of both start and end dates. For counting occurrences of a specific weekday, we can compute the number of days between start and end inclusive, then determine how many of that weekday. Alternatively, we can compute the first occurrence and last occurrence and then count.
+
+Better: compute total days = (end - start) + 1. Then number of a given weekday = floor((days + offset)/7) etc. But careful with offsets.
+
+We can also compute using known day-of-week for a reference. Since all dates 2014, we can use known day-of-week for any date. I recall that Jan 1, 2014 was Wednesday. So we can compute day-of-week for any date by days offset.
+
+Let’s define function: day_of_week(date) where 0=Sunday, 1=Monday, ..., 6=Saturday? Or use numbers consistent. Better to use Python-like mental calculation. Since we need to do many manually, we might compute each range by counting days and then finding number of weekdays.
+
+Alternatively, we can compute by finding the number of full weeks and remainder.
+
+Let me create a systematic approach: For any two dates (inclusive), the total number of days D = (end - start) + 1. Let the day-of-week of start be d0 (0=Sun,1=Mon,...,6=Sat). Then the days of the week that appear: The sequence from d0 to d0 + (D-1) mod 7. Count of a particular weekday w is: if D <= 0? But typically: count = floor((D + (w - d0) % 7)/7) but careful with mod. Standard formula: Number of occurrences of weekday w = floor((D - ( (d0 - w) mod 7 ) + 6)/7) or something.
+
+Simpler: For a given range inclusive, the count of weekdays (Mon-Fri) can be computed as total days minus number of Saturdays and Sundays. For specific weekday, use: count = floor((D - ( (d0 - w) mod 7 ) + 6)/7) is not right. Let's derive:
+
+Let start day-of-week s (0=Sun,1=Mon,...,6=Sat). Let end day-of-week e = (s + D-1) mod 7. Then the count of weekday w is: if w is between s and e in the cyclic order, then number of full weeks plus possibly one if w is in the partial week. More precisely: number of full weeks = floor(D/7). Then remainder r = D % 7. The days in the remainder are s, s+1, ..., s+r-1 (mod 7). So count = full weeks + (1 if w is in that set else 0). So we need s and r.
+
+Thus, we can compute D and s, then for each specific weekday count = floor(D/7) + (1 if (w - s) mod 7 < r else 0). That is straightforward.
+
+For business days count (Mon-Fri), we can compute total days and subtract Saturdays and Sundays. Or compute using same method: count of Mon to Fri = full weeks * 5 + number of weekdays in remainder (where remainder days from s to s+r-1 mod7). But careful: if s is Saturday or Sunday, etc.
+
+Thus we can answer all questions by computing D, s, and r, then applying.
+
+We need to compute D (inclusive) for each date range. Since all dates in 2014, we can compute day-of-year for each date. Let's compute day-of-year for 2014. 2014 is not a leap year (2014 %4 = 2, not leap). So Feb has 28 days. So we can compute ordinal for each month:
+
+Month days: Jan31, Feb28, Mar31, Apr30, May31, Jun30, Jul31, Aug31, Sep30, Oct31, Nov30, Dec31.
+
+We'll compute day-of-year for each given date.
+
+First, we need day-of-week for any date. Since Jan 1, 2014 was Wednesday. Let's verify: I recall Jan 1, 2014 was Wednesday indeed. So we can compute day-of-week offset: For a given day-of-year d, day-of-week = (d - 1 + 3) mod 7? Let's set: Jan 1 = day 1, day-of-week = Wednesday = 3 if we set 0=Sun,1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat. So day-of-week for day-of-year N = (N-1 + 3) mod 7 = (N+2) mod 7? Actually (N-1+3)=N+2 mod7. So d0 = (N+2) mod7. Check: N=1 => (1+2)=3 mod7=3 Wed, correct. So day-of-week = (N+2) mod7 with 0=Sun,1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat.
+
+Thus we can compute day-of-year for each date and then get s.
+
+Now let's compute each question.
+
+We have 50 questions. I'll go one by one. I'll compute D and s, then count required days.
+
+I'll compile answers in order.
+
+Let me begin:
+
+1. Between Saturday, September 20, 2014 and Sunday, October 12, 2014 (counting both dates), how many times does Friday occur? Respond with just the number.
+
+First, find day-of-year for Sep 20 and Oct 12.
+
+2014: Jan31, Feb28, Mar31, Apr30, May31, Jun30, Jul31, Aug31, Sep30, Oct31, Nov30, Dec31.
+
+Days before September: Jan31+Feb28=59, Mar31=90, Apr30=120, May31=151, Jun30=181, Jul31=212, Aug31=243. So Sep 1 is day 244? Actually Jan1=1, Jan31=31, Feb1=32, Feb28=59, Mar1=60, Mar31=90, Apr1=91, Apr30=120, May1=121, May31=151, Jun1=152, Jun30=181, Jul1=182, Jul31=212, Aug1=213, Aug31=243, Sep1=244. So Sep20 = 244+19 = 263. Oct1=244+30? Actually Sep30 = 244+29? Let's compute properly: Sep1=244, Sep30=244+29=273? Wait Sep has 30 days, so Sep30 = 244+29 = 273? Actually Sep1 is day 244, so Sep2=245, ... Sep20 = 244+19 = 263. Oct1 = day 274? Since Sep ends at day 273 (Sep30=273), Oct1=274. Then Oct12 = 274+11 = 285. So start day-of-year = 263, end = 285.
+
+Now D = 285-263+1 = 23 days. Start day-of-week: s = (263+2) mod7 = 265 mod7 = 265/7=37*7=259 remainder 6, so s=6? 265 mod7=6, so s=6 means Saturday? Yes, 6=Sat, correct. End day-of-week: (285+2)=287 mod7=0? 287 mod7=0, Sunday. So r = D%7 = 23%7=2. So remainder days: s=6 (Sat), then s+1=0 (Sun), since r=2, remainder includes Sat and Sun. So full weeks = floor(23/7)=3, remainder 2 days: Sat and Sun. Now we want count of Friday. Friday is w=5. In remainder, we have Sat (6) and Sun (0), no Friday. So count = full weeks + 0 = 3 weeks * 1 Friday per week = 3. So answer: 3.
+
+But double-check: The range includes Sep20 (Sat) to Oct12 (Sun). There are 23 days. How many Fridays? The Fridays in that interval: Sep26? Sep26 is a Friday? Let's see: Sep20 Sat, so Sep19 Fri? Actually Sep20 Sat means Sep19 Fri, but Sep19 is before start. So first Friday after start is Sep26? Actually Sep20 Sat, then Sep21 Sun, Sep22 Mon, Sep23 Tue, Sep24 Wed, Sep25 Thu, Sep26 Fri. So Sep26 is in range. Next Friday Oct3, Oct10. Oct10 is Friday, then Oct17 is after end. So that's 3 Fridays: Sep26, Oct3, Oct10. So 3 correct.
+
+Thus Q1: 3.
+
+2. Count the weekdays (excluding weekends) from Friday, April 4 to Tuesday, August 12, 2014 (including both start and end dates). Reply with the numerical value.
+
+Weekdays: Mon-Fri. So count business days inclusive.
+
+Compute dates: April 4, 2014 to August 12, 2014.
+
+Compute day-of-year:
+
+Jan31, Feb28, Mar31, Apr30, May31, Jun30, Jul31, Aug31.
+
+Days before April: Jan31+Feb28+Mar31=31+28+31=90. So Apr1=91, Apr4=91+3=94. (Apr1=91, Apr2=92, Apr3=93, Apr4=94). So start = 94.
+
+August: days before August: Jan31+Feb28+Mar31+Apr30+May31+Jun30+Jul31 = 31+28+31+30+31+30+31 = let's sum: 31+28=59, +31=90, +30=120, +31=151, +30=181, +31=212. So Aug1=213, Aug12=213+11=224. So end = 224.
+
+D = 224-94+1 = 131 days.
+
+Now we need count of weekdays (Mon-Fri). Compute start day-of-week: s = (94+2)=96 mod7 = 96/7=13*7=91 remainder 5, so s=5 (Friday). So start is Friday. D=131, r = 131%7 = 131-7*18=131-126=5. So full weeks = floor(131/7)=18, remainder 5 days. Remainder days: from s=5 (Fri), then Sat (6), Sun (0), Mon (1), Tue (2) for r=5? Actually s=5, then s+1=6, s+2=0, s+3=1, s+4=2. So remainder includes Fri, Sat, Sun, Mon, Tue. So weekdays in remainder: Fri, Mon, Tue (3 weekdays). So total business days = full weeks*5 + 3 = 18*5 +3 = 90+3=93. But careful: full weeks count each week has 5 weekdays, that's correct. But need to ensure that the remainder days are exactly the first r days starting from start, so includes start (Fri) which is weekday, and the next days. So 3 weekdays in remainder. So answer = 93.
+
+Check: Alternatively, calculate total days 131, subtract weekends. Number of weekends: full weeks have 2 weekends each = 18*2=36, plus remainder weekends: Sat and Sun are both weekends, so 2 weekends in remainder, total weekends=38, weekdays=131-38=93. Yes.
+
+Thus Q2: 93.
+
+3. Between Monday, January 13, 2014 and Sunday, February 9, 2014 (counting both dates), how many times does Tuesday occur? Respond with just the number.
+
+Dates: Jan13 to Feb9 inclusive.
+
+Compute day-of-year: Jan13 = 13 (since Jan1=1). Feb9: Jan31=31, so Feb1=32, Feb9=32+8=40? Actually Feb1=32, Feb9=32+8=40. So start=13, end=40. D=40-13+1=28 days.
+
+Start day-of-week: s=(13+2)=15 mod7=1 (since 14 is 0, 15 is 1). So s=1 (Monday). Good.
+
+D=28, r=28%7=0 (exact weeks). So full weeks=4, remainder=0. Count of Tuesday (w=2): each week has one Tuesday, so total = 4. Answer: 4.
+
+Check: Jan13 Mon, Jan14 Tue, ... Jan20? Actually 4 Tuesdays: Jan14, Jan21, Jan28, Feb4? But Feb4 is Tuesday? Yes, and Feb9 is Sunday, so Tuesday Feb11? Not included. So 4 correct.
+
+Thus Q3: 4.
+
+4. Between Friday, January 10, 2014 and Saturday, February 1, 2014 (counting both dates), how many times does Monday occur? Write the total number.
+
+Dates: Jan10 to Feb1.
+
+Day-of-year: Jan10=10, Feb1=32. D=32-10+1=23 days.
+
+Start s: (10+2)=12 mod7=5 (Friday). So s=5.
+
+D=23, r=23%7=2. Remainder: s=5 (Fri), s+1=6 (Sat). So remainder includes Fri, Sat. Full weeks=3.
+
+Count of Monday (w=1): Since Monday not in remainder, count=3 weeks *1=3. But check: Mondays in range: Jan13, Jan20, Jan27? Jan27 is Monday, then Feb3 is Monday after end. So that's 3. Actually Jan10 Fri, so next Monday Jan13, then Jan20, Jan27. Yes 3. So answer: 3.
+
+Thus Q4: 3.
+
+5. How many business days (Monday-Friday) are there from Wednesday, August 13, 2014 to Thursday, November 27, 2014 (inclusive of both dates)? Give the count numerically.
+
+Dates: Aug13 to Nov27.
+
+Compute day-of-year: Aug13: Days before August: 31+28+31+30+31+30+31 = 212 (as before) so Aug1=213, Aug13=213+12=225. Nov27: Days before November: Jan31+Feb28+Mar31+Apr30+May31+Jun30+Jul31+Aug31+Sep30+Oct31 = let's sum: up to Oct: Jan31, Feb28=59, Mar31=90, Apr30=120, May31=151, Jun30=181, Jul31=212, Aug31=243, Sep30=273, Oct31=304. So Nov1=305, Nov27=305+26=331. So start=225, end=331. D=331-225+1=107 days.
+
+Start s: (225+2)=227 mod7 = 227/7=32*7=224 remainder 3, so s=3 (Wednesday). Good.
+
+D=107, r=107%7=107-7*15=107-105=2. Full weeks=15. Remainder: s=3 (Wed), s+1=4 (Thu). So remainder includes Wed, Thu. Both are weekdays. So business days = full weeks*5 + 2 = 15*5+2=75+2=77. Check: also subtract weekends: full weeks weekends =15*2=30, remainder no Sat/Sun, so total days=107, weekends=30, weekdays=77. So answer: 77.
+
+Thus Q5: 77.
+
+6. Count the weekdays (excluding weekends) from Friday, August 15 to Tuesday, November 25, 2014 (including both start and end dates). Answer with a number.
+
+Dates: Aug15 to Nov25.
+
+Day-of-year: Aug15 = Aug1=213, so Aug15=213+14=227. Nov25: Nov1=305, Nov25=305+24=329. Start=227, end=329. D=329-227+1=103 days.
+
+Start s: (227+2)=229 mod7 = 229/7=32*7=224 remainder 5, so s=5 (Friday). D=103, r=103%7=103-7*14=103-98=5. Full weeks=14, remainder 5: s=5 (Fri), then 6(Sat),0(Sun),1(Mon),2(Tue). So remainder includes Fri, Sat, Sun, Mon, Tue. Weekdays in remainder: Fri, Mon, Tue = 3 weekdays. So total weekdays = 14*5 +3 = 70+3=73. Alternatively, total weekends: full weeks 14*2=28, remainder weekends: Sat, Sun =2, total weekends=30, weekdays=103-30=73. So answer: 73.
+
+Thus Q6: 73.
+
+7. Between Monday, July 28, 2014 and Thursday, August 21, 2014 (counting both dates), what's the total count of business days (Monday through Friday)? Answer with a number.
+
+Dates: Jul28 to Aug21.
+
+Day-of-year: July: days before July: Jan31+Feb28+Mar31+Apr30+May31+Jun30 = 31+28+31+30+31+30=181? Let's compute: 31+28=59, +31=90, +30=120, +31=151, +30=181. So Jul1=182, Jul28=182+27=209 (since Jul1=182, Jul2=183... Jul28=182+27=209). Aug21: Aug1=213, Aug21=213+20=233. So start=209, end=233, D=233-209+1=25 days.
+
+Start s: (209+2)=211 mod7 = 211/7=30*7=210 remainder 1, so s=1 (Monday). D=25, r=25%7=4 (since 21 is multiple, 25-21=4). Full weeks=3, remainder 4: s=1 (Mon), then 2(Tue),3(Wed),4(Thu). So remainder includes Mon, Tue, Wed, Thu. All weekdays. So business days = full weeks*5 + 4 = 3*5+4=15+4=19. Check: total days=25, weekends? Full weeks 3*2=6 weekends, remainder no Sat/Sun, so weekdays=25-6=19. So answer: 19.
+
+Thus Q7: 19.
+
+8. Count the occurrences of Tuesday from Friday, October 3 to Friday, November 28, 2014 (including both start and end dates). Answer with a number.
+
+Dates: Oct3 to Nov28.
+
+Day-of-year: Oct3: Oct1=274, Oct3=274+2=276? Actually Oct1 is day 274, Oct2=275, Oct3=276. Nov28: Nov1=305, Nov28=305+27=332. So start=276, end=332, D=332-276+1=57 days.
+
+Start s: (276+2)=278 mod7 = 278/7=39*7=273 remainder 5, so s=5 (Friday). D=57, r=57%7=57-7*8=57-56=1. Full weeks=8, remainder 1: s=5 (Fri). So remainder includes Friday only. Count of Tuesday (w=2): Tuesday not in remainder, so count = full weeks *1 = 8. So answer: 8. Check: Oct3 Fri, so first Tuesday after is Oct7? Actually Oct3 Fri, Oct4 Sat, Oct5 Sun, Oct6 Mon, Oct7 Tue. So Tuesdays: Oct7,14,21,28, Nov4,11,18,25. That's 8. Nov25 is Tuesday, then Dec2 after end? End Nov28 Friday, so Nov25 included, yes 8. So answer: 8.
+
+Thus Q8: 8.
+
+9. Count the occurrences of Friday from Monday, September 22 to Tuesday, December 30, 2014 (including both start and end dates). Write the total number.
+
+Dates: Sep22 to Dec30.
+
+Day-of-year: Sep22: Sep1=244, Sep22=244+21=265. Dec30: Dec1=335? Let's compute: Days before December: up to Nov: Jan31+Feb28+Mar31+Apr30+May31+Jun30+Jul31+Aug31+Sep30+Oct31+Nov30 = sum: 31+28=59, +31=90, +30=120, +31=151, +30=181, +31=212, +31=243, +30=273, +31=304, +30=334. So Dec1=335, Dec30=335+29=364. So start=265, end=364, D=364-265+1=100 days.
+
+Start s: (265+2)=267 mod7=267/7=38*7=266 remainder 1, so s=1 (Monday). D=100, r=100%7=100-7*14=100-98=2. Full weeks=14, remainder: s=1 (Mon), s+1=2 (Tue). So remainder includes Mon, Tue. Friday (w=5) not in remainder, so count = full weeks = 14. But need to check: Actually 14 weeks have 14 Fridays. Are there any extra? Since remainder only Mon,Tue, no Friday. So answer: 14. Let's verify: Sep22 Mon, so first Friday is Sep26? Actually Sep26 is Friday within range? Sep22 Mon, Sep23 Tue, Sep24 Wed, Sep25 Thu, Sep26 Fri. So that's included. Then Oct3,10,17,24,31, Nov7,14,21,28, Dec5,12,19,26. That's 14? Sep26, Oct3,10,17,24,31, Nov7,14,21,28, Dec5,12,19,26 = 14. Yes. So answer: 14.
+
+Thus Q9: 14.
+
+10. Between Friday, April 11, 2014 and Tuesday, June 3, 2014 (counting both dates), how many times does Wednesday occur? Express your answer as a number.
+
+Dates: Apr11 to Jun3.
+
+Day-of-year: Apr11: Apr1=91, Apr11=91+10=101. Jun3: June1=152? Let's compute: May31=151, Jun1=152. So Jun3=152+2=154? Actually Jun1=152, Jun2=153, Jun3=154. So start=101, end=154, D=154-101+1=54 days.
+
+Start s: (101+2)=103 mod7=103/7=14*7=98 remainder 5, so s=5 (Friday). D=54, r=54%7=54-7*7=54-49=5. Full weeks=7, remainder 5: s=5(Fri),6(Sat),0(Sun),1(Mon),2(Tue). So remainder includes Fri, Sat, Sun, Mon, Tue. Wednesday (w=3) not in remainder, so count = full weeks = 7. So answer: 7. Check: Apr11 Fri, so first Wednesday after is Apr16? Actually Apr16 Wed, then Apr23,30, May7,14,21,28? That's 7? Apr16,23,30, May7,14,21,28 = 7. Jun4 is Wednesday but after end (Jun3 Tue), so yes 7. So answer: 7.
+
+Thus Q10: 7.
+
+11. Between Monday, August 11, 2014 and Thursday, November 20, 2014 (counting both dates), how many times does Sunday occur? Give the count numerically.
+
+Dates: Aug11 to Nov20.
+
+Day-of-year: Aug11: Aug1=213, Aug11=213+10=223. Nov20: Nov1=305, Nov20=305+19=324. So start=223, end=324, D=324-223+1=102 days.
+
+Start s: (223+2)=225 mod7=225/7=32*7=224 remainder 1, so s=1 (Monday). D=102, r=102%7=102-7*14=102-98=4. Full weeks=14, remainder: s=1(Mon),2(Tue),3(Wed),4(Thu). So remainder includes Mon,Tue,Wed,Thu. Sunday (w=0) not in remainder, so count = full weeks = 14. Check: Aug11 Mon, first Sunday Aug17? Actually Aug17 is Sunday, then Aug24,31, Sep7,14,21,28, Oct5,12,19,26, Nov2,9,16? That's 14? Let's count: Aug17,24,31 (3), Sep7,14,21,28 (4 more=7), Oct5,12,19,26 (4=11), Nov2,9,16 (3=14). Nov23 is after end? End Nov20 Thu, so Nov16 is included, yes. So 14. So answer: 14.
+
+Thus Q11: 14.
+
+12. How many Thursdays are there from Saturday, March 1, 2014 to Sunday, April 20, 2014 (inclusive of both dates)? Write the total number.
+
+Dates: Mar1 to Apr20.
+
+Day-of-year: Mar1: Jan31+Feb28=59, so Mar1=60. Apr20: Apr1=91, Apr20=91+19=110. So start=60, end=110, D=110-60+1=51 days.
+
+Start s: (60+2)=62 mod7=62/7=8*7=56 remainder 6, so s=6 (Saturday). D=51, r=51%7=51-7*7=51-49=2. Full weeks=7, remainder: s=6(Sat), s+1=0(Sun). So remainder includes Sat, Sun. Thursday (w=4) not in remainder, so count = full weeks = 7. Check: Mar1 Sat, so first Thursday after is Mar6? Actually Mar6 Thu? Mar1 Sat, Mar2 Sun, Mar3 Mon, Mar4 Tue, Mar5 Wed, Mar6 Thu. So Thursdays: Mar6,13,20,27, Apr3,10,17? That's 7? Apr17 is Thursday, Apr24 is after end (Apr20 Sun), so yes 7. So answer: 7.
+
+Thus Q12: 7.
+
+13. Between Wednesday, July 23, 2014 and Monday, September 22, 2014 (counting both dates), how many times does Sunday occur? State the amount as a number.
+
+Dates: Jul23 to Sep22.
+
+Day-of-year: Jul23: Jul1=182, Jul23=182+22=204. Sep22: Sep1=244, Sep22=244+21=265. So start=204, end=265, D=265-204+1=62 days.
+
+Start s: (204+2)=206 mod7=206/7=29*7=203 remainder 3, so s=3 (Wednesday). D=62, r=62%7=62-7*8=62-56=6. Full weeks=8, remainder 6: s=3(Wed),4(Thu),5(Fri),6(Sat),0(Sun),1(Mon). So remainder includes Wed, Thu, Fri, Sat, Sun, Mon. So Sunday (w=0) appears in remainder. So count = full weeks + 1 = 8+1=9. Check: Jul23 Wed, first Sunday Jul27? Actually Jul27 is Sunday? Jul23 Wed, Jul24 Thu, Jul25 Fri, Jul26 Sat, Jul27 Sun. So Sundays: Jul27, Aug3,10,17,24,31, Sep7,14,21? That's 9? Sep21 is Sunday, Sep22 Mon, so yes 9. So answer: 9.
+
+Thus Q13: 9.
+
+14. Between Monday, November 10, 2014 and Thursday, December 25, 2014 (counting both dates), how many times does Friday occur? Reply with the numerical value.
+
+Dates: Nov10 to Dec25.
+
+Day-of-year: Nov10: Nov1=305, Nov10=305+9=314. Dec25: Dec1=335, Dec25=335+24=359. So start=314, end=359, D=359-314+1=46 days.
+
+Start s: (314+2)=316 mod7=316/7=45*7=315 remainder 1, so s=1 (Monday). D=46, r=46%7=46-7*6=46-42=4. Full weeks=6, remainder: s=1(Mon),2(Tue),3(Wed),4(Thu). So remainder includes Mon,Tue,Wed,Thu. Friday (w=5) not in remainder, so count = full weeks = 6. Check: Nov10 Mon, first Friday Nov14? Actually Nov14 Fri, then Nov21,28, Dec5,12,19? That's 6? Dec26 is after end? End Dec25 Thu, so Dec19 is last Friday, yes 6. So answer: 6.
+
+Thus Q14: 6.
+
+15. Between Tuesday, November 25, 2014 and Saturday, December 13, 2014 (counting both dates), how many times does Friday occur? Answer with a number.
+
+Dates: Nov25 to Dec13.
+
+Day-of-year: Nov25=329 (as earlier, Nov1=305, Nov25=305+24=329). Dec13: Dec1=335, Dec13=335+12=347. So start=329, end=347, D=347-329+1=19 days.
+
+Start s: (329+2)=331 mod7=331/7=47*7=329 remainder 2, so s=2 (Tuesday). D=19, r=19%7=5 (since 14+5). Full weeks=2, remainder 5: s=2(Tue),3(Wed),4(Thu),5(Fri),6(Sat). So remainder includes Tue,Wed,Thu,Fri,Sat. So Friday (w=5) appears in remainder. Count = full weeks + 1 = 2+1=3. Check: Nov25 Tue, first Friday Nov28? Actually Nov28 is Friday? Nov25 Tue, Nov26 Wed, Nov27 Thu, Nov28 Fri, so that's one. Then Dec5, Dec12? Dec12 is Friday, then Dec19 after end. So 3 Fridays: Nov28, Dec5, Dec12. Yes. So answer: 3.
+
+Thus Q15: 3.
+
+16. Count the occurrences of Saturday from Friday, October 17 to Tuesday, December 23, 2014 (including both start and end dates). State the amount as a number.
+
+Dates: Oct17 to Dec23.
+
+Day-of-year: Oct17: Oct1=274, Oct17=274+16=290. Dec23: Dec1=335, Dec23=335+22=357. So start=290, end=357, D=357-290+1=68 days.
+
+Start s: (290+2)=292 mod7=292/7=41*7=287 remainder 5, so s=5 (Friday). D=68, r=68%7=68-7*9=68-63=5. Full weeks=9, remainder 5: s=5(Fri),6(Sat),0(Sun),1(Mon),2(Tue). So remainder includes Fri, Sat, Sun, Mon, Tue. Saturday (w=6) appears in remainder. So count = full weeks + 1 = 9+1=10. Check: Oct17 Fri, first Saturday Oct18? Actually Oct18 Sat, then Oct25, Nov1,8,15,22,29, Dec6,13,20? That's 10? Dec20 is Saturday, then Dec27 after end? End Dec23 Tue, so Dec20 included, yes 10. So answer: 10.
+
+Thus Q16: 10.
+
+17. Between Wednesday, April 16, 2014 and Monday, October 6, 2014 (counting both dates), what's the total count of business days (Monday through Friday)? Reply with the numerical value.
+
+Dates: Apr16 to Oct6.
+
+Day-of-year: Apr16: Apr1=91, Apr16=91+15=106. Oct6: Oct1=274, Oct6=274+5=279. So start=106, end=279, D=279-106+1=174 days.
+
+Start s: (106+2)=108 mod7=108/7=15*7=105 remainder 3, so s=3 (Wednesday). D=174, r=174%7=174-7*24=174-168=6. Full weeks=24, remainder 6: s=3(Wed),4(Thu),5(Fri),6(Sat),0(Sun),1(Mon). So remainder includes Wed,Thu,Fri,Sat,Sun,Mon. Weekdays in remainder: Wed,Thu,Fri,Mon = 4 weekdays (Sat and Sun are weekends). So business days = full weeks*5 + 4 = 24*5+4=120+4=124. Also total weekends: full weeks 24*2=48, remainder weekends: Sat,Sun=2, total weekends=50, weekdays=174-50=124. So answer: 124.
+
+Thus Q17: 124.
+
+18. Count the occurrences of Thursday from Wednesday, October 29 to Saturday, December 27, 2014 (including both start and end dates). Give the count numerically.
+
+Dates: Oct29 to Dec27.
+
+Day-of-year: Oct29: Oct1=274, Oct29=274+28=302? Actually Oct29 = 274+28=302? Oct1=274, Oct2=275, ... Oct29 = 274+28 = 302 (since 1->274, so day = 274 + (date-1)). So Oct29 = 302. Dec27: Dec1=335, Dec27=335+26=361. So start=302, end=361, D=361-302+1=60 days.
+
+Start s: (302+2)=304 mod7=304/7=43*7=301 remainder 3, so s=3 (Wednesday). D=60, r=60%7=4 (since 56+4). Full weeks=8, remainder 4: s=3(Wed),4(Thu),5(Fri),6(Sat). So remainder includes Wed, Thu, Fri, Sat. Thursday (w=4) appears in remainder. So count = full weeks + 1 = 8+1=9. Check: Oct29 Wed, first Thursday Oct30? Actually Oct30 Thu, then Nov6,13,20,27, Dec4,11,18,25? That's 9? Dec25 is Thursday, then Jan1 after end? End Dec27 Sat, so Dec25 included, yes 9. So answer: 9.
+
+Thus Q18: 9.
+
+19. How many Mondays are there from Wednesday, June 11, 2014 to Sunday, August 31, 2014 (inclusive of both dates)? Write the total number.
+
+Dates: Jun11 to Aug31.
+
+Day-of-year: Jun11: Jun1=152, Jun11=152+10=162. Aug31: Aug1=213, Aug31=213+30=243. So start=162, end=243, D=243-162+1=82 days.
+
+Start s: (162+2)=164 mod7=164/7=23*7=161 remainder 3, so s=3 (Wednesday). D=82, r=82%7=82-7*11=82-77=5. Full weeks=11, remainder 5: s=3(Wed),4(Thu),5(Fri),6(Sat),0(Sun). So remainder includes Wed,Thu,Fri,Sat,Sun. Monday (w=1) not in remainder, so count = full weeks = 11. Check: Jun11 Wed, first Monday Jun16? Actually Jun16 Mon, then Jun23,30, Jul7,14,21,28, Aug4,11,18,25? That's 11? Aug25 is Monday, Sep1 after end? End Aug31 Sun, so Aug25 included, yes 11. So answer: 11.
+
+Thus Q19: 11.
+
+20. How many Thursdays are there from Friday, September 19, 2014 to Sunday, September 21, 2014 (inclusive of both dates)? Write the total number.
+
+Dates: Sep19 to Sep21. That's only three days: Sep19 Fri, Sep20 Sat, Sep21 Sun. No Thursday. So count=0.
+
+Thus Q20: 0.
+
+21. Between Thursday, November 6, 2014 and Wednesday, December 31, 2014 (counting both dates), how many times does Wednesday occur? Reply with the numerical value.
+
+Dates: Nov6 to Dec31.
+
+Day-of-year: Nov6: Nov1=305, Nov6=305+5=310. Dec31: Dec1=335, Dec31=335+30=365. So start=310, end=365, D=365-310+1=56 days.
+
+Start s: (310+2)=312 mod7=312/7=44*7=308 remainder 4, so s=4 (Thursday). D=56, r=56%7=0, full weeks=8. Count of Wednesday (w=3): each week has one, so 8. Check: Nov6 Thu, first Wednesday Nov12? Actually Nov12 Wed, then Nov19,26, Dec3,10,17,24,31? That's 8? Dec31 is Wednesday, yes. So answer: 8.
+
+Thus Q21: 8.
+
+22. Count the occurrences of Thursday from Thursday, July 3 to Monday, December 8, 2014 (including both start and end dates). Reply with the numerical value.
+
+Dates: Jul3 to Dec8.
+
+Day-of-year: Jul3: Jul1=182, Jul3=182+2=184. Dec8: Dec1=335, Dec8=335+7=342. So start=184, end=342, D=342-184+1=159 days.
+
+Start s: (184+2)=186 mod7=186/7=26*7=182 remainder 4, so s=4 (Thursday). D=159, r=159%7=159-7*22=159-154=5. Full weeks=22, remainder 5: s=4(Thu),5(Fri),6(Sat),0(Sun),1(Mon). So remainder includes Thu,Fri,Sat,Sun,Mon. Thursday appears in remainder. So count = full weeks + 1 = 22+1=23. Check: That seems plausible. So answer: 23.
+
+Thus Q22: 23.
+
+23. Count the weekdays (excluding weekends) from Tuesday, November 11 to Friday, December 5, 2014 (including both start and end dates). State the amount as a number.
+
+Dates: Nov11 to Dec5.
+
+Day-of-year: Nov11: Nov1=305, Nov11=305+10=315. Dec5: Dec1=335, Dec5=335+4=339. So start=315, end=339, D=339-315+1=25 days.
+
+Start s: (315+2)=317 mod7=317/7=45*7=315 remainder 2, so s=2 (Tuesday). D=25, r=25%7=4 (since 21+4). Full weeks=3, remainder 4: s=2(Tue),3(Wed),4(Thu),5(Fri). So remainder includes Tue,Wed,Thu,Fri all weekdays. So business days = full weeks*5 + 4 = 3*5+4=15+4=19. Also total days=25, weekends: full weeks 3*2=6, remainder no Sat/Sun, so weekdays=19. So answer: 19.
+
+Thus Q23: 19.
+
+24. Count the weekdays (excluding weekends) from Monday, May 26 to Tuesday, May 27, 2014 (including both start and end dates). Give the count numerically.
+
+Dates: May26 to May27. That's two days: Mon May26 and Tue May27. Both are weekdays. So count=2.
+
+Thus Q24: 2.
+
+25. Between Friday, June 6, 2014 and Monday, October 20, 2014 (counting both dates), how many times does Tuesday occur? State the amount as a number.
+
+Dates: Jun6 to Oct20.
+
+Day-of-year: Jun6: Jun1=152, Jun6=152+5=157. Oct20: Oct1=274, Oct20=274+19=293. So start=157, end=293, D=293-157+1=137 days.
+
+Start s: (157+2)=159 mod7=159/7=22*7=154 remainder 5, so s=5 (Friday). D=137, r=137%7=137-7*19=137-133=4. Full weeks=19, remainder 4: s=5(Fri),6(Sat),0(Sun),1(Mon). So remainder includes Fri,Sat,Sun,Mon. Tuesday (w=2) not in remainder, so count = full weeks = 19. Check: Jun6 Fri, first Tuesday Jun10? Actually Jun10 Tue, then Jun17,24, Jul1,8,15,22,29, Aug5,12,19,26, Sep2,9,16,23,30, Oct7,14? That's 19? Let's count: from Jun10 to Oct14 inclusive, how many Tuesdays? There are 19 weeks between? Seems plausible. So answer: 19.
+
+Thus Q25: 19.
+
+26. How many Saturdays are there from Friday, March 21, 2014 to Saturday, April 5, 2014 (inclusive of both dates)? Answer with a number.
+
+Dates: Mar21 to Apr5.
+
+Day-of-year: Mar21: Mar1=60, Mar21=60+20=80. Apr5: Apr1=91, Apr5=91+4=95. So start=80, end=95, D=95-80+1=16 days.
+
+Start s: (80+2)=82 mod7=82/7=11*7=77 remainder 5, so s=5 (Friday). D=16, r=16%7=2 (since 14+2). Full weeks=2, remainder 2: s=5(Fri),6(Sat). So remainder includes Fri, Sat. Saturday appears in remainder. So count = full weeks + 1 = 2+1=3. Check: Mar21 Fri, Mar22 Sat, Mar29 Sat, Apr5 Sat? Apr5 is Saturday? Actually Apr5 is Saturday? Let's see: Apr5 is within range, yes. So Saturdays: Mar22, Mar29, Apr5 = 3. So answer: 3.
+
+Thus Q26: 3.
+
+27. Between Tuesday, February 18, 2014 and Monday, March 17, 2014 (counting both dates), how many times does Saturday occur? State the amount as a number.
+
+Dates: Feb18 to Mar17.
+
+Day-of-year: Feb18: Feb1=32, Feb18=32+17=49. Mar17: Mar1=60, Mar17=60+16=76. So start=49, end=76, D=76-49+1=28 days.
+
+Start s: (49+2)=51 mod7=51/7=7*7=49 remainder 2, so s=2 (Tuesday). D=28, r=0, full weeks=4. Saturday (w=6) count = 4. Check: Feb18 Tue, first Saturday Feb22? Actually Feb22 Sat, then Mar1, Mar8, Mar15? That's 4? Mar15 is Saturday, Mar22 after end? End Mar17 Mon, so yes 4. So answer: 4.
+
+Thus Q27: 4.
+
+28. Count the occurrences of Wednesday from Monday, December 15 to Wednesday, December 31, 2014 (including both start and end dates). State the amount as a number.
+
+Dates: Dec15 to Dec31.
+
+Day-of-year: Dec15: Dec1=335, Dec15=335+14=349. Dec31=365. So start=349, end=365, D=365-349+1=17 days.
+
+Start s: (349+2)=351 mod7=351/7=50*7=350 remainder 1, so s=1 (Monday). D=17, r=17%7=3 (since 14+3). Full weeks=2, remainder 3: s=1(Mon),2(Tue),3(Wed). So remainder includes Mon,Tue,Wed. Wednesday appears in remainder. So count = full weeks + 1 = 2+1=3. Check: Dec15 Mon, Wed Dec17, then Dec24, Dec31? Dec31 is Wednesday? Actually Dec31 is Wednesday, yes. So 3 Wednesdays: Dec17,24,31. So answer: 3.
+
+Thus Q28: 3.
+
+29. Between Monday, July 14, 2014 and Monday, August 4, 2014 (counting both dates), what's the total count of business days (Monday through Friday)? Answer with a number.
+
+Dates: Jul14 to Aug4.
+
+Day-of-year: Jul14: Jul1=182, Jul14=182+13=195. Aug4: Aug1=213, Aug4=213+3=216. So start=195, end=216, D=216-195+1=22 days.
+
+Start s: (195+2)=197 mod7=197/7=28*7=196 remainder 1, so s=1 (Monday). D=22, r=22%7=1 (since 21+1). Full weeks=3, remainder 1: s=1(Mon). So remainder includes Monday only. Weekdays in remainder: Monday is weekday. So business days = full weeks*5 + 1 = 3*5+1=15+1=16. Also total weekends: full weeks 3*2=6, remainder no Sat/Sun, so weekdays=22-6=16. So answer: 16.
+
+Thus Q29: 16.
+
+30. Count the occurrences of Friday from Tuesday, July 8 to Wednesday, September 17, 2014 (including both start and end dates). Respond with just the number.
+
+Dates: Jul8 to Sep17.
+
+Day-of-year: Jul8: Jul1=182, Jul8=182+7=189. Sep17: Sep1=244, Sep17=244+16=260. So start=189, end=260, D=260-189+1=72 days.
+
+Start s: (189+2)=191 mod7=191/7=27*7=189 remainder 2, so s=2 (Tuesday). D=72, r=72%7=72-7*10=72-70=2. Full weeks=10, remainder 2: s=2(Tue),3(Wed). So remainder includes Tue, Wed. Friday (w=5) not in remainder, so count = full weeks = 10. Check: Jul8 Tue, first Friday Jul11? Actually Jul11 Fri, then Jul18,25, Aug1,8,15,22,29, Sep5,12? That's 10? Sep12 is Friday, Sep19 after end? End Sep17 Wed, so Sep12 last, yes 10. So answer: 10.
+
+Thus Q30: 10.
+
+31. Count the occurrences of Saturday from Monday, September 1 to Monday, December 29, 2014 (including both start and end dates). Provide the count as a number.
+
+Dates: Sep1 to Dec29.
+
+Day-of-year: Sep1=244. Dec29: Dec1=335, Dec29=335+28=363. So start=244, end=363, D=363-244+1=120 days.
+
+Start s: (244+2)=246 mod7=246/7=35*7=245 remainder 1, so s=1 (Monday). D=120, r=120%7=120-7*17=120-119=1. Full weeks=17, remainder 1: s=1(Mon). So remainder includes Monday only. Saturday (w=6) not in remainder, so count = full weeks = 17. Check: Sep1 Mon, first Saturday Sep6, then Sep13,20,27, Oct4,11,18,25, Nov1,8,15,22,29, Dec6,13,20,27? That's 17? Dec27 is Saturday, Dec29 Mon, so Dec27 included, yes 17. So answer: 17.
+
+Thus Q31: 17.
+
+32. Count the occurrences of Monday from Monday, April 7 to Thursday, May 29, 2014 (including both start and end dates). Answer with a number.
+
+Dates: Apr7 to May29.
+
+Day-of-year: Apr7: Apr1=91, Apr7=91+6=97. May29: May1=121, May29=121+28=149. So start=97, end=149, D=149-97+1=53 days.
+
+Start s: (97+2)=99 mod7=99/7=14*7=98 remainder 1, so s=1 (Monday). D=53, r=53%7=53-7*7=53-49=4. Full weeks=7, remainder 4: s=1(Mon),2(Tue),3(Wed),4(Thu). So remainder includes Mon,Tue,Wed,Thu. Monday appears in remainder. So count = full weeks + 1 = 7+1=8. Check: Apr7 Mon, then Apr14,21,28, May5,12,19,26? That's 8? May26 is Monday, then Jun2 after end? End May29 Thu, so yes 8. So answer: 8.
+
+Thus Q32: 8.
+
+33. How many Saturdays are there from Tuesday, April 29, 2014 to Friday, June 27, 2014 (inclusive of both dates)? Reply with the numerical value.
+
+Dates: Apr29 to Jun27.
+
+Day-of-year: Apr29: Apr1=91, Apr29=91+28=119. Jun27: Jun1=152, Jun27=152+26=178. So start=119, end=178, D=178-119+1=60 days.
+
+Start s: (119+2)=121 mod7=121/7=17*7=119 remainder 2, so s=2 (Tuesday). D=60, r=60%7=4 (since 56+4). Full weeks=8, remainder 4: s=2(Tue),3(Wed),4(Thu),5(Fri). So remainder includes Tue,Wed,Thu,Fri. Saturday (w=6) not in remainder, so count = full weeks = 8. Check: Apr29 Tue, first Saturday May3? Actually May3 Sat, then May10,17,24,31, Jun7,14,21? That's 8? Jun28 after end? End Jun27 Fri, so Jun21 last, yes 8. So answer: 8.
+
+Thus Q33: 8.
+
+34. How many Fridays are there from Friday, June 13, 2014 to Monday, December 15, 2014 (inclusive of both dates)? Give the count numerically.
+
+Dates: Jun13 to Dec15.
+
+Day-of-year: Jun13: Jun1=152, Jun13=152+12=164. Dec15: Dec1=335, Dec15=335+14=349. So start=164, end=349, D=349-164+1=186 days.
+
+Start s: (164+2)=166 mod7=166/7=23*7=161 remainder 5, so s=5 (Friday). D=186, r=186%7=186-7*26=186-182=4. Full weeks=26, remainder 4: s=5(Fri),6(Sat),0(Sun),1(Mon). So remainder includes Fri, Sat, Sun, Mon. Friday appears in remainder. So count = full weeks + 1 = 26+1=27. Check: Jun13 Fri, then Jun20,27, Jul4,11,18,25, Aug1,8,15,22,29, Sep5,12,19,26, Oct3,10,17,24,31, Nov7,14,21,28, Dec5,12? That's 27? Dec12 is Friday, Dec19 after end? End Dec15 Mon, so Dec12 included, yes 27. So answer: 27.
+
+Thus Q34: 27.
+
+35. How many business days (Monday-Friday) are there from Saturday, July 19, 2014 to Sunday, December 28, 2014 (inclusive of both dates)? Express your answer as a number.
+
+Dates: Jul19 to Dec28.
+
+Day-of-year: Jul19: Jul1=182, Jul19=182+18=200. Dec28: Dec1=335, Dec28=335+27=362. So start=200, end=362, D=362-200+1=163 days.
+
+Start s: (200+2)=202 mod7=202/7=28*7=196 remainder 6, so s=6 (Saturday). D=163, r=163%7=163-7*23=163-161=2. Full weeks=23, remainder 2: s=6(Sat), s+1=0(Sun). So remainder includes Sat, Sun. Both weekends. So business days = full weeks*5 = 23*5 = 115. Also total weekends = full weeks*2 + 2 = 46+2=48, weekdays=163-48=115. So answer: 115.
+
+Thus Q35: 115.
+
+36. Count the weekdays (excluding weekends) from Saturday, May 3 to Sunday, August 17, 2014 (including both start and end dates). Write the total number.
+
+Dates: May3 to Aug17.
+
+Day-of-year: May3: May1=121, May3=121+2=123. Aug17: Aug1=213, Aug17=213+16=229. So start=123, end=229, D=229-123+1=107 days.
+
+Start s: (123+2)=125 mod7=125/7=17*7=119 remainder 6, so s=6 (Saturday). D=107, r=107%7=107-7*15=107-105=2. Full weeks=15, remainder 2: s=6(Sat), s+1=0(Sun). So remainder includes Sat, Sun. Weekdays in remainder: none. So business days = full weeks*5 = 15*5=75. Also weekends: full weeks 15*2=30, remainder 2 weekends, total weekends=32, weekdays=107-32=75. So answer: 75.
+
+Thus Q36: 75.
+
+37. Count the occurrences of Sunday from Saturday, September 6 to Monday, September 22, 2014 (including both start and end dates). Answer with a number.
+
+Dates: Sep6 to Sep22.
+
+Day-of-year: Sep6: Sep1=244, Sep6=244+5=249. Sep22=265 (as before). So start=249, end=265, D=265-249+1=17 days.
+
+Start s: (249+2)=251 mod7=251/7=35*7=245 remainder 6, so s=6 (Saturday). D=17, r=17%7=3 (since 14+3). Full weeks=2, remainder 3: s=6(Sat),0(Sun),1(Mon). So remainder includes Sat, Sun, Mon. Sunday appears in remainder. So count = full weeks + 1 = 2+1=3. Check: Sep6 Sat, Sep7 Sun, Sep14 Sun, Sep21 Sun? Sep21 is Sunday, then Sep28 after end? End Sep22 Mon, so Sep21 included, so Sundays: Sep7,14,21 = 3. So answer: 3.
+
+Thus Q37: 3.
+
+38. Count the occurrences of Friday from Thursday, April 3 to Thursday, May 15, 2014 (including both start and end dates). Express your answer as a number.
+
+Dates: Apr3 to May15.
+
+Day-of-year: Apr3: Apr1=91, Apr3=91+2=93. May15: May1=121, May15=121+14=135. So start=93, end=135, D=135-93+1=43 days.
+
+Start s: (93+2)=95 mod7=95/7=13*7=91 remainder 4, so s=4 (Thursday). D=43, r=43%7=43-7*6=43-42=1. Full weeks=6, remainder 1: s=4(Thu). So remainder includes Thursday only. Friday (w=5) not in remainder, so count = full weeks = 6. Check: Apr3 Thu, first Friday Apr4? Actually Apr4 Fri, then Apr11,18,25, May2,9? That's 6? May9 is Friday, then May16 after end? End May15 Thu, so May9 last, yes 6. So answer: 6.
+
+Thus Q38: 6.
+
+39. How many business days (Monday-Friday) are there from Monday, March 24, 2014 to Saturday, April 26, 2014 (inclusive of both dates)? State the amount as a number.
+
+Dates: Mar24 to Apr26.
+
+Day-of-year: Mar24: Mar1=60, Mar24=60+23=83. Apr26: Apr1=91, Apr26=91+25=116. So start=83, end=116, D=116-83+1=34 days.
+
+Start s: (83+2)=85 mod7=85/7=12*7=84 remainder 1, so s=1 (Monday). D=34, r=34%7=6 (since 28+6). Full weeks=4, remainder 6: s=1(Mon),2(Tue),3(Wed),4(Thu),5(Fri),6(Sat). So remainder includes Mon,Tue,Wed,Thu,Fri,Sat. Weekdays in remainder: Mon to Fri = 5 weekdays (Sat is weekend). So business days = full weeks*5 + 5 = 4*5+5=20+5=25. Also total days=34, weekends: full weeks 4*2=8, remainder includes Sat (1 weekend), total weekends=9, weekdays=34-9=25. So answer: 25.
+
+Thus Q39: 25.
+
+40. How many business days (Monday-Friday) are there from Friday, April 11, 2014 to Saturday, August 2, 2014 (inclusive of both dates)? Reply with the numerical value.
+
+Dates: Apr11 to Aug2.
+
+Day-of-year: Apr11=101 (as before). Aug2: Aug1=213, Aug2=214. So start=101, end=214, D=214-101+1=114 days.
+
+Start s: (101+2)=103 mod7=5 (Friday, as before). D=114, r=114%7=114-7*16=114-112=2. Full weeks=16, remainder 2: s=5(Fri),6(Sat). So remainder includes Fri, Sat. Weekdays in remainder: Fri only (1). So business days = 16*5 + 1 = 80+1=81. Also weekends: full weeks 16*2=32, remainder Sat (1), total weekends=33, weekdays=114-33=81. So answer: 81.
+
+Thus Q40: 81.
+
+41. Between Thursday, February 13, 2014 and Sunday, June 15, 2014 (counting both dates), how many times does Tuesday occur? Provide the count as a number.
+
+Dates: Feb13 to Jun15.
+
+Day-of-year: Feb13: Feb1=32, Feb13=32+12=44. Jun15: Jun1=152, Jun15=152+14=166. So start=44, end=166, D=166-44+1=123 days.
+
+Start s: (44+2)=46 mod7=46/7=6*7=42 remainder 4, so s=4 (Thursday). D=123, r=123%7=123-7*17=123-119=4. Full weeks=17, remainder 4: s=4(Thu),5(Fri),6(Sat),0(Sun). So remainder includes Thu,Fri,Sat,Sun. Tuesday (w=2) not in remainder, so count = full weeks = 17. Check: Feb13 Thu, first Tuesday Feb18? Actually Feb18 Tue, then Feb25, Mar4,11,18,25, Apr1,8,15,22,29, May6,13,20,27, Jun3,10? That's 17? Jun10 is Tuesday, Jun17 after end? End Jun15 Sun, so Jun10 included, yes 17. So answer: 17.
+
+Thus Q41: 17.
+
+42. Count the occurrences of Sunday from Wednesday, March 12 to Friday, April 4, 2014 (including both start and end dates). Write the total number.
+
+Dates: Mar12 to Apr4.
+
+Day-of-year: Mar12: Mar1=60, Mar12=60+11=71. Apr4: Apr1=91, Apr4=91+3=94. So start=71, end=94, D=94-71+1=24 days.
+
+Start s: (71+2)=73 mod7=73/7=10*7=70 remainder 3, so s=3 (Wednesday). D=24, r=24%7=3 (since 21+3). Full weeks=3, remainder 3: s=3(Wed),4(Thu),5(Fri). So remainder includes Wed,Thu,Fri. Sunday (w=0) not in remainder, so count = full weeks = 3. Check: Mar12 Wed, first Sunday Mar16? Actually Mar16 Sun, then Mar23,30? That's 3? Mar30 is Sunday, Apr6 after end? End Apr4 Fri, so Mar30 included, yes 3. So answer: 3.
+
+Thus Q42: 3.
+
+43. Between Monday, April 7, 2014 and Saturday, September 13, 2014 (counting both dates), how many times does Saturday occur? Express your answer as a number.
+
+Dates: Apr7 to Sep13.
+
+Day-of-year: Apr7=97 (as before). Sep13: Sep1=244, Sep13=244+12=256. So start=97, end=256, D=256-97+1=160 days.
+
+Start s: (97+2)=99 mod7=1 (Monday). D=160, r=160%7=160-7*22=160-154=6. Full weeks=22, remainder 6: s=1(Mon),2(Tue),3(Wed),4(Thu),5(Fri),6(Sat). So remainder includes Mon,Tue,Wed,Thu,Fri,Sat. Saturday appears in remainder. So count = full weeks + 1 = 22+1=23. Check: Apr7 Mon, first Saturday Apr12, then Apr19,26, May3,10,17,24,31, Jun7,14,21,28, Jul5,12,19,26, Aug2,9,16,23,30, Sep6,13? That's 23? Sep13 is Saturday, yes. So answer: 23.
+
+Thus Q43: 23.
+
+44. Count the weekdays (excluding weekends) from Friday, August 22 to Wednesday, November 19, 2014 (including both start and end dates). Write the total number.
+
+Dates: Aug22 to Nov19.
+
+Day-of-year: Aug22: Aug1=213, Aug22=213+21=234. Nov19: Nov1=305, Nov19=305+18=323. So start=234, end=323, D=323-234+1=90 days.
+
+Start s: (234+2)=236 mod7=236/7=33*7=231 remainder 5, so s=5 (Friday). D=90, r=90%7=90-7*12=90-84=6. Full weeks=12, remainder 6: s=5(Fri),6(Sat),0(Sun),1(Mon),2(Tue),3(Wed). So remainder includes Fri, Sat, Sun, Mon, Tue, Wed. Weekdays in remainder: Fri, Mon, Tue, Wed = 4 weekdays (Sat and Sun weekends). So business days = full weeks*5 + 4 = 12*5+4=60+4=64. Also weekends: full weeks 12*2=24, remainder weekends: Sat, Sun =2, total weekends=26, weekdays=90-26=64. So answer: 64.
+
+Thus Q44: 64.
+
+45. How many Fridays are there from Friday, January 17, 2014 to Sunday, August 3, 2014 (inclusive of both dates)? Respond with just the number.
+
+Dates: Jan17 to Aug3.
+
+Day-of-year: Jan17=17. Aug3: Aug1=213, Aug3=213+2=215. So start=17, end=215, D=215-17+1=199 days.
+
+Start s: (17+2)=19 mod7=19/7=2*7=14 remainder 5, so s=5 (Friday). D=199, r=199%7=199-7*28=199-196=3. Full weeks=28, remainder 3: s=5(Fri),6(Sat),0(Sun). So remainder includes Fri, Sat, Sun. Friday appears in remainder. So count = full weeks + 1 = 28+1=29. Check: Jan17 Fri, then Jan24,31, Feb7,14,21,28, Mar7,14,21,28, Apr4,11,18,25, May2,9,16,23,30, Jun6,13,20,27, Jul4,11,18,25, Aug1? That's 29? Aug1 is Friday, Aug8 after end? End Aug3 Sun, so Aug1 included, yes 29. So answer: 29.
+
+Thus Q45: 29.
+
+46. How many business days (Monday-Friday) are there from Thursday, November 6, 2014 to Monday, November 24, 2014 (inclusive of both dates)? Give the count numerically.
+
+Dates: Nov6 to Nov24.
+
+Day-of-year: Nov6=310 (as earlier). Nov24: Nov1=305, Nov24=305+23=328. So start=310, end=328, D=328-310+1=19 days.
+
+Start s: (310+2)=312 mod7=4 (Thursday). D=19, r=19%7=5. Full weeks=2, remainder 5: s=4(Thu),5(Fri),6(Sat),0(Sun),1(Mon). So remainder includes Thu,Fri,Sat,Sun,Mon. Weekdays in remainder: Thu, Fri, Mon = 3 weekdays. So business days = 2*5 + 3 = 10+3=13. Also weekends: full weeks 2*2=4, remainder Sat, Sun=2, total weekends=6, weekdays=19-6=13. So answer: 13.
+
+Thus Q46: 13.
+
+47. Between Thursday, March 6, 2014 and Wednesday, March 12, 2014 (counting both dates), how many times does Thursday occur? Provide the count as a number.
+
+Dates: Mar6 to Mar12.
+
+Day-of-year: Mar6: Mar1=60, Mar6=60+5=65. Mar12: Mar1=60, Mar12=60+11=71. So start=65, end=71, D=71-65+1=7 days.
+
+Start s: (65+2)=67 mod7=67/7=9*7=63 remainder 4, so s=4 (Thursday). D=7, r=0, full weeks=1. Thursday appears once per week, plus start is Thursday, so count =1. But verify: Mar6 Thu, Mar7 Fri, Mar8 Sat, Mar9 Sun, Mar10 Mon, Mar11 Tue, Mar12 Wed. So only one Thursday (the start). So answer: 1.
+
+Thus Q47: 1.
+
+48. Count the weekdays (excluding weekends) from Wednesday, March 26 to Tuesday, May 20, 2014 (including both start and end dates). State the amount as a number.
+
+Dates: Mar26 to May20.
+
+Day-of-year: Mar26: Mar1=60, Mar26=60+25=85. May20: May1=121, May20=121+19=140. So start=85, end=140, D=140-85+1=56 days.
+
+Start s: (85+2)=87 mod7=87/7=12*7=84 remainder 3, so s=3 (Wednesday). D=56, r=0, full weeks=8. Business days = 8*5 = 40. Check: 56 days exactly 8 weeks, so weekdays = 8*5=40. So answer: 40.
+
+Thus Q48: 40.
+
+49. Between Monday, February 10, 2014 and Sunday, June 15, 2014 (counting both dates), how many times does Tuesday occur? Express your answer as a number.
+
+Dates: Feb10 to Jun15.
+
+Day-of-year: Feb10: Feb1=32, Feb10=32+9=41. Jun15=166 (as before). So start=41, end=166, D=166-41+1=126 days.
+
+Start s: (41+2)=43 mod7=43/7=6*7=42 remainder 1, so s=1 (Monday). D=126, r=126%7=0, full weeks=18. Tuesday count = 18. Check: Feb10 Mon, first Tuesday Feb11, then Feb18,25, Mar4,11,18,25, Apr1,8,15,22,29, May6,13,20,27, Jun3,10? That's 18? Jun10 is Tuesday, Jun17 after end? End Jun15 Sun, so Jun10 included, yes 18. So answer: 18.
+
+Thus Q49: 18.
+
+50. How many business days (Monday-Friday) are there from Friday, June 6, 2014 to Saturday, November 22, 2014 (inclusive of both dates)? State the amount as a number.
+
+Dates: Jun6 to Nov22.
+
+Day-of-year: Jun6=157 (as earlier). Nov22: Nov1=305, Nov22=305+21=326. So start=157, end=326, D=326-157+1=170 days.
+
+Start s: (157+2)=159 mod7=5 (Friday). D=170, r=170%7=170-7*24=170-168=2. Full weeks=24, remainder 2: s=5(Fri),6(Sat). So remainder includes Fri, Sat. Weekdays in remainder: Fri only (1). So business days = 24*5 + 1 = 120+1=121. Also weekends: full weeks 24*2=48, remainder Sat (1), total weekends=49, weekdays=170-49=121. So answer: 121.
+
+Thus Q50: 121.
+
+Now we have all answers:
+
+1: 3
+2: 93
+3: 4
+4: 3
+5: 77
+6: 73
+7: 19
+8: 8
+9: 14
+10: 7
+11: 14
+12: 7
+13: 9
+14: 6
+15: 3
+16: 10
+17: 124
+18: 9
+19: 11
+20: 0
+21: 8
+22: 23
+23: 19
+24: 2
+25: 19
+26: 3
+27: 4
+28: 3
+29: 16
+30: 10
+31: 17
+32: 8
+33: 8
+34: 27
+35: 115
+36: 75
+37: 3
+38: 6
+39: 25
+40: 81
+41: 17
+42: 3
+43: 23
+44: 64
+45: 29
+46: 13
+47: 1
+48: 40
+49: 18
+50: 121
+
+Double-check some for consistency.
+
+Now produce final answer as comma-separated list.
+
+So final answer: 3,93,4,3,77,73,19,8,14,7,14,7,9,6,3,10,124,9,11,0,8,23,19,2,19,3,4,3,16,10,17,8,8,27,115,75,3,6,25,81,17,3,23,64,29,13,1,40,18,121
+
+Let's list them in order:
+
+1. 3
+2. 93
+3. 4
+4. 3
+5. 77
+6. 73
+7. 19
+8. 8
+9. 14
+10. 7
+11. 14
+12. 7
+13. 9
+14. 6
+15. 3
+16. 10
+17. 124
+18. 9
+19. 11
+20. 0
+21. 8
+22. 23
+23. 19
+24. 2
+25. 19
+26. 3
+27. 4
+28. 3
+29. 16
+30. 10
+31. 17
+32. 8
+33. 8
+34. 27
+35. 115
+36. 75
+37. 3
+38. 6
+39. 25
+40. 81
+41. 17
+42. 3
+43. 23
+44. 64
+45. 29
+46. 13
+47. 1
+48. 40
+49. 18
+50. 121
+
+Now produce output.

@@ -1,0 +1,903 @@
+We are given a 7x7 symmetric integer matrix A. We need to find the signature (p, q) of the quadratic form Q(x) = x^T A x, where p is the number of positive eigenvalues (or positive squares in a diagonalization) and q the number of negative eigenvalues. Since it's real symmetric, the signature is determined by the signs of the eigenvalues.
+
+We could compute the eigenvalues, but that would be messy. Instead, we can perform Gaussian elimination (completing squares) to transform into a sum of squares with coefficients. Since matrix is given integer, we can do row/column operations preserving congruence (i.e., performing symmetric operations). Equivalently, we can compute the determinants of leading principal minors (if they are all non-zero) to determine the index via Sylvester's law of inertia for real symmetric matrices: the number of positive eigenvalues equals the number of sign changes in the sequence of leading principal minors, but only if all leading principal minors are non-zero. However, they may be zero; we need to handle that. Alternatively, we can perform diagonalization by completing squares.
+
+Given the size 7, we can attempt to compute the characteristic polynomial? That would be heavy. Better to perform symmetric Gaussian elimination, i.e., use elementary operations that preserve congruence: for each pivot, we can subtract multiples of that row/column from others. Since the matrix is integer, we might get fractions but we can keep exact rational numbers.
+
+We can also compute the inertia by using the LDL^T decomposition or performing Cholesky-like factorization with pivoting. Since the matrix may be indefinite, we might need to handle zeros.
+
+Let's define A as:
+
+Row1: [-1, -2, 2, 0, 0, -1, 0]
+Row2: [-2, -7, 4, 3, 6, -8, -3]
+Row3: [2, 4, -5, 0, 2, 3, 1]
+Row4: [0, 3, 0, 0, -6, 12, 3]
+Row5: [0, 6, 2, -6, -18, 12, 6]
+Row6: [-1, -8, 3, 12, 12, -5, -9]
+Row7: [0, -3, 1, 3, 6, -9, -9]
+
+We can start by using a pivot. The (1,1) entry is -1, non-zero. So we can eliminate below in first column (and symmetrically to the right) by subtracting appropriate multiples of first row from others.
+
+Let's denote the matrix entries a_ij. First pivot: d1 = -1.
+
+We'll perform row operations: For i>1, we want to zero out a_i1. For congruence, we must perform the same operation on columns. So we subtract (a_i1 / a_11) times first row from row i, and similarly subtract (a_i1 / a_11) times first column from column i. However, it's easier to perform the elimination by updating the matrix: For each i>1, let factor = a_i1 / a_11. Then new row i = row i - factor * row 1, and new column i = column i - factor * column 1. Since symmetric, we can just compute the new entries for i>=j by the formula: a_ij' = a_ij - factor_i * a_1j - factor_j * a_1i + factor_i * factor_j * a_11, but careful: The standard formula for symmetric elimination: When we eliminate using pivot (1,1), we compute:
+
+For i,j >1: new a_ij = a_ij - (a_i1 * a_1j)/a_11.
+
+Because the elimination step for congruence: L = I with multipliers in first column; the transformed matrix is A' = L A L^T, where L has ones on diagonal and L_{i1} = -a_i1/a_11 for i>1. Then (A')_{ij} = a_ij - a_i1 * a_1j / a_11 for i,j>1. Actually check: (L A L^T)_ij = sum_{k,l} L_{ik} A_{kl} (L^T)_{lj}. Since L is lower triangular with ones on diag, and only non-zero in first column below diag. For i,j>1: L_{i1} = m_i = -a_i1/a_11, L_{ii}=1, else 0. Similarly L^T has L_{1j} = m_j, L_{jj}=1. Then get: (L A L^T)_ij = A_ij + m_i A_{1j} + A_{i1} m_j + m_i A_{11} m_j = A_ij - (a_i1/a_11) a_1j - a_i1 (a_1j/a_11) + (a_i1/a_11)(a_1j/a_11) a_11 = A_ij - 2 a_i1 a_1j / a_11 + a_i1 a_1j / a_11 = A_ij - a_i1 a_1j / a_11. Yes, that's the formula. So for i,j>1, we compute new entries. Also the first row and column become zero except pivot.
+
+So we can compute the Schur complement after eliminating the first variable.
+
+Given A is symmetric, we can compute the reduced 6x6 matrix B with entries B_{ij} = a_{i+1,j+1} - a_{i+1,1} * a_{1,j+1} / a_{11} for i,j=1..6.
+
+Let's compute required values.
+
+a_11 = -1.
+
+Let vector v = first column below a_11: a_21 = -2, a_31=2, a_41=0, a_51=0, a_61=-1, a_71=0. Actually row indices 2..7. Also first row entries: a_12 = -2, a_13=2, a_14=0, a_15=0, a_16=-1, a_17=0. Since symmetric, a_1j = a_j1.
+
+So for i=2..7, j=2..7, we compute new a_ij = a_ij - (a_i1 * a_1j)/a_11.
+
+Since a_11 = -1, the factor 1/a_11 = -1. So a_ij - a_i1 * a_1j / (-1) = a_ij + a_i1 * a_1j. Because dividing by -1 gives -a_i1 * a_1j? Wait careful: a_i1 * a_1j / a_11 = a_i1 * a_1j / (-1) = - a_i1 * a_1j. So a_ij - ( - a_i1 * a_1j ) = a_ij + a_i1 * a_1j. Actually check: The formula is a_ij' = a_ij - (a_i1 * a_1j)/a_11. Since a_11 = -1, (a_i1 * a_1j)/a_11 = - a_i1 a_1j. So a_ij' = a_ij - (- a_i1 a_1j) = a_ij + a_i1 a_1j. So it's simply adding the product of the first column entries of the two rows. That's nice because no fractions.
+
+So we can compute B entries for indices (i,j) with i,j from 2 to 7, mapping to 1..6 in B.
+
+Let's list the original matrix entries for rows 2..7, columns 2..7. And also need a_i1 and a_1j.
+
+We have:
+
+Original A:
+
+Row1: (1) -1; (2) -2; (3) 2; (4) 0; (5) 0; (6) -1; (7) 0
+
+Row2: (1) -2; (2) -7; (3) 4; (4) 3; (5) 6; (6) -8; (7) -3
+Row3: (1) 2; (2) 4; (3) -5; (4) 0; (5) 2; (6) 3; (7) 1
+Row4: (1) 0; (2) 3; (3) 0; (4) 0; (5) -6; (6) 12; (7) 3
+Row5: (1) 0; (2) 6; (3) 2; (4) -6; (5) -18; (6) 12; (7) 6
+Row6: (1) -1; (2) -8; (3) 3; (4) 12; (5) 12; (6) -5; (7) -9
+Row7: (1) 0; (2) -3; (3) 1; (4) 3; (5) 6; (6) -9; (7) -9
+
+We need a_i1 for i=2..7:
+
+a21 = -2
+a31 = 2
+a41 = 0
+a51 = 0
+a61 = -1
+a71 = 0
+
+a_1j for j=2..7:
+
+a12 = -2
+a13 = 2
+a14 = 0
+a15 = 0
+a16 = -1
+a17 = 0
+
+Now compute B_{i-1,j-1} = a_ij + a_i1 * a_1j.
+
+We'll compute for i,j from 2 to 7 (use original indices). Let's compute systematically.
+
+Let's make a table for i=2..7, j=2..7.
+
+First compute all a_ij values (original) and then add product.
+
+I'll compute by hand:
+
+Indices: i=2 (row2), j=2..7:
+
+- j=2: a22 = -7; product a21*a12 = (-2)*(-2)=4; new = -7+4 = -3.
+- j=3: a23 = 4; product a21*a13 = (-2)*2 = -4; new = 4 + (-4) = 0.
+- j=4: a24 = 3; product a21*a14 = (-2)*0 = 0; new = 3+0 = 3.
+- j=5: a25 = 6; product a21*a15 = (-2)*0 = 0; new = 6+0 = 6.
+- j=6: a26 = -8; product a21*a16 = (-2)*(-1)=2; new = -8+2 = -6.
+- j=7: a27 = -3; product a21*a17 = (-2)*0 = 0; new = -3+0 = -3.
+
+So new row2: [-3, 0, 3, 6, -6, -3] (columns 2..7 respectively)
+
+Now i=3 (row3), j=2..7:
+
+Original a3j: row3: a32=4, a33=-5, a34=0, a35=2, a36=3, a37=1. (Note symmetric, but we use a_3j as given). a31=2.
+
+Products: a31 * a1j:
+
+- j=2: a12 = -2 => product = 2*(-2) = -4. new = 4 + (-4) = 0.
+- j=3: a13 = 2 => product = 2*2 = 4. new = -5 + 4 = -1.
+- j=4: a14 = 0 => product = 0. new = 0 + 0 = 0.
+- j=5: a15 = 0 => product = 0. new = 2+0=2.
+- j=6: a16 = -1 => product = 2*(-1) = -2. new = 3 + (-2) = 1.
+- j=7: a17 = 0 => product = 0. new = 1+0=1.
+
+So row3: [0, -1, 0, 2, 1, 1] (for j=2..7)
+
+Now i=4 (row4), j=2..7:
+
+a41=0, so product=0 for all j. So new entries are just original a4j.
+
+Original row4: a42=3, a43=0, a44=0, a45=-6, a46=12, a47=3.
+
+So row4: [3, 0, 0, -6, 12, 3].
+
+Now i=5 (row5), j=2..7:
+
+a51=0, so product=0. Original row5: a52=6, a53=2, a54=-6, a55=-18, a56=12, a57=6.
+
+So row5: [6, 2, -6, -18, 12, 6].
+
+Now i=6 (row6), j=2..7:
+
+a61 = -1.
+
+Compute products:
+
+a61 * a1j: a1j as above.
+
+- j=2: a12=-2 => product = (-1)*(-2)=2. a62 original = -8, new = -8+2 = -6.
+- j=3: a13=2 => product = (-1)*2 = -2. a63=3, new = 3+(-2)=1.
+- j=4: a14=0 => product=0. a64=12, new=12+0=12.
+- j=5: a15=0 => product=0. a65=12, new=12+0=12.
+- j=6: a16=-1 => product = (-1)*(-1)=1. a66=-5, new = -5+1 = -4.
+- j=7: a17=0 => product=0. a67=-9, new=-9+0=-9.
+
+So row6: [-6, 1, 12, 12, -4, -9].
+
+Now i=7 (row7), j=2..7:
+
+a71=0 => product=0. Original row7: a72=-3, a73=1, a74=3, a75=6, a76=-9, a77=-9.
+
+So row7: [-3, 1, 3, 6, -9, -9].
+
+Thus after eliminating first variable, we get the 6x6 reduced symmetric matrix B (since the original matrix symmetric, B should be symmetric). Let's check symmetry: For (2,3) we have row2 col3=0, row3 col2=0; good. (2,4): row2 col4=3, row4 col2=3; (2,5):6, row5 col2=6; (2,6):-6, row6 col2=-6; (2,7):-3, row7 col2=-3; (3,4):0, row4 col3=0; (3,5):2, row5 col3=2; (3,6):1, row6 col3=1; (3,7):1, row7 col3=1; (4,5):-6, row5 col4=-6; (4,6):12, row6 col4=12; (4,7):3, row7 col4=3; (5,6):12, row6 col5=12; (5,7):6, row7 col5=6; (6,7):-9, row7 col6=-9. So symmetric.
+
+Now the reduced matrix B (size 6) with rows/cols indexing original 2..7, but we can re-index as 1..6 for convenience. Let's denote C = B, where:
+
+C = 
+Row1 (original row2): [ -3, 0, 3, 6, -6, -3 ]
+Row2 (original row3): [ 0, -1, 0, 2, 1, 1 ]
+Row3 (original row4): [ 3, 0, 0, -6, 12, 3 ]
+Row4 (original row5): [ 6, 2, -6, -18, 12, 6 ]
+Row5 (original row6): [ -6, 1, 12, 12, -4, -9 ]
+Row6 (original row7): [ -3, 1, 3, 6, -9, -9 ]
+
+So C =
+
+[ -3,   0,   3,   6,  -6,  -3 ]
+[  0,  -1,   0,   2,   1,   1 ]
+[  3,   0,   0,  -6,  12,   3 ]
+[  6,   2,  -6, -18,  12,   6 ]
+[ -6,   1,  12,  12,  -4,  -9 ]
+[ -3,   1,   3,   6,  -9,  -9 ]
+
+Now we have eliminated variable x1, with pivot d1 = a11 = -1. So we have one negative square: -1 * (something)^2. So far q >=1, p=0.
+
+Now we need to process the 6x6 matrix C. Choose pivot for next variable. The (1,1) entry of C is -3, non-zero. So we can use that as pivot. Again we'll perform elimination on C using similar formula: new entry = a_ij - (a_i1 * a_1j)/a_11. However, note that the diagonal entries may become fractions. Since a_11 = -3, we will have division by -3, so fractions may appear. But we can handle rational numbers.
+
+Alternatively, we could choose a different pivot to avoid fractions? Could we exchange rows/columns? Congruence allows symmetric permutations (reorder variables). Since we want to compute signature, we can permute rows and columns simultaneously (i.e., reorder variables) to possibly get a nicer pivot. For instance, we might pick the (2,2) entry -1 as pivot, which is simpler. But we need to be careful: after permutation, the matrix stays symmetric and the signature unchanged. So we can reorder the variables to put a convenient pivot at the top left. For computational ease, we can choose the next pivot as the entry with value -1 at (2,2) (original indices) in C, which is row2 col2 = -1. Actually in C, row2 corresponds to original row3, and col2 is -1. So we can permute rows and columns so that the second row/column becomes first. This is allowed because we are just renaming variables. Since we are doing sequential elimination, we can at each step select a pivot from the remaining matrix, possibly swapping to get a non-zero pivot (and preferably with nice numbers). We need to keep track of the count of positive/negative squares from the pivots. However, after symmetric row/col permutation, the pivot we use will be some diagonal entry. Then we eliminate that variable. So we can decide to use the -1 as pivot now. Since we already eliminated x1, the remaining variables correspond to x2,...,x7. We can reorder them as we like. So let's reorder the variables to make the pivot -1 the first of the reduced matrix. That is, we want to treat the variable corresponding to that row as the next one to eliminate. So we can take C and swap rows and columns to bring the second row/col to first position. But we need to keep the matrix symmetric. Since we are doing elimination step by step, we can simply pick the pivot from the current matrix; we are not required to use the top-left entry. In the elimination process, we can use any diagonal element as pivot, and then perform elimination on the rows/columns accordingly. However, the standard formula for Schur complement assumes we eliminate the first variable. But we can reorder the variables so that the pivot variable becomes the first one. So to apply the formula, we can symmetrically permute the matrix so that the pivot is at (1,1). This is equivalent to just picking a pivot and then performing elimination treating that variable as the first. Let's do that.
+
+We have C with rows and cols indexed 1..6 (representing original x2..x7). We see that C_{2,2} = -1 is a nice entry. So we can permute by swapping row1 and row2, and col1 and col2. That would bring the -1 to (1,1). Let's define new ordering: For the remaining variables, we want to eliminate the one that corresponds to the -1 first. So after permutation, we have new matrix C':
+
+Original C rows/cols: 1,2,3,4,5,6. Swap 1 and 2. So new order: row2 becomes first, row1 becomes second, then 3,4,5,6. So C':
+
+First row (old row2): [ -1, 0, 0, 2, 1, 1 ]? Wait old row2: [0, -1, 0, 2, 1, 1]. After swapping cols, we must also swap columns similarly. So we need to permute columns as well. So after swapping row1<->row2 and col1<->col2, the new matrix entries:
+
+For new indices: let old index mapping: new1 = old2, new2 = old1, new3 = old3, new4 = old4, new5 = old5, new6 = old6.
+
+Then C'_ij = C_{ old_i, old_j }.
+
+So we can compute C'_11 = C_{2,2} = -1.
+C'_12 = C_{2,1} = 0.
+C'_13 = C_{2,3} = 0.
+C'_14 = C_{2,4} = 2.
+C'_15 = C_{2,5} = 1.
+C'_16 = C_{2,6} = 1.
+
+C'_21 = C_{1,2} = 0 (since C_{1,2}=0)
+C'_22 = C_{1,1} = -3.
+C'_23 = C_{1,3} = 3.
+C'_24 = C_{1,4} = 6.
+C'_25 = C_{1,5} = -6.
+C'_26 = C_{1,6} = -3.
+
+C'_31 = C_{3,2}=0 (C row3 col2 = 0)
+C'_32 = C_{3,1}=3 (C row3 col1 = 3)
+C'_33 = C_{3,3}=0.
+C'_34 = C_{3,4}=-6.
+C'_35 = C_{3,5}=12.
+C'_36 = C_{3,6}=3.
+
+C'_41 = C_{4,2}=2 (C row4 col2 =2)
+C'_42 = C_{4,1}=6 (C row4 col1=6)
+C'_43 = C_{4,3}=-6
+C'_44 = C_{4,4}=-18
+C'_45 = C_{4,5}=12
+C'_46 = C_{4,6}=6
+
+C'_51 = C_{5,2}=1 (row5 col2=1)
+C'_52 = C_{5,1}=-6 (row5 col1=-6)
+C'_53 = C_{5,3}=12
+C'_54 = C_{5,4}=12
+C'_55 = C_{5,5}=-4
+C'_56 = C_{5,6}=-9
+
+C'_61 = C_{6,2}=1 (row6 col2=1)
+C'_62 = C_{6,1}=-3 (row6 col1=-3)
+C'_63 = C_{6,3}=3
+C'_64 = C_{6,4}=6
+C'_65 = C_{6,5}=-9
+C'_66 = C_{6,6}=-9
+
+So C' =
+
+[ -1,   0,   0,   2,   1,   1 ]
+[  0,  -3,   3,   6,  -6,  -3 ]
+[  0,   3,   0,  -6,  12,   3 ]
+[  2,   6,  -6, -18,  12,   6 ]
+[  1,  -6,  12,  12,  -4,  -9 ]
+[  1,  -3,   3,   6,  -9,  -9 ]
+
+Now we have pivot at (1,1) = -1. Good. Now we eliminate using this pivot. For i>1, we compute new entries for i,j>1: B'_ij = C'_ij - (C'_i1 * C'_1j)/C'_11. Since C'_11 = -1, denominator -1, so B'_ij = C'_ij - (C'_i1 * C'_1j)/(-1) = C'_ij + C'_i1 * C'_1j. Because minus divided by -1 gives plus.
+
+So again we have nice formula: new entry = original + product of first column and first row entries (since pivot -1). Let's compute.
+
+First column entries for i>1: C'_21 = 0, C'_31 = 0, C'_41 = 2, C'_51 = 1, C'_61 = 1.
+
+First row entries for j>1: C'_12 = 0, C'_13 = 0, C'_14 = 2, C'_15 = 1, C'_16 = 1.
+
+So for i,j>1, new = C'_ij + (C'_i1)*(C'_1j). Since many zeros, simplifies.
+
+We'll compute the 5x5 reduced matrix D (corresponding to variables after eliminating the second variable, which is the one we permuted to be first). But careful: The pivot we used corresponds to a variable (which originally was maybe x3? Actually after first elimination, we had variables x2..x7. Then we permuted to bring the variable that had -1 to the front. That variable corresponds to which original? In C, row2 was original row3, i.e., variable x3? Actually original indices: row1: x2, row2: x3, row3: x4, row4: x5, row5: x6, row6: x7. So C_{2,2} = -1 corresponded to x3's coefficient? Actually it's the diagonal entry for variable x3. So we eliminated x3 now. So after second elimination, we have 5 variables left: x2, x4, x5, x6, x7 (since we eliminated x1 and then x3). But we also permuted; after permutation, the order we used for elimination: first (new first) was x3, then remaining in order: x2, x4, x5, x6, x7 (since original order after swapping row1 and row2 gave new2 = old1 = x2, new3=old3=x4, new4=old4=x5, new5=old5=x6, new6=old6=x7). So the new D will be 5x5 matrix for variables x2, x4, x5, x6, x7 in that order.
+
+Now compute D entries using D_{i-1,j-1} = C'_ij + C'_i1 * C'_1j for i,j=2..6.
+
+Let's compute systematically. We'll label rows/cols of D as indices 1..5 corresponding to original new indices 2..6. We'll compute each.
+
+First, we need C'_ij for i,j from 2 to 6. Let's list C' rows 2..6:
+
+Row2 (i=2): [ -3, 3, 6, -6, -3 ] (for j=2..6)
+Row3 (i=3): [ 3, 0, -6, 12, 3 ]
+Row4 (i=4): [ 6, -6, -18, 12, 6 ]
+Row5 (i=5): [ -6, 12, 12, -4, -9 ]
+Row6 (i=6): [ -3, 3, 6, -9, -9 ]
+
+But careful: these are C'_ij for j=2..6. However, note that C'_11 = -1, C'_i1 for i=2..6: as given: row2 col1=0, row3 col1=0, row4 col1=2, row5 col1=1, row6 col1=1. And C'_1j for j=2..6: row1 col2=0, col3=0, col4=2, col5=1, col6=1.
+
+Now compute D_{i-1,j-1} = C'_ij + (C'_i1)*(C'_1j). Since for i=2,3 we have C'_i1=0, so D entries for rows corresponding to i=2,3 will just be C'_ij. For i=4,5,6 we need to add product.
+
+Let's create D matrix with indices p,q =1..5 where p = i-1, q = j-1.
+
+First, compute D row1 (i=2, original row2): 
+Since C'_21=0, so D_{1,q} = C'_{2, j} for j=2..6.
+So row1: j=2-> C'22 = -3; j=3-> C'23=3; j=4-> C'24=6; j=5-> C'25=-6; j=6-> C'26=-3.
+Thus D row1: [ -3, 3, 6, -6, -3 ].
+
+Row2 (i=3, C'_31=0): D row2 = C'_{3,j} for j=2..6: [3, 0, -6, 12, 3].
+
+Row3 (i=4, C'_41=2): D row3 = C'_{4,j} + 2 * C'_{1j} for j=2..6.
+C'4j for j=2..6: row4: [6, -6, -18, 12, 6] (j=2:6, j=3:-6, j=4:-18, j=5:12, j=6:6)
+C'1j for j=2..6: [0,0,2,1,1] (since C'12=0, C'13=0, C'14=2, C'15=1, C'16=1)
+So products: for j=2: 2*0=0; j=3:2*0=0; j=4:2*2=4; j=5:2*1=2; j=6:2*1=2.
+Thus D row3: [6+0=6, -6+0=-6, -18+4=-14, 12+2=14, 6+2=8] -> [6, -6, -14, 14, 8].
+
+Row4 (i=5, C'_51=1): D row4 = C'_{5,j} + 1 * C'_{1j} = C'5j + C'1j.
+C'5j for j=2..6: row5: [-6, 12, 12, -4, -9] (j=2:-6, j=3:12, j=4:12, j=5:-4, j=6:-9)
+C'1j: [0,0,2,1,1]
+Add: j=2: -6+0=-6; j=3:12+0=12; j=4:12+2=14; j=5:-4+1=-3; j=6:-9+1=-8.
+So D row4: [-6, 12, 14, -3, -8].
+
+Row5 (i=6, C'_61=1): D row5 = C'_{6,j} + 1 * C'_{1j} = C'6j + C'1j.
+C'6j for j=2..6: row6: [-3, 3, 6, -9, -9] (j=2:-3, j=3:3, j=4:6, j=5:-9, j=6:-9)
+C'1j: [0,0,2,1,1]
+Add: j=2:-3+0=-3; j=3:3+0=3; j=4:6+2=8; j=5:-9+1=-8; j=6:-9+1=-8.
+So D row5: [-3, 3, 8, -8, -8].
+
+Thus the 5x5 matrix D (symmetric) is:
+
+Row1: [ -3,   3,   6,  -6,  -3 ]
+Row2: [  3,   0,  -6,  12,   3 ]
+Row3: [  6,  -6, -14,  14,   8 ]
+Row4: [ -6,  12,  14,  -3,  -8 ]
+Row5: [ -3,   3,   8,  -8,  -8 ]
+
+Check symmetry: (1,2)=3, (2,1)=3; (1,3)=6, (3,1)=6; (1,4)=-6, (4,1)=-6; (1,5)=-3, (5,1)=-3; (2,3)=-6, (3,2)=-6; (2,4)=12, (4,2)=12; (2,5)=3, (5,2)=3; (3,4)=14, (4,3)=14; (3,5)=8, (5,3)=8; (4,5)=-8, (5,4)=-8. Good.
+
+Now we have eliminated two variables: first pivot -1 (original x1) gave negative square; second pivot -1 (x3) gave negative square. So far q=2, p=0.
+
+Now we have D 5x5. We need to continue. Let's examine D's diagonal entries: -3, 0, -14, -3, -8. The (2,2) entry is 0. That means we cannot use (2,2) as pivot directly. We need to handle zero pivot. We could permute rows/columns to bring a non-zero diagonal entry to top-left. Or we could perform a different elimination step that handles zero pivot by adding something? We can also do "pivoting" by selecting any non-zero diagonal entry in the remaining matrix. Or if all diagonal entries are zero, we may need to consider non-diagonal pivots using something like "completing squares" with a suitable linear combination. But here we have several non-zero diagonal entries: -3, -14, -3, -8. So we can pick one as pivot, say the (1,1) entry -3. That's fine. But note that (2,2)=0 is not a problem if we don't use it as pivot; we just reorder rows/cols so that the pivot we choose is at position (1,1). Since we are free to reorder the remaining variables, we can bring the -3 (row1) to top-left. However, the current D's (1,1) is -3 already, so we can use that as pivot directly. But we need to consider that there is a zero on diagonal elsewhere, but that's fine as long as we have a non-zero pivot. So we can proceed with pivot at D[1,1] = -3.
+
+But note: D[2,2] = 0 could cause issues later, but we will continue elimination. Since we have a non-zero pivot, we can eliminate using it. However, we might also consider permuting to get a different pivot that might simplify fractions? D[3,3] = -14, D[4,4] = -3, D[5,5] = -8. But -3 is simplest. Let's use (1,1) = -3 as pivot. But note: after elimination, we will get a 4x4 matrix. The pivot -3 is negative; so we get another negative square. That would give q=3 so far.
+
+But before we commit, we should check if we can perhaps find a positive pivot to get a positive square? So far all pivots have been negative. Possibly the quadratic form is negative definite? But we have 7 variables; the matrix may have some positive eigenvalues. Let's not jump. Let's continue elimination systematically.
+
+We have D (5x5). Let's select pivot = D[1,1] = -3. We will eliminate the first variable of this reduced system (which corresponds to x2, as per the order). But we might again permute to avoid fractions. Since D[1,1] = -3, we will have to divide by -3. That will give fractions. But we can handle rational numbers. Alternatively, could we choose a different pivot that is -1? There is no -1 in D. The smallest absolute values are -3, -3, -8, -14. So -3 is fine.
+
+We can proceed with pivot = -3. Since it's negative, we'll get a negative square.
+
+Now D is 5x5. Let's denote entries as d_ij with i,j=1..5.
+
+We compute new 4x4 matrix E after eliminating using pivot d11 = -3. Formula: For i,j>1, E_{i-1,j-1} = d_ij - (d_i1 * d_1j)/d_11.
+
+d_11 = -3.
+
+We need d_i1 for i=2..5: d21 = 3, d31 = 6, d41 = -6, d51 = -3.
+And d_1j for j=2..5: d12 = 3, d13 = 6, d14 = -6, d15 = -3.
+
+Now compute each E entry. Since d_11 negative, work with fractions.
+
+Let's compute E for i=2..5, j=2..5.
+
+First compute the factor: 1/d_11 = -1/3. So d_i1 * d_1j / d_11 = d_i1 * d_1j * (-1/3). Then E = d_ij - (d_i1 * d_1j / d_11) = d_ij - ( - (d_i1 d_1j)/3 ) = d_ij + (d_i1 d_1j)/3.
+
+So E = d_ij + (d_i1 d_1j)/3.
+
+That may produce fractions but we can keep as rational numbers.
+
+We'll compute for i,j = 2,...,5. Let's list d_ij for i,j=2..5:
+
+Original D submatrix:
+
+Rows 2-5, cols 2-5:
+
+d22 = 0, d23 = -6, d24 = 12, d25 = 3
+d32 = -6, d33 = -14, d34 = 14, d35 = 8
+d42 = 12, d43 = 14, d44 = -3, d45 = -8
+d52 = 3, d53 = 8, d54 = -8, d55 = -8
+
+Now compute E entries:
+
+For each i,j, compute product d_i1 * d_1j. Note d_i1: i=2:3, i=3:6, i=4:-6, i=5:-3. d_1j: j=2:3, j=3:6, j=4:-6, j=5:-3.
+
+We can compute matrix of products:
+
+Let u = [3,6,-6,-3]^T (i=2..5) and v = [3,6,-6,-3] (j=2..5). Then outer product u*v:
+
+Compute:
+
+- (i=2,j=2): 3*3=9
+- (2,3): 3*6=18
+- (2,4): 3*(-6) = -18
+- (2,5): 3*(-3) = -9
+- (3,2): 6*3=18
+- (3,3): 6*6=36
+- (3,4): 6*(-6) = -36
+- (3,5): 6*(-3) = -18
+- (4,2): (-6)*3 = -18
+- (4,3): (-6)*6 = -36
+- (4,4): (-6)*(-6)=36
+- (4,5): (-6)*(-3)=18
+- (5,2): (-3)*3 = -9
+- (5,3): (-3)*6 = -18
+- (5,4): (-3)*(-6)=18
+- (5,5): (-3)*(-3)=9
+
+Now each E = d_ij + (product)/3.
+
+So compute:
+
+E22 = d22 + 9/3 = 0 + 3 = 3.
+E23 = d23 + 18/3 = -6 + 6 = 0.
+E24 = d24 + (-18)/3 = 12 + (-6) = 6.
+E25 = d25 + (-9)/3 = 3 + (-3) = 0.
+
+E32 = d32 + 18/3 = -6 + 6 = 0 (should equal E23)
+E33 = d33 + 36/3 = -14 + 12 = -2.
+E34 = d34 + (-36)/3 = 14 + (-12) = 2.
+E35 = d35 + (-18)/3 = 8 + (-6) = 2.
+
+E42 = d42 + (-18)/3 = 12 + (-6) = 6.
+E43 = d43 + (-36)/3 = 14 + (-12) = 2.
+E44 = d44 + 36/3 = -3 + 12 = 9.
+E45 = d45 + 18/3 = -8 + 6 = -2.
+
+E52 = d52 + (-9)/3 = 3 + (-3) = 0.
+E53 = d53 + (-18)/3 = 8 + (-6) = 2.
+E54 = d54 + 18/3 = -8 + 6 = -2.
+E55 = d55 + 9/3 = -8 + 3 = -5.
+
+So the 4x4 matrix E (rows/cols 2..5 mapped to 1..4) is:
+
+Row1 (i=2): [3, 0, 6, 0]
+Row2 (i=3): [0, -2, 2, 2]
+Row3 (i=4): [6, 2, 9, -2]
+Row4 (i=5): [0, 2, -2, -5]
+
+Check symmetry: (1,2)=0 and (2,1)=0; (1,3)=6, (3,1)=6; (1,4)=0, (4,1)=0; (2,3)=2, (3,2)=2; (2,4)=2, (4,2)=2; (3,4)=-2, (4,3)=-2. Good.
+
+Now we have 4x4 matrix E. We eliminated the variable corresponding to x2 (since that was first row of D). Pivot was -3 (negative). So far q=3, p=0.
+
+Now we have E. Let's look at its diagonal: 3, -2, 9, -5. So we have positive diagonal entries (3,9) and negative (-2,-5). So we may get both positive and negative squares. We need to continue elimination. Now choose a pivot. There are several non-zero diagonal entries. We can pick a pivot that is non-zero, preferably not causing too many fractions. The (1,1) entry is 3, positive. That would give a positive square. So we can use that as pivot. But note, we also have (2,2) = -2 (negative), (3,3)=9 positive, (4,4)=-5 negative. Any could be pivot. We can proceed in order. Since it's convenient, use (1,1)=3 as pivot. But note, we might also want to reorder to avoid fractions? 3 is fine. Let's eliminate using pivot = 3.
+
+Now E is 4x4. Let's denote matrix F = E. We will eliminate first variable (corresponding to some original variable, maybe x4? Actually we need to track which variable we eliminate but signature just counts squares). We'll compute new 3x3 matrix G after elimination.
+
+So F_{11}=3. Compute F_i1 for i=2..4: F21=0, F31=6, F41=0. And F_1j for j=2..4: F12=0, F13=6, F14=0.
+
+Now formula: For i,j>1: G_{i-1,j-1} = F_ij - (F_i1 * F_1j)/F_11.
+
+Compute:
+
+F_11 = 3.
+
+So for i,j=2..4.
+
+First, compute the product terms: Since F21=0, F41=0, many zeros. Only non-zero is F31=6 and F13=6.
+
+So we have:
+
+For i=2 (row2): F21=0 => product zero for all j. So G1j (i=2) = F2j (j=2..4). F22 = -2, F23=2, F24=2. So row1 of G: [ -2, 2, 2 ].
+
+For i=3 (row3): F31=6. For j=2..4, compute product: (6 * F_1j)/3 = 2*F_1j. Since F_12=0, F_13=6, F_14=0. So for j=2: product=2*0=0; j=3: 2*6=12; j=4: 2*0=0. Then G_{2,j-1} = F_{3j} - product. So:
+- j=2: F32=2 - 0 = 2.
+- j=3: F33=9 - 12 = -3.
+- j=4: F34=-2 - 0 = -2.
+Thus row2 of G: [2, -3, -2].
+
+For i=4 (row4): F41=0 => product zero. So G_{3,j-1} = F_{4j} for j=2..4: F42=2, F43=-2, F44=-5. So row3: [2, -2, -5].
+
+So G is 3x3 matrix:
+
+Row1: [ -2, 2, 2 ]
+Row2: [ 2, -3, -2 ]
+Row3: [ 2, -2, -5 ]
+
+Check symmetry: (1,2)=2, (2,1)=2; (1,3)=2, (3,1)=2; (2,3)=-2, (3,2)=-2. Good.
+
+Now we have eliminated one more variable (the one corresponding to first row of F). Pivot was 3 positive, so p=1 (first positive square). So far: q=3 (from previous three negatives: -1, -1, -3) and p=1 (from +3). Now G is 3x3.
+
+Now we continue with G. We need to eliminate further. G diagonal entries: -2, -3, -5. All negative. So we can choose any as pivot. Let's start with (1,1) = -2. That will give a negative square, so q will increase.
+
+Use pivot = -2. So we eliminate first variable of G. Compute new 2x2 matrix H.
+
+G_11 = -2. Compute G_i1 for i=2,3: G21=2, G31=2. G_1j for j=2,3: G12=2, G13=2.
+
+Formula: H_{i-1,j-1} = G_ij - (G_i1 * G_1j)/G_11.
+
+G_11 = -2. So 1/G_11 = -1/2. Then (G_i1 G_1j)/G_11 = G_i1 G_1j * (-1/2) = - (G_i1 G_1j)/2. So H = G_ij - ( - (G_i1 G_1j)/2 ) = G_ij + (G_i1 G_1j)/2.
+
+Let's compute for i,j=2,3.
+
+First compute G_ij for i,j=2,3:
+G22 = -3, G23 = -2,
+G32 = -2, G33 = -5.
+
+Now G_i1: G21=2, G31=2.
+G_1j: G12=2, G13=2.
+
+Compute products:
+i=2,j=2: G21*G12 = 2*2=4 -> add half: 4/2=2 -> H11 = G22 + 2 = -3+2 = -1.
+i=2,j=3: G21*G13 = 2*2=4 -> add 2 -> H12 = G23 + 2 = -2+2 = 0.
+i=3,j=2: G31*G12 = 2*2=4 -> add 2 -> H21 = G32 + 2 = -2+2 = 0.
+i=3,j=3: G31*G13 = 2*2=4 -> add 2 -> H22 = G33 + 2 = -5+2 = -3.
+
+So H = 2x2 matrix:
+[ -1, 0 ]
+[ 0, -3 ]
+
+Symmetric, diagonal.
+
+Now we have 2x2 matrix. Pivot used: -2 (negative), so q increases by 1: q becomes 4 (since previously q=3, now q=4). p remains 1.
+
+Now we have H with diagonal entries -1 and -3. Both negative. We need to eliminate further. We can treat H as 2x2. Choose pivot (1,1) = -1. Eliminate to get 1x1 matrix.
+
+So then we use pivot = -1. Then we compute Schur complement: For i=2,j=2: H22 - (H21 * H12)/H11 = -3 - (0*0)/(-1) = -3. So the remaining 1x1 is -3. This pivot -1 gives another negative square, so q becomes 5. Then the final 1x1 -3 gives another negative square, so q becomes 6. So total: p=1, q=6? But we have 7 variables total. p+q = 7? 1+6=7, yes. So signature (p,q) = (1,6). However, we must check if any zero eigenvalues (nullity). Since we ended with non-zero pivots, the matrix is non-singular? Possibly. The product of pivots? The determinant? But signature counts positive and negative; if there were zero eigenvalues, the number of zero squares would be r = 7 - (p+q). But we have p+q=7, so no zero eigenvalues, full rank. So signature (1,6).
+
+But is that correct? Let's double-check all steps for possible arithmetic errors. It's easy to make mistakes in such manual calculations. We should verify each elimination step and perhaps compute the determinant of original A to see if it's negative? If signature (1,6), the determinant = product of eigenvalues = (positive)*(negative)^6 = positive? Actually product of eigenvalues = (-1)^6 * (positive) = positive? Because six negatives give positive, times positive = positive. So determinant would be positive. Let's compute determinant of original A quickly (maybe using computational tool mentally? Could be heavy but we can check consistency by computing the product of pivots we used: pivots were: -1 (first), -1 (second after permutation), -3 (third), +3 (fourth), -2 (fifth), -1 (sixth), -3 (seventh). The product of these pivots equals the determinant of the original matrix times perhaps some factor from permutations? In congruence transformations, the determinant of the transformed matrix (the diagonal form) is product of pivots, but the transformation matrices have determinant 1? For LDL^T decomposition, the product of pivots equals the determinant of the original matrix (since L has unit diagonal, so det(L)=1, and det(LDL^T)=det(D)). However, we performed permutations, which change the determinant sign possibly depending on permutation parity. But we can compute product of pivots we used (considering the signs they had) and compare with the determinant of original A. Our sequence of pivots: first elimination on A: pivot a11=-1. Then after permutation, we used pivot -1 (on C'), then -3 (on D), then 3 (on E), then -2 (on G), then -1 (on H), then -3 (final entry). So product = (-1)*(-1)*(-3)*(3)*(-2)*(-1)*(-3). Compute step by step: (-1)*(-1)=1; 1*(-3)=-3; -3*3=-9; -9*(-2)=18; 18*(-1)=-18; -18*(-3)=54. So product = 54. So if the transformations had determinant 1, then det(A)=54. Let's test if that is plausible. Could compute determinant of A quickly? We can try to compute det of A using row operations or maybe use the product of pivots from elimination without permutations? Since we did symmetric permutations, the determinant might have sign changes depending on number of swaps. Each row/column swap changes sign of determinant? Actually symmetric row and column swap: if we swap rows i and j and also columns i and j, the determinant remains the same? Because swapping two rows changes sign, swapping two columns also changes sign, so overall sign change is (+1) because two sign changes? Actually swapping rows i and j multiplies determinant by -1; swapping columns i and j also multiplies by -1; thus the total factor is (-1)*(-1)=1. So symmetric permutation does not change determinant. So our product of pivots (including those from permuted matrices) should equal det(A) provided the elimination steps correspond to an LDL^T decomposition with unit diagonal L, without scaling rows? Usually, when we perform Gaussian elimination without row exchanges, the product of pivots equals determinant. With row/column permutations (symmetric), the determinant remains unchanged, but the pivots we used are from the permuted matrices. However, the product of pivots after all eliminations (including the reduced matrices) should equal the determinant of the original matrix, because we are effectively performing a congruence transformation that results in a diagonal matrix D, and the transformation matrix has determinant ±1 (since it's product of elementary matrices with unit diagonal? Actually the congruence transformation is L such that A = L D L^T, where L is lower triangular with 1s on diagonal. This decomposition exists if all leading principal minors are non-zero. However, we performed permutations to ensure non-zero pivots, which results in a factorization P A P^T = L D L^T, where P is a permutation matrix. Then det(P A P^T) = det(A) = det(L D L^T) = det(D) because det(L)=1. So det(A)=det(D) = product of pivots (since D is diagonal with the pivots). So indeed product of pivots we used (taking into account the final D after all eliminations and permutations) should equal det(A). Our product gave 54. So det(A) = 54. Let's quickly check the determinant of A by other means to see if 54 is plausible. Could compute using software mentally? Possibly we can compute det of A directly using row reduction? Might be easier to compute using the elimination steps we did but with careful scaling? However, we have the original matrix A, we can compute its determinant by doing standard Gaussian elimination (non-symmetric) and track row swaps. Since we already did symmetric elimination, we might compute the determinant from the factors we used. Let's trust for now.
+
+But before finalizing, we must verify that we didn't make a mistake in the arithmetic. Let's re-do the elimination steps more systematically, perhaps using rational arithmetic with fractions to avoid errors.
+
+Alternate approach: Use the method of completing squares directly on the quadratic form, but that is similar. Could also compute eigenvalues with computer, but we must do manually.
+
+Given the potential for error, let's re-calc each step carefully. We'll recompute from the beginning with careful tracking.
+
+Original A:
+
+A = 
+[ -1, -2,  2,  0,  0, -1,  0 ]
+[ -2, -7,  4,  3,  6, -8, -3 ]
+[  2,  4, -5,  0,  2,  3,  1 ]
+[  0,  3,  0,  0, -6, 12,  3 ]
+[  0,  6,  2, -6, -18, 12,  6 ]
+[ -1, -8,  3, 12, 12, -5, -9 ]
+[  0, -3,  1,  3,  6, -9, -9 ]
+
+Step 1: Eliminate x1 using pivot -1. Since pivot is -1, the reduced matrix B (size 6) entries: b_ij = a_{i+1,j+1} + a_{i+1,1} * a_{1,j+1} (since a11 = -1). We computed that. Let's recompute all B entries in a table to avoid mistakes.
+
+List a_{i1} for i=2..7: row2: -2; row3: 2; row4: 0; row5: 0; row6: -1; row7: 0.
+List a_{1j} for j=2..7: col2: -2; col3: 2; col4: 0; col5: 0; col6: -1; col7: 0.
+
+Now original a_{ij} for i,j>=2. Let's construct a matrix for a_{ij} (i=2..7, j=2..7) as given:
+
+We can write it as:
+
+i\j | 2   3   4   5   6   7
+2:  -7,  4,  3,  6, -8, -3
+3:   4, -5,  0,  2,  3,  1
+4:   3,  0,  0, -6, 12,  3
+5:   6,  2, -6, -18,12,  6
+6:  -8,  3, 12, 12, -5, -9
+7:  -3,  1,  3,  6, -9, -9
+
+Now compute b_{ij} = a_{ij} + a_{i1} * a_{1j}. Compute each:
+
+For i=2 (row2):
+- j=2: a22=-7, product=(-2)*(-2)=4 => -7+4=-3.
+- j=3: a23=4, product=(-2)*2=-4 => 4-4=0.
+- j=4: a24=3, product=(-2)*0=0 => 3.
+- j=5: a25=6, product=(-2)*0=0 => 6.
+- j=6: a26=-8, product=(-2)*(-1)=2 => -8+2=-6.
+- j=7: a27=-3, product=(-2)*0=0 => -3.
+So row2: [-3,0,3,6,-6,-3].
+
+i=3 (row3):
+a31=2.
+j=2: a32=4, product=2*(-2)=-4 => 4-4=0.
+j=3: a33=-5, product=2*2=4 => -5+4=-1.
+j=4: a34=0, product=2*0=0 => 0.
+j=5: a35=2, product=2*0=0 =>2.
+j=6: a36=3, product=2*(-1)=-2 => 3-2=1.
+j=7: a37=1, product=2*0=0 =>1.
+So row3: [0,-1,0,2,1,1].
+
+i=4 (row4):
+a41=0 => all products 0, so row4 = original: [3,0,0,-6,12,3].
+
+i=5 (row5):
+a51=0 => row5 = original: [6,2,-6,-18,12,6].
+
+i=6 (row6):
+a61=-1.
+j=2: a62=-8, product=(-1)*(-2)=2 => -8+2=-6.
+j=3: a63=3, product=(-1)*2=-2 => 3-2=1.
+j=4: a64=12, product=(-1)*0=0 =>12.
+j=5: a65=12, product=(-1)*0=0 =>12.
+j=6: a66=-5, product=(-1)*(-1)=1 => -5+1=-4.
+j=7: a67=-9, product=(-1)*0=0 => -9.
+So row6: [-6,1,12,12,-4,-9].
+
+i=7 (row7):
+a71=0 => row7 = original: [-3,1,3,6,-9,-9].
+
+Thus B = as before. Good.
+
+Now step2: we permuted B to bring the -1 (which was at (2,2) in B, i.e., row2 col2 = -1) to top left. So we swapped row1 and row2, col1 and col2 of B. That gave C' we computed. Let's recompute C' directly from B to ensure no error.
+
+B (unordered) with rows/cols labeled as 1..6 where row1 = B row2? Actually in B matrix, we have rows:
+Row1: from original i=2: [-3,0,3,6,-6,-3]
+Row2: from i=3: [0,-1,0,2,1,1]
+Row3: from i=4: [3,0,0,-6,12,3]
+Row4: from i=5: [6,2,-6,-18,12,6]
+Row5: from i=6: [-6,1,12,12,-4,-9]
+Row6: from i=7: [-3,1,3,6,-9,-9]
+
+We want to swap row1 and row2, and col1 and col2. So new matrix C':
+
+New row1 = old row2: [0, -1, 0, 2, 1, 1] but after swapping columns, we need to also swap entries in columns. That is, we want to reorder columns so column order becomes (old2, old1, old3, old4, old5, old6). So take old row2, which is [0, -1, 0, 2, 1, 1] (columns: old1=0, old2=-1, old3=0, old4=2, old5=1, old6=1). After swapping col1 and col2, new order: col1 becomes old2 = -1; col2 becomes old1 = 0; col3=old3=0; col4=old4=2; col5=old5=1; col6=old6=1. So C' row1 = [-1, 0, 0, 2, 1, 1]. Good.
+
+New row2 = old row1: old row1 = [-3,0,3,6,-6,-3]. After swapping columns: new col1 = old2 = 0; new col2 = old1 = -3; col3=old3=3; col4=old4=6; col5=old5=-6; col6=old6=-3. So row2 = [0, -3, 3, 6, -6, -3]. Good.
+
+New row3 = old row3: [3,0,0,-6,12,3] -> after column swap: col1=old2=0, col2=old1=3, col3=0, col4=-6, col5=12, col6=3 => [0,3,0,-6,12,3]. Good.
+
+New row4 = old row4: [6,2,-6,-18,12,6] -> col1=old2=2, col2=old1=6, col3=-6, col4=-18, col5=12, col6=6 => [2,6,-6,-18,12,6]. Good.
+
+New row5 = old row5: [-6,1,12,12,-4,-9] -> col1=old2=1, col2=old1=-6, col3=12, col4=12, col5=-4, col6=-9 => [1,-6,12,12,-4,-9]. Good.
+
+New row6 = old row6: [-3,1,3,6,-9,-9] -> col1=old2=1, col2=old1=-3, col3=3, col4=6, col5=-9, col6=-9 => [1,-3,3,6,-9,-9]. Good.
+
+So C' is as previous.
+
+Now step3: eliminate using pivot C'_11 = -1. For i,j>1, new entry = C'_ij + C'_i1 * C'_1j. We computed D (5x5) from C' after eliminating. Let's recompute D carefully.
+
+We have C'_i1 for i=2..6: row2:0, row3:0, row4:2, row5:1, row6:1.
+C'_1j for j=2..6: row1 col2=0, col3=0, col4=2, col5=1, col6=1.
+
+Now compute D matrix of size 5 (rows/cols mapping i=2..6, j=2..6). D_{i-1,j-1} = C'_ij + C'_i1 * C'_1j.
+
+We need C'_ij for i,j=2..6. Let's list those values from C':
+
+C' rows 2..6, columns 2..6:
+
+Row2 (i=2): [ -3, 3, 6, -6, -3 ] (j=2..6)
+Row3 (i=3): [ 3, 0, -6, 12, 3 ]
+Row4 (i=4): [ 6, -6, -18, 12, 6 ]
+Row5 (i=5): [ -6, 12, 12, -4, -9 ]
+Row6 (i=6): [ -3, 3, 6, -9, -9 ]
+
+Now for each cell, add product term:
+
+- For rows i=2,3: C'_i1=0, so no addition.
+- For i=4: add 2 * C'_1j. C'_1j for j=2..6: [0,0,2,1,1]. So add [0,0,4,2,2] to row4 entries.
+- For i=5: add 1 * C'_1j = [0,0,2,1,1] to row5.
+- For i=6: add same [0,0,2,1,1] to row6.
+
+Thus compute:
+
+Row2 (i=2): D row1 = [-3,3,6,-6,-3] unchanged.
+
+Row3 (i=3): D row2 = [3,0,-6,12,3] unchanged.
+
+Row4 (i=4): original row4 = [6,-6,-18,12,6]; add [0,0,4,2,2] => [6, -6, -14, 14, 8]. That matches previous row3 (since we had row3 of D as [6,-6,-14,14,8]).
+
+Row5 (i=5): original row5 = [-6,12,12,-4,-9]; add [0,0,2,1,1] => [-6,12,14,-3,-8]. That matches row4.
+
+Row6 (i=6): original row6 = [-3,3,6,-9,-9]; add [0,0,2,1,1] => [-3,3,8,-8,-8]. That matches row5.
+
+Thus D is correct.
+
+Now step4: we used pivot D[1,1] = -3. Then we computed E (4x4) from D using elimination with pivot -3. Let's recompute E carefully, possibly with fractions rational.
+
+D matrix:
+
+D = 
+Row1: [ -3,   3,   6,  -6,  -3 ]
+Row2: [  3,   0,  -6,  12,   3 ]
+Row3: [  6,  -6, -14,  14,   8 ]
+Row4: [ -6,  12,  14,  -3,  -8 ]
+Row5: [ -3,   3,   8,  -8,  -8 ]
+
+We will eliminate using D11 = -3. First, compute the multipliers for rows 2..5: m_i = D_i1 / D11. But we used the formula for Schur complement: For i>1, j>1: new = D_ij - (D_i1 * D_1j)/D11. Since D11 = -3, we can compute.
+
+D_i1 for i=2..5: D21=3, D31=6, D41=-6, D51=-3.
+D_1j for j=2..5: D12=3, D13=6, D14=-6, D15=-3.
+
+Now compute for each (i,j). Let's compute using exact rational numbers, maybe keep fractions.
+
+We'll compute E of size 4, with rows 1..4 corresponding to i=2..5 and j=2..5.
+
+Let's compute systematically:
+
+Initialize a table for i=2..5, j=2..5.
+
+Define D_ij:
+
+i=2 (row2): D22=0, D23=-6, D24=12, D25=3.
+i=3 (row3): D32=-6, D33=-14, D34=14, D35=8.
+i=4 (row4): D42=12, D43=14, D44=-3, D45=-8.
+i=5 (row5): D52=3, D53=8, D54=-8, D55=-8.
+
+Now compute term = (D_i1 * D_1j)/(-3). Since D11 = -3, we have (D_i1 D_1j)/D11 = (D_i1 D_1j)/(-3). So new = D_ij - (D_i1 D_1j)/(-3) = D_ij + (D_i1 D_1j)/3. So as before.
+
+Now compute products D_i1 D_1j:
+
+- D21*D12 = 3*3=9
+- D21*D13=3*6=18
+- D21*D14=3*(-6)=-18
+- D21*D15=3*(-3)=-9
+- D31*D12=6*3=18
+- D31*D13=6*6=36
+- D31*D14=6*(-6)=-36
+- D31*D15=6*(-3)=-18
+- D41*D12=(-6)*3=-18
+- D41*D13=(-6)*6=-36
+- D41*D14=(-6)*(-6)=36
+- D41*D15=(-6)*(-3)=18
+- D51*D12=(-3)*3=-9
+- D51*D13=(-3)*6=-18
+- D51*D14=(-3)*(-6)=18
+- D51*D15=(-3)*(-3)=9
+
+Now divide each by 3:
+
+- 9/3=3; 18/3=6; -18/3=-6; -9/3=-3
+- 18/3=6; 36/3=12; -36/3=-12; -18/3=-6
+- -18/3=-6; -36/3=-12; 36/3=12; 18/3=6
+- -9/3=-3; -18/3=-6; 18/3=6; 9/3=3
+
+Now add to D_ij:
+
+For (i=2,j=2): D22=0 +3 =3.
+(2,3): D23=-6 +6 =0.
+(2,4): D24=12 + (-6)=6.
+(2,5): D25=3 + (-3)=0.
+(3,2): D32=-6 +6 =0.
+(3,3): D33=-14 +12 = -2.
+(3,4): D34=14 + (-12)=2.
+(3,5): D35=8 + (-6)=2.
+(4,2): D42=12 + (-6)=6.
+(4,3): D43=14 + (-12)=2.
+(4,4): D44=-3 +12 =9.
+(4,5): D45=-8 +6 = -2.
+(5,2): D52=3 + (-3)=0.
+(5,3): D53=8 + (-6)=2.
+(5,4): D54=-8 +6 = -2.
+(5,5): D55=-8 +3 = -5.
+
+Thus E matrix (rows1-4 correspond to i=2..5, rows2-5? Actually we have 4x4 matrix with rows (i=2,3,4,5) and cols (j=2,3,4,5). So E = 
+Row1 (i=2): [3,0,6,0]
+Row2 (i=3): [0,-2,2,2]
+Row3 (i=4): [6,2,9,-2]
+Row4 (i=5): [0,2,-2,-5]
+Yes.
+
+Now step5: Eliminate using pivot E[1,1]=3. Compute the 3x3 matrix G.
+
+E matrix:
+
+Row1: [3, 0, 6, 0]
+Row2: [0, -2, 2, 2]
+Row3: [6, 2, 9, -2]
+Row4: [0, 2, -2, -5]
+
+Now E11=3. E_i1 for i=2..4: E21=0, E31=6, E41=0.
+E_1j for j=2..4: E12=0, E13=6, E14=0.
+
+Formula: G_{i-1,j-1} = E_ij - (E_i1 * E_1j)/E11.
+
+Since E21=0 and E41=0, only i=3 has non-zero. Compute:
+
+For i=2 (row2): E21=0 => G_{1,j-1} = E2j for j=2..4. E22=-2, E23=2, E24=2. So row1 of G: [-2,2,2].
+
+For i=3 (row3): E31=6. For j=2..4: compute (6 * E_1j)/3 = 2 * E_1j. Since E12=0, E13=6, E14=0. So for j=2: term=2*0=0 => G = E32 - 0 = 2. For j=3: term=2*6=12 => G = E33 - 12 = 9-12 = -3. For j=4: term=2*0=0 => G = E34 - 0 = -2. So row2 of G: [2, -3, -2].
+
+For i=4 (row4): E41=0 => G_{3,j-1} = E4j: E42=2, E43=-2, E44=-5. So row3: [2, -2, -5].
+
+Thus G = 
+[ -2, 2, 2 ]
+[ 2, -3, -2 ]
+[ 2, -2, -5 ]
+
+Same as before.
+
+Step6: Eliminate using pivot G[1,1] = -2. Compute H (2x2).
+
+G matrix:
+
+Row1: [-2, 2, 2]
+Row2: [2, -3, -2]
+Row3: [2, -2, -5]
+
+Pivot = -2. G_i1 for i=2,3: G21=2, G31=2. G_1j for j=2,3: G12=2, G13=2.
+
+Now formula: H_{i-1,j-1} = G_ij - (G_i1 * G_1j)/G11 = G_ij - (2*2)/(-2) = G_ij - (4)/(-2) = G_ij - (-2) = G_ij + 2. Wait careful: (G_i1 G_1j)/G11 = (2*2)/(-2) = 4/(-2) = -2. Then subtract that: G_ij - (-2) = G_ij + 2. However previously we got G_ij + (product)/2? Let's recompute correctly.
+
+General: new = G_ij - (G_i1 * G_1j)/G11. Here G11 = -2. So (G_i1 G_1j)/G11 = (2*2)/(-2) = -2. So new = G_ij - (-2) = G_ij + 2. So we add 2. But earlier we had formula G_ij + (G_i1 G_1j)/2 because we had G_ij + (product)/2? That gave product 4/2=2, so same. Good.
+
+Now compute H entries:
+
+i=2,j=2: G22 = -3; add 2 => -1.
+i=2,j=3: G23 = -2; add 2 => 0.
+i=3,j=2: G32 = -2; add 2 => 0.
+i=3,j=3: G33 = -5; add 2 => -3.
+
+So H = [ -1, 0; 0, -3 ].
+
+Step7: Eliminate using pivot H[1,1] = -1. Then last entry = H22 - (H21*H12)/H11 = -3 - (0*0)/(-1) = -3.
+
+Thus final diagonal entries from the elimination (pivots in order we used): -1 (from A), -1 (from C'), -3 (from D), 3 (from E), -2 (from G), -1 (from H), -3 (last). So we have positives: just one 3. Negatives: six. So signature (1,6). Since we had a positive pivot 3, that indicates one positive eigenvalue. And no zero eigenvalues.
+
+But note that in the process we performed symmetric permutations, which preserve inertia. So the result should be correct.
+
+However, we should double-check that the pivot we used from E (3) is indeed positive and that we didn't inadvertently change sign by permutation that could affect the count? The permutation only reorders variables, does not change signs. So positive pivot remains positive. So signature is (1,6). Also note that the product of all pivots = 54 (positive), consistent with even number of negative pivots? 6 negatives -> product positive. So determinant 54 >0, so even number of negative eigenvalues. For 7x7, if number of negative eigenvalues is even (0,2,4,6) then determinant positive. So 6 negatives gives positive determinant. So consistent.
+
+But wait: Could there be any zero eigenvalues? The product of pivots is non-zero, so full rank.
+
+Thus answer: p=1, q=6.
+
+But we should confirm by another method, perhaps by computing the characteristic polynomial's coefficients or using known invariants. Since we have the matrix, we could compute its determinant quickly using a different approach, like performing row operations (non-symmetric) to get an upper triangular form and compute the determinant, to see if it's 54. Let's attempt to compute det(A) via Gaussian elimination (allowing row swaps and row operations that preserve determinant up to sign). Since the matrix is 7x7, we can try to reduce to upper triangular.
+
+We have A as given. Let's perform row reduction (non-symmetric) to compute determinant, ignoring symmetry.
+
+A =
+
+[ -1, -2,  2,  0,  0, -1,  0 ]
+[ -2, -7,  4,  3,  6, -8, -3 ]
+[  2,  4, -5,  0,  2,  3,  1 ]
+[  0,  3,  0,  0, -6, 12,  3 ]
+[  0,  6,  2, -6, -18,12,  6 ]
+[ -1, -8,  3, 12, 12, -5, -9 ]
+[  0, -3,  1,  3,  6, -9, -9 ]
+
+We'll perform Gaussian elimination to upper triangular, keeping track of row swaps and scaling. Since we just want det, we can also use the fact that det(A) = product of pivots from our congruence elimination gave 54, which is plausible. Let's try to compute det by systematic elimination.
+
+Let's do row operations. I'll use rational numbers and try to avoid fractions as much as possible. Start with row1 as pivot row (pivot = -1). Multiply row1 by -1 to get pivot 1? But better to keep as -1.
+
+We can eliminate first column below row1.
+
+Row2: R2 <- R2 - (a21/a11) R1 = R2 - (-2)/(-1) R1 = R2 - 2 R1? Because a21 = -2, a11=-1, so factor = (-2)/(-1)=2. So R2 = R2 - 2*R1. Compute: R2: [-2, -7, 4, 3, 6, -8, -3] - 2*[-1, -2, 2, 0, 0, -1, 0] = [-2, -7, 4, 3, 6, -8, -3] - [-2, -4, 4, 0, 0, -2, 0] = [0, -3, 0, 3, 6, -6, -3]. So new R2 = [0, -3, 0, 3, 6, -6, -3].
+
+Row3: R3 <- R3 - (a31/a11)R1 = a31=2, factor=2/(-1)=-2? Actually 2/(-1) = -2. So R3 = R3 - (-2)R1 = R3 + 2R1? Let's compute: (a31/a11) = 2/(-1) = -2. So R3 = R3 - (-2)R1 = R3 + 2R1. So R3: [2,4,-5,0,2,3,1] + 2*[-1, -2,2,0,0,-1,0] = [2,4,-5,0,2,3,1] + [-2,-4,4,0,0,-2,0] = [0,0,-1,0,2,1,1]. So new R3 = [0,0,-1,0,2,1,1].
+
+Row4: a41=0, so unchanged: [0,3,0,0,-6,12,3].
+
+Row5: a51=0, unchanged: [0,6,2,-6,-18,12,6].
+
+Row6: a61=-1, factor = (-1)/(-1)=1. So R6 <- R6 - 1*R1 = [-1,-8,3,12,12,-5,-9] - [-1,-2,2,0,0,-1,0] = [0,-6,1,12,12,-4,-9]. So new R6 = [0,-6,1,12,12,-4,-9].
+
+Row7: a71=0, unchanged: [0,-3,1,3,6,-9,-9].
+
+Now matrix after first column elimination:
+
+R1: [-1, -2, 2, 0, 0, -1, 0]
+R2: [0, -3, 0, 3, 6, -6, -3]
+R3: [0, 0, -1, 0, 2, 1, 1]
+R4: [0, 3, 0, 0, -6, 12, 3]
+R5: [0, 6, 2, -6, -18, 12, 6]
+R6: [0, -6, 1, 12, 12, -4, -9]
+R7: [0, -3, 1, 3, 6, -9, -9]
+
+Now we have a 6x6 submatrix from rows2-7 cols2-7. We can compute its determinant, and then det(A) = a11 * det(submatrix) if no row swaps? Actually det(A) = (-1) * det(submatrix) because we performed row operations that do not change determinant? But careful: Row operations of type Ri <- Ri - c R1 (with c constant) do not change determinant. So the determinant of the current matrix equals det(A). Now we have an upper block? Not yet triangular. We can proceed with pivot in second column. We have a pivot at (2,2) = -3. That's non-zero. But note row3 has zero in col2, row4 has 3, row5 6, row6 -6, row7 -3. So we can eliminate below row2.
+
+We'll use row2 as pivot (pivot = -3). For rows i=3..7, we eliminate column2. But we need to consider that row3 has 0 in col2, so no operation for row3. For row4: factor = a42 / a22 = 3 / (-3) = -1. So R4 <- R4 - (-1)R2 = R4 + R2. Compute: R4: [0,3,0,0,-6,12,3] + R2: [0,-3,0,3,6,-6,-3] = [0,0,0,3,0,6,0]. So new R4 = [0,0,0,3,0,6,0].
+
+Row5: factor = a52/a22 = 6/(-3) = -2. So R5 <- R5 - (-2)R2 = R5 + 2R2. R5: [0,6,2,-6,-18,12,6] + 2*[0,-3,0,3,6,-6,-3] = [0,6,2,-6,-18,12,6] + [0,-6,0,6,12,-12,-6] = [0,0,2,0,-6,0,0]. So new R5 = [0,0,2,0,-6,0,0].
+
+Row6: factor = a62/a22 = -6/(-3)=2. So R6 <- R6 - 2*R2. R6: [0,-6,1,12,12,-4,-9] - 2*[0,-3,0,3,6,-6,-3] = [0,-6,1,12,12,-4,-9] - [0,-6,0,6,12,-12,-6] = [0,0,1,6,0,8,-3]. Wait compute: -6 - (-6)=0; 1-0=1; 12-6=6; 12-12=0; -4 - (-12)=8; -9 - (-6)=-3. So new R6 = [0,0,1,6,0,8,-3].
+
+Row7: factor = a72/a22 = -3/(-3)=1. So R7 <- R7 - 1*R2. R7: [0,-3,1,3,6,-9,-9] - [0,-3,0,3,6,-6,-3] = [0,0,1,0,0,-3,-6]. So new R7 = [0,0,1,0,0,-3,-6].
+
+Now matrix after second column elimination:
+
+R1: [-1, -2, 2, 0, 0, -1, 0]
+R2: [0, -3, 0, 3, 6, -6, -3]
+R3: [0, 0, -1, 0, 2, 1, 1]
+R4: [0, 0, 0, 3, 0, 6, 0]
+R5: [0, 0, 2, 0, -6, 0, 0]
+R6: [0, 0, 1, 6, 0, 8, -3]
+R7: [0, 0, 1, 0, 0, -3, -6]
+
+Now we have to continue with column3. The pivot for column3 could be (3,3) = -1, which is non-zero. But note that rows 4-7 have entries in column3. We can eliminate below row3. Let's eliminate using pivot row3, col3 = -1.
+
+For rows i=4..7, factor = a_i3 / a33. Compute a33 = -1. So:
+
+Row4: a43=0, so skip.
+Row5: a53=2, factor = 2/(-1) = -2. So R5 <- R5 - (-2)R3 = R5 + 2R3. R5: [0,0,2,0,-6,0,0] + 2*[0,0,-1,0,2,1,1] = [0,0,2,0,-6,0,0] + [0,0,-2,0,4,2,2] = [0,0,0,0,-2,2,2]. So new R5 = [0,0,0,0,-2,2,2].
+Row6: a63=1, factor = 1/(-1) = -1. So R6 <- R6 - (-1)R3 = R6 + R3. R6: [0,0,1,6,0,8,-3] + [0,0,-1,0,2,1,1] = [0,0,0,6,2,9,-2]. So new R6 = [0,0,0,6,2,9,-2].
+Row7: a73=1, factor = 1/(-1) = -1. So R7 <- R7 + R3. R7: [0,0,1,0,0,-3,-6] + [0,0,-1,0,2,1,1] = [0,0,0,0,2,-2,-5]. So new R7 = [0,0,0,0,2,-2,-5].
+
+Now matrix:
+
+R1: [-1, -2, 2, 0, 0, -1, 0]
+R2: [0, -3, 0, 3, 6, -6, -3]
+R3: [0, 0, -1, 0, 2, 1, 1]
+R4: [0, 0, 0, 3, 0, 6, 0]
+R5: [0, 0, 0, 0, -2, 2, 2]
+R6: [0, 0, 0, 6, 2, 9, -2]
+R7: [0, 0, 0, 0, 2, -2, -5]
+
+Now column4: pivot candidate is (4,4)=3, non-zero. We need to eliminate below in column4: rows5,6,7. But row5 has 0 in col4; row6 has 6; row7 has 0. So only row6 needs elimination.
+
+Row6: a64=6, pivot = a44=3, factor = 6/3 = 2. So R6 <- R6 - 2*R4. R6: [0,0,0,6,2,9,-2] - 2*[0,0,0,3,0,6,0] = [0,0,0,6,2,9,-2] - [0,0,0,6,0,12,0] = [0,0,0,0,2,-3,-2]. So new R6 = [0,0,0,0,2,-3,-2].
+
+Now matrix:
+
+R1: [-1, -2, 2, 0, 0, -1, 0]
+R2: [0, -3, 0, 3, 6, -6, -3]
+R3: [0, 0, -1, 0, 2, 1, 1]
+R4: [0, 0, 0, 3, 0, 6, 0]
+R5: [0, 0, 0, 0, -2, 2, 2]
+R6: [0, 0, 0, 0, 2, -3, -2]
+R7: [0, 0, 0, 0, 2, -2, -5]
+
+Now column5: pivot candidate is (5,5) = -2, non-zero. Eliminate below: rows6 and 7 have entries in col5: a65=2, a75=2.
+
+For row6: factor = 2/(-2) = -1. So R6 <- R6 - (-1)R5 = R6 + R5. R6: [0,0,0,0,2,-3,-2] + [0,0,0,0,-2,2,2] = [0,0,0,0,0,-1,0]. So new R6 = [0,0,0,0,0,-1,0].
+For row7: factor = 2/(-2) = -1. So R7 <- R7 + R5. R7: [0,0,0,0,2,-2,-5] + [0,0,0,0,-2,2,2] = [0,0,0,0,0,0,-3]. So new R7 = [0,0,0,0,0,0,-3].
+
+Now matrix is upper triangular (actually row6 col6 is -1, row7 col7 is -3). So we have diagonal entries:
+
+d1 = -1
+d2 = -3
+d3 = -1
+d4 = 3
+d5 = -2
+d6 = -1
+d7 = -3
+
+Product = (-1)*(-3)*(-1)*3*(-2)*(-1)*(-3) = Let's compute: (-1)*(-3)=3; 3*(-1)=-3; -3*3=-9; -9*(-2)=18; 18*(-1)=-18; -18*(-3)=54. So product = 54. The determinant of A is 54, as we found from our congruence product. So det=54. This confirms our elimination is consistent.
+
+But note: In this Gaussian elimination (non-symmetric), we performed row operations that preserve determinant (no row swaps, only adding multiples of rows). So the diagonal entries we got are the pivots after elimination; product = det(A). So indeed det(A)=54 >0. Also note that the pivots we got here are not necessarily the same as the ones from congruence elimination because we didn't do symmetric column operations. However, they give the same product. The signs of these pivots: negative, negative, negative, positive, negative, negative, negative. That's 6 negatives and 1 positive, consistent with signature (1,6). Indeed, in standard Gaussian elimination, the signs of the pivots (assuming no row swaps) give the number of positive and negative eigenvalues? Not exactly; for a symmetric matrix, if we perform Gaussian elimination without pivoting (i.e., using the diagonal entries as they appear) and if all leading principal minors are non-zero, then the signs of the pivots correspond to the signs of the eigenvalues? Actually for a symmetric matrix, the LDL^T decomposition yields D with entries that are the pivots; the signs of these pivots equal the signs of the eigenvalues (by Sylvester's law of inertia) because the transformation is congruent. However, in Gaussian elimination we performed row operations only (not column operations), which does not preserve congruence, but we did use only row operations that are elementary and we did not symmetrically apply them to columns. That means the resulting upper triangular matrix is not congruent to A; it's just row-equivalent. So the signs of the pivots in that triangular form do not necessarily correspond to the inertia. But in this specific elimination, we eliminated using only row operations, but we never swapped columns; the resulting matrix is not symmetric. However, the pivots we got are the same numbers as we got from the congruence elimination? Let's compare: Our congruence elimination gave pivots: -1, -1, -3, 3, -2, -1, -3. The row elimination gave pivots: -1 (row1), -3 (row2), -1 (row3), 3 (row4), -2 (row5), -1 (row6), -3 (row7). They are in a different order: congruence pivots order: x1: -1, then x3: -1, then x2: -3? Wait, the order in congruence depended on permutations we used. In row elimination we didn't permute variables; we kept the original order x1..x7. So the pivots in row elimination are simply the diagonal entries after elimination in the original order. They are: col1: -1, col2: -3, col3: -1, col4: 3, col5: -2, col6: -1, col7: -3. That's six negatives and one positive exactly. This suggests that the matrix A has all leading principal minors non-zero? Let's check: Leading principal minors: det of 1x1 = -1 (negative), 2x2? Compute det([-1,-2;-2,-7]) = (-1)*(-7)-(-2)*(-2)=7-4=3 (positive). Next 3x3? Possibly negative? Actually we can compute the sequence: The signs of leading principal minors for a symmetric matrix give the number of negative eigenvalues if all are non-zero? For a symmetric matrix, the number of negative eigenvalues is equal to the number of sign changes in the sequence of leading principal minors (assuming all non-zero). However, that requires the matrix to be congruent to a diagonal matrix with the signs of the pivots? Actually the standard result: For a symmetric matrix with all leading principal minors non-zero, the inertia (p,q) is given by the signs of the leading principal minors: the number of negative eigenvalues equals the number of sign changes in the sequence 1, det1, det2, ..., detn, where det0=1. And the number of positive eigenvalues is n minus that. Let's test: det1 = -1 (negative). det2 = 3 (positive). So sign change from -1 to 3? Actually we consider sequence: 1 (positive), det1=-1 (negative) => one sign change. Then from det1=-1 to det2=3: negative to positive => another sign change, so two sign changes so far. det3? Let's compute det of leading 3x3 submatrix: A[1:3,1:3] = 
+[ -1, -2, 2;
+  -2, -7, 4;
+   2, 4, -5 ]
+We can compute its determinant. Using row operations: 
+det = ? We could compute: (-1)*det([-7,4;4,-5]) - (-2)*det([-2,4;2,-5]) + 2*det([-2,-7;2,4]). Compute:
+-7*(-5)-4*4 = 35-16=19, so first term: -1*19 = -19.
+Second term: -(-2)* ( (-2)*(-5) - 4*2 ) = +2*(10-8)=2*2=4.
+Third term: 2* ( (-2)*4 - (-7)*2 ) = 2*(-8+14)=2*6=12.
+Sum = -19+4+12 = -3. So det3 = -3 (negative). Now sequence: det1=-1, det2=3, det3=-3. So signs: det1 negative, det2 positive, det3 negative. So sign changes: from positive (1) to negative (det1) = 1; from negative to positive=2; from positive to negative=3. So three sign changes. According to the rule, number of negative eigenvalues equals number of sign changes? That would give 3 negatives? But we found from elimination that there are 6 negatives? That can't be. Actually the rule is: For a symmetric matrix with all leading principal minors non-zero, the number of negative eigenvalues equals the number of sign changes in the sequence 1, det1, det2, ..., detn. However, that is for the matrix itself, not for a congruence? Let's recall: If A is symmetric and all leading principal minors are non-zero, then there exists an LU decomposition (without pivoting) and the signs of the pivots are given by the ratios of consecutive leading principal minors. Specifically, pivot1 = det1, pivot2 = det2/det1, pivot3 = det3/det2, etc. So the signs of those pivots are determined by the signs of the determinants. Then the inertia (p,q) is given by the number of positive pivots and negative pivots. Since the matrix is symmetric, the LDU decomposition yields D = diag(pivots) and A = L D L^T, so the inertia is the signs of the pivots. So we can compute pivots: d1 = det1 = -1; d2 = det2/det1 = 3/(-1) = -3; d3 = det3/det2 = -3/3 = -1; d4 = det4/det3 = ?; d5 = det5/det4; d6 = det6/det5; d7 = det7/det6. So the pivots we computed from row elimination (without row swaps) should be exactly d1..d7 if we performed Gaussian elimination without row swaps and used the natural order. And we got d1=-1, d2=-3, d3=-1, d4=3, d5=-2, d6=-1, d7=-3. Let's check: d2 = det2/det1 = 3/(-1) = -3, matches. d3 = det3/det2 = -3/3 = -1, matches. So indeed these are the pivots from LDL^T in natural order. Then the inertia is number of positive d_i: only d4=3 positive, others negative. So p=1, q=6. So the leading principal minors signs: det1=-, det2=+, det3=-, det4?, det5?, det6?, det7=54>0. The number of sign changes in the sequence 1, det1, det2, ..., det7? Let's compute all dets to see if the sign changes count matches 6? The rule: number of negative eigenvalues = number of sign changes in the sequence of leading principal minors (including 1). For n=7, if we have signs: 1 (positive), det1 negative => change1; det2 positive => change2; det3 negative => change3; det4? we need to compute det4. If det4 is positive? Then change4; det5 negative? change5; det6 positive? change6; det7 positive? then no change? That would be 6 changes? Actually we have 6 negative eigenvalues, so number of sign changes should be 6. Let's compute det4, det5, det6 to confirm.
+
+We can compute the leading principal minors using the pivots we have: det1 = -1; det2 = (-1)*(-3)=3? Actually det2 = d1*d2 = (-1)*(-3)=3, matches; det3 = d1*d2*d3 = (-1)*(-3)*(-1) = -3; det4 = d1*d2*d3*d4 = (-1)*(-3)*(-1)*3 = 9? Compute: (-1)*(-3)=3; 3*(-1)=-3; -3*3=-9; so det4 = -9? Wait product = -9? Actually careful: pivots d1=-1, d2=-3, d3=-1, d4=3. Product = (-1)*(-3)=3, 3*(-1)=-3, -3*3=-9. So det4 = -9. So det4 = -9 (negative). But we earlier from row elimination we got d4=3, which is positive. So det4 = product of first 4 pivots = -9. That is negative. So sign: det3 negative, det4 negative -> no sign change? Actually from det3 negative to det4 negative: same sign, so no change. So far sign changes: from 1 to det1 (positive->negative)=1; det1 neg to det2 pos=2; det2 pos to det3 neg=3; det3 neg to det4 neg= no change. So count=3. Not 6. So maybe the number of negative eigenvalues equals the number of sign changes in the sequence of the pivots themselves? Actually the standard result: For a symmetric matrix with non-zero leading principal minors, the number of negative eigenvalues equals the number of sign changes in the sequence of the leading principal minors (including 1). But this is true only if the matrix is also positive definite? Wait, I recall that for a symmetric matrix, the number of negative eigenvalues is equal to the number of sign changes in the sequence of the principal minors? There's a known theorem: Sylvester's law of inertia: For a real symmetric matrix, the number of positive eigenvalues equals the number of sign changes in the sequence of leading principal minors if all are non-zero? Actually I need to recall: For a symmetric matrix A, if all leading principal minors are non-zero, then the inertia (p,q) can be determined by the signs of the leading principal minors: let D0=1, D1=det(A11), D2=det(A[1:2,1:2]), ..., Dn=det(A). Then the number of negative eigenvalues equals the number of sign changes in the sequence D0, D1, ..., Dn. Check for our matrix: D0=1 (+), D1=-1 (-) -> change1; D2=3 (+) -> change2; D3=-3 (-) -> change3; D4=-9 (-) -> no change; D5? need D5. Later D6, D7. Possibly D5 positive? Let's compute D5 = product of first 5 pivots: d5 = -2, so D5 = D4 * d5 = (-9)*(-2)=18 (positive). So D5=18 (+). So from D4 negative to D5 positive: change4. D6 = D5 * d6 = 18 * (-1) = -18 (negative). So D5 pos to D6 neg: change5. D7 = D6 * d7 = (-18)*(-3)=54 (positive). So D6 neg to D7 pos: change6. So sign changes total = 6. That matches number of negative eigenvalues (q=6). So indeed the number of negative eigenvalues = number of sign changes in the sequence D0, D1, ..., Dn. So it's consistent: we have 6 sign changes, meaning 6 negative eigenvalues, and (n - q) = 1 positive eigenvalue. So signature (1,6). Good!
+
+Thus our result is confirmed by direct computation of leading principal minors via pivots. So answer: p=1, q=6.
+
+Thus final answer: 1,6.
+
+Now we need to output as "ANSWER: 1,6".

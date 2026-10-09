@@ -1,0 +1,608 @@
+We need to compute QR decomposition of the given 7x7 integer matrix A. The QR decomposition via Gram-Schmidt on columns, left to right, yields Q orthogonal, R upper triangular with positive diagonal entries. We need squares of diagonal entries of R, i.e., R_ii^2 for i=1..7, as exact numbers.
+
+Since A is invertible, R_ii > 0. The squares are the squared norms of the vectors after Gram-Schmidt? Actually in classical Gram-Schmidt, we have columns a1,...,a7. Let u1 = a1, then r11 = ||u1||, q1 = u1/r11. Then for i>1, u_i = a_i - sum_{j=1}^{i-1} (q_j^T a_i) q_j, then r_ii = ||u_i||. So r_ii^2 = ||u_i||^2. So we need the squared lengths of the orthogonalized vectors (before normalization). Those can be computed by performing Gram-Schmidt.
+
+We can compute these squared norms directly from A using some linear algebra: the diagonal entries of R^2 are the squares of the diagonal entries of R. Alternatively, note that A^T A = R^T Q^T Q R = R^T R, which is the Cholesky decomposition of A^T A (since R is upper triangular with positive diagonal). So R_ii^2 are the diagonal entries of the Cholesky factor of A^T A (the squares of the diagonal of the Cholesky factor). But careful: In the Cholesky decomposition of a symmetric positive definite matrix M, we have M = L L^T where L is lower triangular with positive diagonal. However A^T A = R^T R, and R is upper triangular. So if we compute the Cholesky decomposition of A^T A (lower triangular), then the diagonal entries are the same as the diagonal entries of R (since both are positive square roots of the diagonal of the Cholesky factor? Actually if M = R^T R, and R is upper triangular with positive diagonal, this is the Cholesky factorization but in upper triangular form. Usually Cholesky gives lower triangular L with M = L L^T. So R = L^T. So the diagonal entries are same. So we can compute A^T A, then compute its Cholesky factorization (lower triangular) and take the diagonal entries, square them to get R_ii^2? Wait: If L is lower triangular with positive diagonal such that M = L L^T, then L has entries l_ii, and l_ii^2 are the diagonal entries of M after factoring? Actually the Cholesky algorithm computes l_ii = sqrt( m_ii - sum_{k=1}^{i-1} l_ik^2 ). And then l_ii^2 = m_ii - sum_{k=1}^{i-1} l_ik^2. That's exactly the squared norm of the orthogonalized vector (the projection residual). So the squares of the diagonal entries of R (which are the same as l_ii) are exactly those l_ii^2. So we need the squares of the diagonal entries of the Cholesky factor, i.e., the values l_ii^2. Alternatively we could compute directly.
+
+Thus we need to compute M = A^T A (7x7). Then compute the Cholesky decomposition: L = chol(M) (lower triangular with positive diagonal) such that M = L L^T. Then the desired R_ii^2 = L_ii^2.
+
+We could compute M manually or via systematic computation. Since A is given as integer matrix, we can compute the dot products.
+
+Given A is 7x7 integer matrix. Let's write columns as c1..c7. Compute M_{ij} = c_i^T c_j.
+
+We are given A rows:
+
+Row1: 1, -1, 1, 1, 1, -1, -1
+Row2: 1, -1, 0, 1, -1, -1, 0
+Row3: -1, 2, -1, 0, -1, 0, 0
+Row4: 0, -1, -1, -2, -1, 1, 1
+Row5: 1, 1, 0, 1, 0, -2, -1
+Row6: -2, -1, -1, -2, -1, 3, 3
+Row7: -1, 2, -1, 0, -1, 1, 0
+
+So columns: column1 = (1,1,-1,0,1,-2,-1)^T? Wait the rows: For column j, we take the j-th entry from each row. So:
+
+col1: row1:1, row2:1, row3:-1, row4:0, row5:1, row6:-2, row7:-1 => [1,1,-1,0,1,-2,-1]
+col2: row1:-1, row2:-1, row3:2, row4:-1, row5:1, row6:-1, row7:2 => [-1,-1,2,-1,1,-1,2]
+col3: row1:1, row2:0, row3:-1, row4:-1, row5:0, row6:-1, row7:-1 => [1,0,-1,-1,0,-1,-1]
+col4: row1:1, row2:1, row3:0, row4:-2, row5:1, row6:-2, row7:0 => [1,1,0,-2,1,-2,0]
+col5: row1:1, row2:-1, row3:-1, row4:-1, row5:0, row6:-1, row7:-1 => [1,-1,-1,-1,0,-1,-1]
+col6: row1:-1, row2:-1, row3:0, row4:1, row5:-2, row6:3, row7:1 => [-1,-1,0,1,-2,3,1]
+col7: row1:-1, row2:0, row3:0, row4:1, row5:-1, row6:3, row7:0 => [-1,0,0,1,-1,3,0]
+
+Now compute M = A^T A, i.e., inner products of columns.
+
+We'll compute each dot product. Since it's symmetric, compute only upper triangle and fill.
+
+I'll compute systematically.
+
+Let's denote vectors:
+
+c1 = (1,1,-1,0,1,-2,-1) 
+c2 = (-1,-1,2,-1,1,-1,2)
+c3 = (1,0,-1,-1,0,-1,-1)
+c4 = (1,1,0,-2,1,-2,0)
+c5 = (1,-1,-1,-1,0,-1,-1)
+c6 = (-1,-1,0,1,-2,3,1)
+c7 = (-1,0,0,1,-1,3,0)
+
+Compute squared norms first:
+
+||c1||^2 = 1^2+1^2+(-1)^2+0^2+1^2+(-2)^2+(-1)^2 = 1+1+1+0+1+4+1 = 9.
+||c2||^2 = (-1)^2+(-1)^2+2^2+(-1)^2+1^2+(-1)^2+2^2 = 1+1+4+1+1+1+4 = 13.
+||c3||^2 = 1^2+0^2+(-1)^2+(-1)^2+0^2+(-1)^2+(-1)^2 = 1+0+1+1+0+1+1 = 5.
+||c4||^2 = 1^2+1^2+0^2+(-2)^2+1^2+(-2)^2+0^2 = 1+1+0+4+1+4+0 = 11.
+||c5||^2 = 1^2+(-1)^2+(-1)^2+(-1)^2+0^2+(-1)^2+(-1)^2 = 1+1+1+1+0+1+1 = 6.
+||c6||^2 = (-1)^2+(-1)^2+0^2+1^2+(-2)^2+3^2+1^2 = 1+1+0+1+4+9+1 = 17.
+||c7||^2 = (-1)^2+0^2+0^2+1^2+(-1)^2+3^2+0^2 = 1+0+0+1+1+9+0 = 12.
+
+Now inner products:
+
+c1·c2 = 1*(-1) + 1*(-1) + (-1)*2 + 0*(-1) + 1*1 + (-2)*(-1) + (-1)*2 = -1 -1 -2 +0 +1 +2 -2 = -3? Let's compute: -1-1=-2; -2-2=-4; -4+0=-4; -4+1=-3; -3+2=-1; -1-2=-3. Yes -3.
+c1·c3 = 1*1 + 1*0 + (-1)*(-1) + 0*(-1) + 1*0 + (-2)*(-1) + (-1)*(-1) = 1 +0 +1 +0 +0 +2 +1 = 5.
+c1·c4 = 1*1 + 1*1 + (-1)*0 + 0*(-2) + 1*1 + (-2)*(-2) + (-1)*0 = 1+1+0+0+1+4+0 = 7.
+c1·c5 = 1*1 + 1*(-1) + (-1)*(-1) + 0*(-1) + 1*0 + (-2)*(-1) + (-1)*(-1) = 1 -1 +1 +0 +0 +2 +1 = 4.
+c1·c6 = 1*(-1) + 1*(-1) + (-1)*0 + 0*1 + 1*(-2) + (-2)*3 + (-1)*1 = -1 -1 +0 +0 -2 -6 -1 = -11.
+c1·c7 = 1*(-1) + 1*0 + (-1)*0 + 0*1 + 1*(-1) + (-2)*3 + (-1)*0 = -1+0+0+0-1-6+0 = -8.
+
+c2·c3 = (-1)*1 + (-1)*0 + 2*(-1) + (-1)*(-1) + 1*0 + (-1)*(-1) + 2*(-1) = -1+0-2+1+0+1-2 = -3? Compute: -1-2=-3; -3+1=-2; -2+1=-1; -1-2=-3. Yes -3.
+c2·c4 = (-1)*1 + (-1)*1 + 2*0 + (-1)*(-2) + 1*1 + (-1)*(-2) + 2*0 = -1 -1 +0 +2 +1 +2 +0 = 3.
+c2·c5 = (-1)*1 + (-1)*(-1) + 2*(-1) + (-1)*(-1) + 1*0 + (-1)*(-1) + 2*(-1) = -1 +1 -2 +1 +0 +1 -2 = -2? Compute: -1+1=0; 0-2=-2; -2+1=-1; -1+0=-1; -1+1=0; 0-2=-2. Yes -2.
+c2·c6 = (-1)*(-1) + (-1)*(-1) + 2*0 + (-1)*1 + 1*(-2) + (-1)*3 + 2*1 = 1+1+0-1-2-3+2 = -2? Compute: 1+1=2; 2+0=2; 2-1=1; 1-2=-1; -1-3=-4; -4+2=-2. Yes -2.
+c2·c7 = (-1)*(-1) + (-1)*0 + 2*0 + (-1)*1 + 1*(-1) + (-1)*3 + 2*0 = 1+0+0-1-1-3+0 = -4.
+
+c3·c4 = 1*1 + 0*1 + (-1)*0 + (-1)*(-2) + 0*1 + (-1)*(-2) + (-1)*0 = 1+0+0+2+0+2+0 = 5.
+c3·c5 = 1*1 + 0*(-1) + (-1)*(-1) + (-1)*(-1) + 0*0 + (-1)*(-1) + (-1)*(-1) = 1+0+1+1+0+1+1 = 5.
+c3·c6 = 1*(-1) + 0*(-1) + (-1)*0 + (-1)*1 + 0*(-2) + (-1)*3 + (-1)*1 = -1+0+0-1+0-3-1 = -6.
+c3·c7 = 1*(-1) + 0*0 + (-1)*0 + (-1)*1 + 0*(-1) + (-1)*3 + (-1)*0 = -1+0+0-1+0-3+0 = -5.
+
+c4·c5 = 1*1 + 1*(-1) + 0*(-1) + (-2)*(-1) + 1*0 + (-2)*(-1) + 0*(-1) = 1 -1 +0 +2 +0 +2 +0 = 4.
+c4·c6 = 1*(-1) + 1*(-1) + 0*0 + (-2)*1 + 1*(-2) + (-2)*3 + 0*1 = -1 -1 +0 -2 -2 -6 +0 = -12.
+c4·c7 = 1*(-1) + 1*0 + 0*0 + (-2)*1 + 1*(-1) + (-2)*3 + 0*0 = -1+0+0-2-1-6+0 = -10.
+
+c5·c6 = 1*(-1) + (-1)*(-1) + (-1)*0 + (-1)*1 + 0*(-2) + (-1)*3 + (-1)*1 = -1 +1 +0 -1 +0 -3 -1 = -5? Compute: -1+1=0; 0+0=0; 0-1=-1; -1+0=-1; -1-3=-4; -4-1=-5. Yes -5.
+c5·c7 = 1*(-1) + (-1)*0 + (-1)*0 + (-1)*1 + 0*(-1) + (-1)*3 + (-1)*0 = -1+0+0-1+0-3+0 = -5.
+
+c6·c7 = (-1)*(-1) + (-1)*0 + 0*0 + 1*1 + (-2)*(-1) + 3*3 + 1*0 = 1+0+0+1+2+9+0 = 13.
+
+So M = A^T A is:
+
+M = 
+[9,  -3,  5,  7,  4, -11, -8;
+ -3, 13, -3,  3, -2, -2, -4;
+ 5, -3,  5,  5,  5, -6, -5;
+ 7,  3,  5, 11,  4, -12, -10;
+ 4, -2,  5,  4,  6, -5, -5;
+ -11, -2, -6, -12, -5, 17, 13;
+ -8, -4, -5, -10, -5, 13, 12]
+
+Double-check: Did we compute c3·c3 =5, yes. c6·c6=17, etc.
+
+Now we need the Cholesky decomposition of M. Since M is symmetric positive definite (A invertible), we can compute L lower triangular such that M = L L^T. We'll compute l_ii^2 as we go. Since we only need l_ii^2 (the squares of diagonal entries of R), we can compute them via the Gram-Schmidt process directly or via Cholesky algorithm.
+
+We can compute the diagonal entries of the Cholesky factor: l_{ii} = sqrt( M_{ii} - sum_{k=1}^{i-1} l_{ik}^2 ). So l_{ii}^2 = M_{ii} - sum_{k=1}^{i-1} l_{ik}^2. So we need to compute the squared lengths of the orthogonalized vectors. So we can perform sequential orthogonalization.
+
+Let's do Gram-Schmidt on the columns of A directly, compute the squared norms of the residuals.
+
+Let a1, a2, a3, a4, a5, a6, a7 be columns as above. We have:
+
+q1 = a1 / r11, with r11 = ||a1|| = sqrt(9) = 3. So r11^2 = 9.
+
+Now for i=2: u2 = a2 - (q1^T a2) q1. Compute q1^T a2 = (a1^T a2)/||a1|| = (c1·c2)/3 = (-3)/3 = -1. So u2 = a2 - (-1) q1 = a2 + q1. But careful: u2 = a2 - (q1^T a2) q1 = a2 - (-1) q1 = a2 + q1. So u2 = a2 + (a1/3). Then r22 = ||u2||. We can compute r22^2 = ||u2||^2 = ||a2||^2 + (q1^T a2)^2 - 2 (q1^T a2) (a2^T q1?) Actually easier: use formula: r22^2 = ||a2||^2 - (a1^T a2)^2 / ||a1||^2 = 13 - (-3)^2 / 9 = 13 - 9/9 = 13 -1 = 12. Check: 13 -1 =12. So r22^2 =12. So second squared diagonal =12.
+
+Now i=3: u3 = a3 - (q1^T a3) q1 - (q2^T a3) q2. First compute q1^T a3 = (a1^T a3)/||a1|| = 5/3. q2^T a3 = (u2^T a3)/||u2||, but we might compute projection coefficients using orthogonalized vectors. We can compute using the formula: r33^2 = ||a3||^2 - ( (a1^T a3)^2 / ||a1||^2 + (proj_{u2} a3)^2 / ||u2||^2?) Actually if we have orthonormal basis q1,q2,..., then r33^2 = ||a3||^2 - (q1^T a3)^2 - (q2^T a3)^2. So we need q2 = u2/||u2||. So we need (q2^T a3) = (u2^T a3)/||u2||. And then (q2^T a3)^2 = (u2^T a3)^2 / ||u2||^2. So r33^2 = ||a3||^2 - (q1^T a3)^2 - (u2^T a3)^2 / ||u2||^2.
+
+We have ||a3||^2 =5. q1^T a3 =5/3, so (q1^T a3)^2 =25/9.
+
+Now compute u2 = a2 + q1 = a2 + a1/3. But we can compute u2 explicitly or compute u2^T a3 directly using dot products.
+
+u2 = a2 + (1/3)a1. So u2^T a3 = a2^T a3 + (1/3)a1^T a3 = c2·c3 + (1/3)(c1·c3) = (-3) + (1/3)*5 = -3 + 5/3 = (-9+5)/3 = -4/3.
+
+Thus u2^T a3 = -4/3. Also we need ||u2||^2 = r22^2 =12. So (u2^T a3)^2 / ||u2||^2 = (16/9)/12 = (16/9)*(1/12)=16/(108)=4/27? Let's compute: 16/(108) simplifies dividing by 4: 4/27. Yes.
+
+Now r33^2 = 5 - 25/9 - 4/27 = convert to denominator 27: 5 = 135/27; 25/9 = 75/27; so 135/27 - 75/27 = 60/27; then minus 4/27 = 56/27. So r33^2 = 56/27. Is that simplified? 56/27 = already reduced? 56 and 27 share no common factors (27=3^3, 56=2^3*7). So 56/27.
+
+Thus third squared diagonal = 56/27.
+
+Now i=4: u4 = a4 - (q1^T a4)q1 - (q2^T a4)q2 - (q3^T a4)q3. Then r44^2 = ||a4||^2 - (q1^T a4)^2 - (q2^T a4)^2 - (q3^T a4)^2. We need these projections.
+
+Compute q1^T a4 = (a1^T a4)/||a1|| = 7/3. So (q1^T a4)^2 = 49/9.
+
+Compute q2^T a4 = (u2^T a4)/||u2||. u2 = a2 + (1/3)a1. So u2^T a4 = a2^T a4 + (1/3)a1^T a4 = c2·c4 + (1/3)(c1·c4) = 3 + (1/3)*7 = 3 + 7/3 = (9+7)/3 = 16/3. Then (q2^T a4)^2 = (u2^T a4)^2 / ||u2||^2 = (256/9)/12 = 256/(108) = simplify: divide by 4: 64/27. So (q2^T a4)^2 = 64/27.
+
+Now we need q3^T a4. q3 = u3/||u3||, where u3 = a3 - (q1^T a3)q1 - (q2^T a3)q2. But we can compute u3 and its norm. Alternatively we can compute the projection coefficient using the Gram-Schmidt process: the coefficient α = (u3^T a4)/||u3||, because q3 = u3/||u3||, so q3^T a4 = (u3^T a4)/||u3||. Then (q3^T a4)^2 = (u3^T a4)^2 / ||u3||^2 = (u3^T a4)^2 / r33^2. So we need u3^T a4 directly. We can compute u3 as:
+
+u3 = a3 - (q1^T a3) q1 - (q2^T a3) q2 = a3 - (5/3) q1 - (q2^T a3) q2.
+
+We have q2^T a3 = (u2^T a3)/||u2|| = (-4/3)/√12 = -4/(3√12) = -4/(6√3?) Actually √12=2√3, so -4/(3*2√3) = -4/(6√3) = -2/(3√3). But we might avoid using q2 explicitly. Instead, we can compute u3 as the component of a3 orthogonal to u1 and u2. Since u1 = a1, u2 = a2 + (1/3)a1. Then u3 = a3 - proj_{span(u1,u2)} a3. But we can compute u3 directly using the Gram-Schmidt formulas with the unnormalized vectors: Let v1 = a1. v2 = a2 - (a2·v1)/(v1·v1) v1 = a2 - (-3)/9 v1 = a2 + (1/3)v1 = same as u2. Then v3 = a3 - (a3·v1)/(v1·v1) v1 - (a3·v2)/(v2·v2) v2. So we have v1, v2, v3 with v1·v1 =9, v2·v2=12, v3·v3 = r33^2=56/27. So we can compute u3 = v3. Then u3^T a4 = v3·a4 = a3·a4 - (a3·v1)/(v1·v1) (v1·a4) - (a3·v2)/(v2·v2) (v2·a4). So we can compute using dot products.
+
+Let's compute needed quantities:
+
+v1 = a1, v1·v1 = 9.
+v2 = a2 + (1/3)a1, v2·v2 =12.
+v3 = unknown, but we need v3·a4.
+
+From Gram-Schmidt: v3 = a3 - (a3·v1)/(v1·v1) v1 - (a3·v2)/(v2·v2) v2.
+
+We have a3·v1 = c3·c1 =5. So coefficient = 5/9.
+a3·v2 =? v2 = a2 + (1/3)a1, so a3·v2 = a3·a2 + (1/3) a3·a1 = (-3) + (1/3)*5 = -3 +5/3 = -4/3 = -4/3. So (a3·v2)/(v2·v2) = (-4/3)/12 = -4/36 = -1/9. So coefficient = -1/9? Actually division: (-4/3) / 12 = -4/(36) = -1/9.
+
+Thus v3 = a3 - (5/9)v1 - (-1/9)v2? Wait careful: - (a3·v2)/(v2·v2) v2 = - ( (-4/3)/12 ) v2 = - ( -1/9 ) v2 = + (1/9) v2? Because coefficient is - (a3·v2)/(v2·v2) = -((-4/3)/12) = -(-1/9)= +1/9. Actually formula: v3 = a3 - (a3·v1)/(v1·v1) v1 - (a3·v2)/(v2·v2) v2. So plug: (a3·v1)/(v1·v1)=5/9; (a3·v2)/(v2·v2)=(-4/3)/12 = -1/9. So then v3 = a3 - (5/9)v1 - (-1/9)v2 = a3 - (5/9)v1 + (1/9)v2. Yes.
+
+So v3 = a3 - (5/9)a1 + (1/9)(a2 + (1/3)a1) = a3 - (5/9)a1 + (1/9)a2 + (1/27)a1 = a3 + (1/9)a2 + [ -5/9 + 1/27 ] a1 = compute coefficient for a1: -5/9 = -15/27, plus 1/27 = -14/27. So v3 = a3 + (1/9)a2 - (14/27)a1.
+
+We could also compute v3 explicitly as vector if needed, but we need v3·a4. So we can compute dot product using linearity:
+
+v3·a4 = a3·a4 + (1/9) a2·a4 - (14/27) a1·a4.
+
+We have a3·a4 = c3·c4 = 5.
+a2·a4 = c2·c4 = 3.
+a1·a4 = c1·c4 = 7.
+
+Thus v3·a4 = 5 + (1/9)*3 - (14/27)*7 = 5 + 3/9 - (98/27) = 5 + 1/3 - 98/27 = convert: 5 = 135/27; 1/3 = 9/27; so 135/27+9/27=144/27; minus 98/27 = 46/27. So v3·a4 = 46/27.
+
+Now v3·v3 = r33^2 = 56/27. So then (q3^T a4)^2 = (v3·a4)^2 / (v3·v3) = (46/27)^2 / (56/27) = (2116/729) / (56/27) = (2116/729)*(27/56) = 2116 * 27 / (729*56) = simplify: 27/729 = 1/27? Actually 27/729 = 1/27? 729/27=27, yes 27/729 = 1/27. So = 2116 / (27*56) = 2116/(1512). Simplify: divide numerator and denominator by 4: 529/378. So (q3^T a4)^2 = 529/378? Let's compute more carefully: 2116/1512 = reduce by 2: 1058/756; by 2: 529/378. Yes 529/378.
+
+Now we need to compute r44^2 = ||a4||^2 - (q1^T a4)^2 - (q2^T a4)^2 - (q3^T a4)^2.
+
+||a4||^2 = 11.
+(q1^T a4)^2 = 49/9 = convert to denominator 378? better compute numerically with fractions.
+
+Let's compute with common denominator maybe 378? Or compute stepwise as rational.
+
+We have: 11 - 49/9 - 64/27 - 529/378.
+
+Compute 11 = 11/1. Convert to denominator 378: 11 = 4158/378? 11*378=4158, yes. 49/9 = ? 49/9 = (49*42)/(9*42) = 2058/378? 9*42=378, 49*42=2058, yes. 64/27 = (64*14)/(27*14) = 896/378? 27*14=378, 64*14=896, yes. 529/378 stays.
+
+So r44^2 = 4158/378 - 2058/378 - 896/378 - 529/378 = (4158 - 2058 - 896 - 529) / 378 = compute: 4158-2058=2100; 2100-896=1204; 1204-529=675. So = 675/378 = simplify: divide by 3? 675/3=225, 378/3=126 => 225/126 = divide by 3: 75/42 = divide by 3: 25/14. Yes, 675/378 = 25/14 after simplification? Let's double-check: 675 ÷ 27 = 25? 27*25=675. 378 ÷ 27 = 14? 27*14=378. So actually 675/378 = 25/14. So r44^2 = 25/14.
+
+Thus fourth squared diagonal = 25/14.
+
+Now i=5: u5 = a5 - (q1^T a5)q1 - (q2^T a5)q2 - (q3^T a5)q3 - (q4^T a5)q4. Then r55^2 = ||a5||^2 - (q1^T a5)^2 - (q2^T a5)^2 - (q3^T a5)^2 - (q4^T a5)^2.
+
+We need projections onto q1,q2,q3,q4.
+
+We already have v1=a1, v2, v3, and now v4 = u4 (the residual for a4). We have computed v4·v4 = r44^2 = 25/14.
+
+We can compute the coefficients using v1..v4.
+
+We need q1^T a5 = (a1·a5)/||a1|| = c1·c5 / 3 = 4/3. So (q1^T a5)^2 = 16/9.
+
+q2^T a5 = (v2·a5)/||v2||. v2 = a2 + (1/3)a1. Compute v2·a5 = a2·a5 + (1/3)a1·a5 = c2·c5 + (1/3)(c1·c5) = -2 + (1/3)*4 = -2 + 4/3 = (-6+4)/3 = -2/3. So v2·a5 = -2/3. Then (q2^T a5)^2 = (v2·a5)^2 / ||v2||^2 = (4/9)/12 = 4/(108)=1/27? Actually ( -2/3)^2 = 4/9; divided by 12 = 4/(108)=1/27. So (q2^T a5)^2 = 1/27.
+
+Now q3^T a5 = (v3·a5)/||v3||, with v3 we have earlier expression: v3 = a3 + (1/9)a2 - (14/27)a1. We can compute v3·a5 = a5·v3 = a5·a3 + (1/9)a5·a2 - (14/27)a5·a1. Compute dots:
+
+a5·a3 = c5·c3 = 5 (since symmetric, c3·c5=5).
+a5·a2 = c5·c2 = -2.
+a5·a1 = c5·c1 = 4.
+
+Thus v3·a5 = 5 + (1/9)*(-2) - (14/27)*4 = 5 - 2/9 - (56/27). Convert: 5 = 135/27; -2/9 = -6/27; so 135/27 - 6/27 = 129/27; minus 56/27 = 73/27. So v3·a5 = 73/27.
+
+Now v3·v3 = 56/27. So (q3^T a5)^2 = (73/27)^2 / (56/27) = (5329/729) * (27/56) = 5329 * 27 / (729*56) = 5329 / (27*56) because 27/729 = 1/27. So 5329/(1512). Simplify? 5329 =? 73^2 = 5329. So 5329/(1512). Check if reducible: 5329 mod 2 no, mod 3: 5+3+2+9=19 not divisible, mod 7? 7*761=5327, remainder 2, so not. So leave as 5329/1512. But maybe later we can combine with others for r55^2.
+
+Now we need q4^T a5. q4 = v4/||v4||. v4 = a4 - projections onto v1,v2,v3. We can compute v4·a5 = a5·v4 = a5·a4 - (a5·v1)/(v1·v1) (v1·a4) - (a5·v2)/(v2·v2) (v2·a4) - (a5·v3)/(v3·v3) (v3·a4). Because v4 = a4 - proj_{span(v1,v2,v3)} a4. So we need the coefficients already computed during orthogonalization of a4. Actually we have v4 as the residual. We can compute v4·a5 using the same formula: v4·a5 = a5·a4 - ∑_{j=1}^{3} (a5·v_j)(v_j·a4)/(v_j·v_j). Note: because the projection of a4 onto v_j gives coefficient (a4·v_j)/(v_j·v_j) and then v4 = a4 - ∑ c_j v_j, where c_j = (a4·v_j)/(v_j·v_j). Then v4·a5 = a4·a5 - ∑ c_j (v_j·a5). So we can compute that.
+
+We have v1, v2, v3 and known dot products. Let's compute:
+
+First, a4·a5 = c4·c5 = 4.
+
+Now compute terms:
+
+For v1: c1 = (a4·v1)/(v1·v1). a4·v1 = a4·a1 = 7 (since v1=a1). v1·v1=9 => c1 = 7/9. And a5·v1 = a5·a1 = 4. So term1 = c1 * (a5·v1) = (7/9)*4 = 28/9.
+
+For v2: v2 = a2 + (1/3)a1. We need c2 = (a4·v2)/(v2·v2). a4·v2 = we computed earlier: v2·a4 = 16/3. v2·v2 =12 => c2 = (16/3)/12 = 16/36 = 4/9. And a5·v2 = v2·a5 = we computed = -2/3. So term2 = c2 * (a5·v2) = (4/9)*(-2/3) = -8/27.
+
+For v3: v3 we have expression. Need c3 = (a4·v3)/(v3·v3). We computed a4·v3 = v3·a4 = 46/27. v3·v3 = 56/27 => c3 = (46/27) / (56/27) = 46/56 = 23/28. And a5·v3 = v3·a5 = we computed = 73/27. So term3 = c3 * (a5·v3) = (23/28)*(73/27) = (23*73)/(28*27) = (1679)/(756)? Let's compute: 23*73 = 23*70=1610, +23*3=69, total 1679. Denominator 28*27=756. So term3 = 1679/756.
+
+Now v4·a5 = a4·a5 - term1 - term2 - term3 = 4 - 28/9 - (-8/27?) Actually term2 we have -8/27, but subtracting term2: minus ( -8/27 ) becomes +8/27? Wait careful: v4·a5 = a4·a5 - ∑ c_j (v_j·a5) = a4·a5 - [c1*(v1·a5) + c2*(v2·a5) + c3*(v3·a5)]. So it's 4 - (28/9) - ( (-8/27) )? No, c2*(v2·a5) = (4/9)*(-2/3) = -8/27. So we subtract that: 4 - 28/9 - (-8/27) - 1679/756 = 4 - 28/9 + 8/27 - 1679/756. Then we need common denominator.
+
+Also note that we might need v4·v4 = r44^2 = 25/14. Then (q4^T a5)^2 = (v4·a5)^2 / (v4·v4) = (v4·a5)^2 / (25/14) = (14/25)*(v4·a5)^2.
+
+So we need to compute v4·a5 exactly as a rational.
+
+Let's compute with denominator maybe 756 or 756? Let's get common denominator for all terms: 4 = 4; 28/9; 8/27; 1679/756. Denominator LCM of 1,9,27,756. 756 is divisible by 9 and 27? 756/9=84, 756/27=28, yes. So use 756. Convert:
+
+4 = 4 * 756/756 = 3024/756.
+28/9 = (28*84)/756 = 2352/756? 28*84=2352, yes.
+8/27 = (8*28)/756 = 224/756.
+1679/756 stays.
+
+Now v4·a5 = 3024/756 - 2352/756 + 224/756 - 1679/756 = (3024 - 2352 = 672; 672 + 224 = 896; 896 - 1679 = -783) /756 = -783/756 = simplify: divide by 3: -261/252; divide by 3 again: -87/84; divide by 3: -29/28? Actually 87/84 = 29/28 after dividing by 3? 87/3=29, 84/3=28. So -29/28. So v4·a5 = -29/28. Check: 756/3=252, -783/3=-261, /3 = -87, /3 = -29 over? Actually 756/27=28, -783/27=-29, yes because 27*29=783. So v4·a5 = -29/28.
+
+Nice! So v4·a5 = -29/28.
+
+Now v4·v4 = 25/14. So (q4^T a5)^2 = (v4·a5)^2 / (v4·v4) = ( (-29/28)^2 ) / (25/14) = (841/784) / (25/14) = (841/784)*(14/25) = 841*14 / (784*25) = simplify: 14/784 = 1/56? Because 784/14=56, so 14/784 = 1/56. So = 841 / (56*25) = 841/(1400). Check: 56*25=1400. Yes. So (q4^T a5)^2 = 841/1400. Simplify? 841 is 29^2, 1400= 2^3*5^2*7? No common factor with 29, so stays.
+
+Now we have all squared projections for a5:
+
+(q1^T a5)^2 = 16/9 = convert to denominator maybe 1400? But we'll combine later.
+
+We need r55^2 = ||a5||^2 - sum = 6 - (16/9 + 1/27 + 5329/1512 + 841/1400). We need to compute this sum precisely.
+
+Let's get common denominator for all fractions. Denominators: 9, 27, 1512, 1400. Let's factor them:
+
+9 = 3^2.
+27 = 3^3.
+1512 =? 1512 = 2^3 * 3^3 * 7? Let's factor: 1512/8=189, 189=3^3*7, so 1512 = 2^3 * 3^3 * 7.
+1400 = 14*100 = 2*7 * 2^2*5^2 = 2^3 * 5^2 * 7.
+
+So the LCM should include 2^3, 3^3, 5^2, 7. So LCM = 2^3 * 3^3 * 5^2 * 7 = 8*27*25*7 = 8*27=216, 216*25=5400, 5400*7=37800. So LCM = 37800. That's manageable.
+
+Now we convert each fraction to denominator 37800.
+
+||a5||^2 =6 = 6 * 37800/37800 = 226800/37800? Actually 6*37800=226800.
+
+Now compute each term:
+
+1) 16/9 = (16 * 4200)/37800? Because 37800/9=4200, so 16*4200=67200 => 67200/37800.
+2) 1/27 = 37800/27=1400? 27*1400=37800, yes. So 1*1400=1400 => 1400/37800.
+3) 5329/1512. Compute 37800/1512 =? 1512 * 25 = 37800? 1512*25 = 1512*100/4 = 151200/4=37800, yes exactly 25. So 5329/1512 = 5329*25/37800 = 133225/37800? 5329*25 = 5329*100/4 = 532900/4 = 133225. So term3 = 133225/37800.
+4) 841/1400. 37800/1400 = 27? 1400*27 = 37800, yes. So 841*27 = 22707? 800*27=21600, 41*27=1107, total 22707. So term4 = 22707/37800.
+
+Now sum = (67200 + 1400 + 133225 + 22707) / 37800 = compute:
+
+67200+1400=68600
+68600+133225=201825
+201825+22707=224532
+
+So sum = 224532/37800. Simplify? We'll subtract from 226800/37800 to get r55^2 = (226800 - 224532)/37800 = 2268/37800 = simplify: divide numerator and denominator by 12? 2268/12=189, 37800/12=3150 => 189/3150 = further divide by 3: 63/1050; divide by 3: 21/350; divide by 7: 3/50. Check: 21/350 = 3/50? 21/350 = divide numerator and denominator by 7 => 3/50. Yes. So r55^2 = 3/50?
+
+Let's verify: 2268/37800 simplify: divide both by 36? 2268/36=63, 37800/36=1050 => 63/1050 = divide by 21? 63/21=3, 1050/21=50 => 3/50. Yes. So r55^2 = 3/50.
+
+Thus fifth squared diagonal = 3/50.
+
+Now i=6: u6 = a6 - projections onto q1..q5. Then r66^2 = ||a6||^2 - sum_{j=1}^{5} (q_j^T a6)^2.
+
+We have ||a6||^2 = 17.
+
+We need q_j^T a6 for j=1..5. We can compute using v1..v5 approach.
+
+We have v1=a1, v2, v3, v4, v5 = u5 (the residual for a5). We have v5·v5 = r55^2 = 3/50.
+
+We will compute each projection squared:
+
+q1^T a6 = (a1·a6)/||a1|| = c1·c6 / 3 = (-11)/3 = -11/3 => square = 121/9.
+
+q2^T a6 = (v2·a6)/||v2||. v2 = a2 + (1/3)a1. Compute v2·a6 = a2·a6 + (1/3)a1·a6 = c2·c6 + (1/3)(c1·c6) = (-2) + (1/3)*(-11) = -2 - 11/3 = (-6-11)/3 = -17/3. So v2·a6 = -17/3. Then (q2^T a6)^2 = (v2·a6)^2 / ||v2||^2 = (289/9)/12 = 289/(108) = simplify? 289/108 reduces? 289=17^2, 108=2^2*3^3, no common factor. So = 289/108.
+
+q3^T a6 = (v3·a6)/||v3||. Need v3·a6. v3 = a3 + (1/9)a2 - (14/27)a1. Compute v3·a6 = a3·a6 + (1/9)a2·a6 - (14/27)a1·a6.
+
+We have a3·a6 = c3·c6 = -6.
+a2·a6 = c2·c6 = -2.
+a1·a6 = c1·c6 = -11.
+
+So v3·a6 = -6 + (1/9)*(-2) - (14/27)*(-11) = -6 - 2/9 + (154/27) because - (14/27)*(-11) = +154/27. Compute numeric: -6 = -162/27; -2/9 = -6/27; sum = -168/27; +154/27 = -14/27. So v3·a6 = -14/27.
+
+Then (q3^T a6)^2 = (v3·a6)^2 / (v3·v3) = (196/729) / (56/27) = (196/729)*(27/56) = 196*27/(729*56) = simplify: 27/729=1/27, so 196/(27*56?) Wait: 196*27/(729*56) = (196/56)*(27/729) = (196/56) * (1/27) = (3.5?) Actually 196/56 = 3.5 = 7/2? 196÷28=7, 56÷28=2, so 7/2. So (7/2)*(1/27) = 7/(54). So (q3^T a6)^2 = 7/54. Let's verify: 196/56 = 3.5 = 7/2; times (27/729 = 1/27) gives 7/54. Yes.
+
+So (q3^T a6)^2 = 7/54.
+
+Now q4^T a6 = (v4·a6)/||v4||. v4 = a4 - projection onto v1,v2,v3. We need v4·a6. We can compute v4·a6 = a4·a6 - ∑_{j=1}^{3} c_j (v_j·a6), where c_j = (a4·v_j)/(v_j·v_j). We have already computed c1=7/9, c2=4/9, c3=23/28. And v_j·a6 we have: v1·a6 = a1·a6 = -11; v2·a6 = -17/3; v3·a6 = -14/27. So compute:
+
+Term1 = c1 * v1·a6 = (7/9)*(-11) = -77/9.
+Term2 = c2 * v2·a6 = (4/9)*(-17/3) = -68/27.
+Term3 = c3 * v3·a6 = (23/28)*(-14/27) = (23/28)*(-14/27) = 23 * (-14) / (28*27) = - (23*14)/(28*27) = - (23*1)/(2*27) because 14/28=1/2 => -23/(54). So term3 = -23/54.
+
+Now a4·a6 = c4·c6 = -12.
+
+So v4·a6 = a4·a6 - (term1+term2+term3) = -12 - ( -77/9 -68/27 -23/54 )? Actually careful: v4·a6 = a4·a6 - Σ c_j (v_j·a6). Since Σ c_j (v_j·a6) = term1+term2+term3 = (-77/9) + (-68/27) + (-23/54) = - (77/9 + 68/27 + 23/54). So v4·a6 = -12 - ( - (77/9+68/27+23/54) ) = -12 + (77/9+68/27+23/54). Let's compute the sum inside.
+
+Compute 77/9 = convert to denominator 54: 77/9 = (77*6)/54 = 462/54.
+68/27 = (68*2)/54 = 136/54.
+23/54 = 23/54.
+Sum = (462+136+23)/54 = 621/54 = simplify: 621/54 = divide by 3: 207/18 = 11.5? Actually 207/18 = 11.5 but better keep fraction: 621/54 = 23*27? 27*23=621, 54=2*27 => 23/2 = 11.5. So sum = 23/2.
+
+Thus v4·a6 = -12 + 23/2 = (-24/2 + 23/2) = -1/2.
+
+So v4·a6 = -1/2.
+
+Now v4·v4 = r44^2 = 25/14. So (q4^T a6)^2 = (v4·a6)^2 / (v4·v4) = (1/4) / (25/14) = (1/4)*(14/25) = 14/(100) = 7/50? 14/100 = 7/50. Yes (q4^T a6)^2 = 7/50.
+
+Now q5^T a6 = (v5·a6)/||v5||. Need v5 = u5 = a5 - projections onto v1..v4. We need v5·a6 and v5·v5 = r55^2 = 3/50.
+
+We can compute v5·a6 = a5·a6 - ∑_{j=1}^{4} c'_j (v_j·a6), where c'_j = (a5·v_j)/(v_j·v_j). These c'_j are the coefficients used when orthogonalizing a5; we can compute them from our earlier computations. Actually during Gram-Schmidt for a5 we had:
+
+v5 = a5 - (a5·v1)/(v1·v1) v1 - (a5·v2)/(v2·v2) v2 - (a5·v3)/(v3·v3) v3 - (a5·v4)/(v4·v4) v4.
+
+So the coefficients are: α1 = (a5·v1)/(v1·v1) = (4)/9 = 4/9.
+α2 = (a5·v2)/(v2·v2) = (-2/3)/12 = -2/36 = -1/18? Wait earlier we had a5·v2 = -2/3, v2·v2=12, so α2 = (-2/3)/12 = -2/36 = -1/18.
+α3 = (a5·v3)/(v3·v3) = (73/27) / (56/27) = 73/56.
+α4 = (a5·v4)/(v4·v4) = (v4·a5)/ (v4·v4) = (-29/28) / (25/14) = (-29/28)*(14/25) = (-29*14)/(28*25) = (-29*1)/(2*25) because 14/28=1/2 => -29/50. So α4 = -29/50.
+
+Check: α4 should be the coefficient (a5·v4)/(v4·v4). Yes.
+
+Now v5 = a5 - α1 v1 - α2 v2 - α3 v3 - α4 v4.
+
+Then v5·a6 = a5·a6 - α1 (v1·a6) - α2 (v2·a6) - α3 (v3·a6) - α4 (v4·a6).
+
+We need a5·a6 = c5·c6 = -5.
+We have v1·a6 = -11.
+v2·a6 = -17/3.
+v3·a6 = -14/27.
+v4·a6 = -1/2.
+
+Now compute each term:
+
+α1*(v1·a6) = (4/9)*(-11) = -44/9.
+α2*(v2·a6) = (-1/18)*(-17/3) = (17)/(54) because (-1/18)*(-17/3)= (17)/(54). So +17/54.
+α3*(v3·a6) = (73/56)*(-14/27) = - (73*14)/(56*27) = simplify: 14/56=1/4, so = -73/(4*27) = -73/108.
+α4*(v4·a6) = (-29/50)*(-1/2) = (29)/(100). Because product of two negatives positive: 29/100.
+
+Now compute v5·a6 = a5·a6 - [α1v1·a6 + α2v2·a6 + α3v3·a6 + α4v4·a6] = -5 - ( (-44/9) + (17/54) + (-73/108) + (29/100) )? Wait careful: v5·a6 = a5·a6 - Σ α_j (v_j·a6). So we need Σ = sum of α_j*(v_j·a6) = (-44/9) + (17/54) + (-73/108) + (29/100). So then v5·a6 = -5 - [ that sum ].
+
+Let's compute the sum S = -44/9 + 17/54 - 73/108 + 29/100.
+
+We need common denominator. Denominators: 9,54,108,100. LCM? 108=2^2*3^3; 100=2^2*5^2; so LCM = 2^2 * 3^3 * 5^2 = 4*27*25 = 2700. So use denominator 2700.
+
+Convert each fraction:
+
+-44/9 = -44 * (300)/2700? Since 2700/9=300, so -44*300 = -13200/2700.
+17/54: 2700/54=50, so 17*50=850 => 850/2700.
+-73/108: 2700/108=25, so -73*25 = -1825/2700.
+29/100: 2700/100=27, so 29*27=783 => 783/2700.
+
+Now sum S = (-13200 + 850 -1825 + 783)/2700 = compute: -13200+850 = -12350; -12350 -1825 = -14175; -14175+783 = -13392. So S = -13392/2700 = simplify: divide numerator and denominator by 12? 13392/12=1116, 2700/12=225 => -1116/225 = further divide by 3: -372/75 = divide by 3: -124/25. So S = -124/25? Let's check: 13392 and 2700 GCD? Divide by 108? 108*124 = 13392? 108*124 = 108*100=10800, 108*24=2592, sum=13392, yes. 2700/108=25. So S = -124/25. So Σ = -124/25.
+
+Thus v5·a6 = -5 - (-124/25) = -5 + 124/25 = (-125/25 + 124/25) = -1/25.
+
+So v5·a6 = -1/25.
+
+Now v5·v5 = r55^2 = 3/50. So (q5^T a6)^2 = (v5·a6)^2 / (v5·v5) = (1/625) / (3/50) = (1/625)*(50/3) = 50/(1875) = simplify divide by 25: 2/75. So (q5^T a6)^2 = 2/75.
+
+Now we have all squared projections for a6:
+
+(q1^T a6)^2 = 121/9
+(q2^T a6)^2 = 289/108
+(q3^T a6)^2 = 7/54
+(q4^T a6)^2 = 7/50
+(q5^T a6)^2 = 2/75
+
+Also ||a6||^2 = 17.
+
+Now compute r66^2 = 17 - sum of these. Let's sum them with common denominator. Find LCM of denominators: 9,108,54,50,75. Factor: 9=3^2, 108=2^2*3^3, 54=2*3^3, 50=2*5^2, 75=3*5^2. So LCM includes 2^2, 3^3, 5^2 = 4*27*25 = 2700. So denominator 2700.
+
+Convert each:
+
+121/9 = 121*(300)/2700 = 36300/2700? 9*300=2700, 121*300=36300.
+289/108 = 289*(25)/2700? 108*25=2700, so 289*25=7225 => 7225/2700.
+7/54 = 7*(50)/2700? 54*50=2700, so 350/2700.
+7/50 = 7*(54)/2700? 50*54=2700, so 378/2700.
+2/75 = 2*(36)/2700? 75*36=2700, so 72/2700.
+
+Sum = (36300 + 7225 + 350 + 378 + 72)/2700 = compute: 36300+7225=43525; +350=43875; +378=44253; +72=44325. So sum = 44325/2700.
+
+Now 17 = 17*2700/2700 = 45900/2700? 17*2700=45900. So r66^2 = (45900 - 44325)/2700 = 1575/2700 = simplify: divide by 75? 1575/75=21, 2700/75=36 => 21/36 = 7/12. Also could divide by 15: 1575/15=105, 2700/15=180 -> 105/180=7/12. So r66^2 = 7/12.
+
+Thus sixth squared diagonal = 7/12.
+
+Now i=7: u7 = a7 - projections onto q1..q6. Then r77^2 = ||a7||^2 - sum_{j=1}^{6} (q_j^T a7)^2.
+
+We have ||a7||^2 = 12.
+
+We'll compute each projection squared.
+
+We need q_j^T a7 for j=1..6 using v1..v6.
+
+We have v1=a1, v2, v3, v4, v5, v6 = u6 residual for a6. v6·v6 = r66^2 = 7/12.
+
+We'll compute v_j·a7 for j=1..6, then (q_j^T a7)^2 = (v_j·a7)^2 / (v_j·v_j) (since q_j = v_j/||v_j||). Or we can compute directly coefficients like before.
+
+Let's compute dot products with a7.
+
+First, a1·a7 = c1·c7 = -8.
+a2·a7 = c2·c7 = -4.
+a3·a7 = c3·c7 = -5.
+a4·a7 = c4·c7 = -10.
+a5·a7 = c5·c7 = -5.
+a6·a7 = c6·c7 = 13.
+
+We'll compute v_j·a7 step by step.
+
+q1^T a7 = (a1·a7)/||a1|| = -8/3 => square = 64/9.
+
+q2^T a7 = (v2·a7)/||v2||. v2 = a2 + (1/3)a1. Compute v2·a7 = a2·a7 + (1/3) a1·a7 = -4 + (1/3)*(-8) = -4 - 8/3 = (-12-8)/3 = -20/3. So v2·a7 = -20/3. Then (q2^T a7)^2 = (400/9)/12 = 400/(108) = simplify: divide by 4: 100/27. So 100/27? 400/108 = 100/27 after dividing numerator and denominator by 4. Yes (100/27). So (q2^T a7)^2 = 100/27.
+
+q3^T a7 = (v3·a7)/||v3||. v3 = a3 + (1/9)a2 - (14/27)a1. Compute v3·a7 = a3·a7 + (1/9)a2·a7 - (14/27)a1·a7 = -5 + (1/9)*(-4) - (14/27)*(-8) = -5 - 4/9 + (112/27). Convert to 27ths: -5 = -135/27; -4/9 = -12/27; so -135-12 = -147/27; plus 112/27 = -35/27. So v3·a7 = -35/27.
+
+Then (q3^T a7)^2 = (v3·a7)^2 / (v3·v3) = (1225/729) / (56/27) = (1225/729)*(27/56) = 1225*27/(729*56) = 1225/(27*56) because 27/729=1/27. So = 1225/(1512) = simplify? 1225=35^2, 1512 factors: 1512= 2^3*3^3*7 = 8*27*7=1512. 1225=5^2*7^2? Actually 1225 = 35^2 = (5*7)^2 = 25*49 = 1225. So 1225/1512 = (1225÷7)/(1512÷7) = 175/216? 1512/7=216? 7*216=1512 yes. 1225/7=175. So 175/216. So (q3^T a7)^2 = 175/216? But check: 1225/1512 = divide by 7 gives 175/216. Yes. So = 175/216.
+
+But we should keep as fraction; later we will sum with others.
+
+Now q4^T a7 = (v4·a7)/||v4||. v4 = a4 - projections. We need v4·a7. Compute using v4 = a4 - α1v1 - α2v2 - α3v3, where α1=7/9, α2=4/9, α3=23/28 as before. Then v4·a7 = a4·a7 - α1(v1·a7) - α2(v2·a7) - α3(v3·a7).
+
+We have:
+a4·a7 = -10.
+v1·a7 = a1·a7 = -8.
+v2·a7 = -20/3.
+v3·a7 = -35/27.
+
+Compute terms:
+α1*(v1·a7) = (7/9)*(-8) = -56/9.
+α2*(v2·a7) = (4/9)*(-20/3) = -80/27.
+α3*(v3·a7) = (23/28)*(-35/27) = - (23*35)/(28*27) = - (23*5)/(4*27) because 35/28=5/4? Actually 35/28 = 5/4, yes. So = - (23*5)/(4*27) = -115/(108). So α3*(v3·a7) = -115/108.
+
+Now sum α_j(v_j·a7) = (-56/9) + (-80/27) + (-115/108). Compute common denominator 108: -56/9 = -56*12/108 = -672/108. -80/27 = -80*4/108 = -320/108. -115/108 = -115/108. Sum = -(672+320+115)/108 = -1107/108 = simplify? 1107/108 = divide by 3: 369/36 = 10.25? Actually 1107/108 =? 108*10=1080, remainder 27 => 10.25 = 41/4? Let's do exact: 1107/108 = divide by 3: 369/36; divide by 3: 123/12; divide by 3: 41/4. So sum = -41/4? Check: 41/4 = 10.25. So -1107/108 = -41/4? 41/4 = 10.25 = 1107/108? 108*10.25=1107, yes. So sum = -41/4.
+
+Thus v4·a7 = a4·a7 - sum = -10 - (-41/4) = -10 + 41/4 = (-40/4 + 41/4) = 1/4.
+
+So v4·a7 = 1/4.
+
+Now (q4^T a7)^2 = (v4·a7)^2 / (v4·v4) = (1/16) / (25/14) = (1/16)*(14/25) = 14/(400) = 7/200? Actually 14/400 = 7/200. So (q4^T a7)^2 = 7/200.
+
+Now q5^T a7 = (v5·a7)/||v5||. v5 = a5 - α1'v1 - α2'v2 - α3'v3 - α4'v4, where α1'=4/9, α2'=-1/18, α3'=73/56, α4'=-29/50 (as before). We need v5·a7 = a5·a7 - α1'(v1·a7) - α2'(v2·a7) - α3'(v3·a7) - α4'(v4·a7).
+
+We have:
+a5·a7 = -5.
+v1·a7 = -8.
+v2·a7 = -20/3.
+v3·a7 = -35/27.
+v4·a7 = 1/4.
+
+Compute each term:
+
+α1'*(v1·a7) = (4/9)*(-8) = -32/9.
+α2'*(v2·a7) = (-1/18)*(-20/3) = (20)/(54) = 10/27? Actually (-1/18)*(-20/3)=+20/54=10/27. So = 10/27.
+α3'*(v3·a7) = (73/56)*(-35/27) = - (73*35)/(56*27). Simplify 35/56=5/8, so = - (73*5)/(8*27) = -365/(216). Because 8*27=216. So = -365/216.
+α4'*(v4·a7) = (-29/50)*(1/4) = -29/200.
+
+Now sum S = α1'v1·a7 + α2'v2·a7 + α3'v3·a7 + α4'v4·a7 = (-32/9) + (10/27) + (-365/216) + (-29/200).
+
+Compute stepwise with common denominator. Denominator LCM of 9,27,216,200. 216=2^3*3^3, 200=2^3*5^2, so LCM = 2^3 * 3^3 * 5^2 = 8*27*25=5400. So use 5400.
+
+Convert:
+
+-32/9 = -32 * (600)/5400? 5400/9=600, so -19200/5400.
+10/27 = 10 * (200)/5400 = 2000/5400.
+-365/216 = 5400/216 = 25? 216*25=5400 exactly, so -365*25 = -9125/5400.
+-29/200 = 5400/200=27, so -29*27 = -783/5400.
+
+Now sum = (-19200 + 2000 -9125 -783)/5400 = (-19200+2000 = -17200; -17200-9125 = -26325; -26325-783 = -27108)/5400 = -27108/5400 = simplify: divide by 12? 27108/12=2259, 5400/12=450 => -2259/450 = divide by 3: -753/150 = divide by 3: -251/50. So sum = -251/50? Check: 2259/450 = 2259÷9=251, 450÷9=50, yes. So S = -251/50.
+
+Thus v5·a7 = a5·a7 - S = -5 - (-251/50) = -5 + 251/50 = (-250/50 + 251/50) = 1/50.
+
+So v5·a7 = 1/50.
+
+Now (q5^T a7)^2 = (v5·a7)^2 / (v5·v5) = (1/2500) / (3/50) = (1/2500)*(50/3) = 50/(7500) = 1/150? Actually 50/7500 = 1/150. So (q5^T a7)^2 = 1/150.
+
+Now q6^T a7 = (v6·a7)/||v6||. We need v6 = u6 = a6 - projections onto v1..v5. We can compute v6·a7 = a6·a7 - ∑_{j=1}^{5} β_j (v_j·a7), where β_j = (a6·v_j)/(v_j·v_j) are the coefficients used when orthogonalizing a6. We have already computed some of these coefficients or we can compute from earlier steps. In the Gram-Schmidt for a6 we had v6 = a6 - (a6·v1)/(v1·v1) v1 - (a6·v2)/(v2·v2) v2 - (a6·v3)/(v3·v3) v3 - (a6·v4)/(v4·v4) v4 - (a6·v5)/(v5·v5) v5. So β_j = (a6·v_j)/(v_j·v_j). We can compute these β_j using dot products we have.
+
+We have all v_j and a6. Let's compute each β_j:
+
+v1=v1: a6·v1 = a6·a1 = -11. v1·v1=9 => β1 = -11/9.
+
+v2: a6·v2 = v2·a6 = -17/3 (computed earlier). v2·v2=12 => β2 = (-17/3)/12 = -17/36.
+
+v3: a6·v3 = v3·a6 = -14/27 (computed). v3·v3=56/27 => β3 = (-14/27) / (56/27) = -14/56 = -1/4.
+
+v4: a6·v4 = v4·a6 = -1/2 (computed earlier). v4·v4=25/14 => β4 = (-1/2) / (25/14) = (-1/2)*(14/25) = -14/50 = -7/25? Actually 14/50=7/25, so -7/25.
+
+v5: a6·v5 = v5·a6 = -1/25 (computed). v5·v5=3/50 => β5 = (-1/25) / (3/50) = (-1/25)*(50/3) = -50/(75) = -2/3? Because 50/75=2/3, so β5 = -2/3.
+
+Now we need v6·a7 = a6·a7 - β1(v1·a7) - β2(v2·a7) - β3(v3·a7) - β4(v4·a7) - β5(v5·a7).
+
+We have a6·a7 = 13.
+v1·a7 = -8.
+v2·a7 = -20/3.
+v3·a7 = -35/27.
+v4·a7 = 1/4.
+v5·a7 = 1/50.
+
+Now compute each β_j*(v_j·a7):
+
+β1*(v1·a7) = (-11/9)*(-8) = 88/9.
+β2*(v2·a7) = (-17/36)*(-20/3) = (17*20)/(36*3) = 340/108 = simplify: divide by 4: 85/27? 340/108 = 85/27 after dividing by 4? 340÷4=85, 108÷4=27, yes.
+β3*(v3·a7) = (-1/4)*(-35/27) = 35/(108) because 1/4 * 35/27 = 35/108, positive.
+β4*(v4·a7) = (-7/25)*(1/4) = -7/100.
+β5*(v5·a7) = (-2/3)*(1/50) = -2/150 = -1/75.
+
+Now sum S6 = β1v1·a7 + β2v2·a7 + β3v3·a7 + β4v4·a7 + β5v5·a7 = 88/9 + 85/27 + 35/108 - 7/100 - 1/75.
+
+We need to compute this sum precisely, then v6·a7 = a6·a7 - S6 = 13 - S6.
+
+Let's compute S6 with common denominator. Denominators: 9,27,108,100,75. LCM of 9=3^2,27=3^3,108=2^2*3^3,100=2^2*5^2,75=3*5^2. So LCM = 2^2 * 3^3 * 5^2 = 4*27*25 = 2700. Use denominator 2700.
+
+Convert each:
+
+88/9 = 88 * (300)/2700 = 26400/2700.
+85/27 = 85 * (100)/2700 = 8500/2700.
+35/108 = 35 * (25)/2700 = 875/2700? 108*25=2700, yes 35*25=875.
+-7/100 = -7 * (27)/2700 = -189/2700.
+-1/75 = -1 * (36)/2700 = -36/2700.
+
+Now sum = (26400 + 8500 + 875 - 189 - 36) / 2700 = (26400+8500=34900; +875=35775; -189=35586; -36=35550)/2700 = 35550/2700 = simplify: divide by 150? 35550/150=237, 2700/150=18 -> 237/18 = 79/6? 237/18 = divide by 3: 79/6 = 13.1667. So S6 = 79/6? Let's check: 35550/2700 = divide by 450? 35550/450=79, 2700/450=6, yes 79/6. So S6 = 79/6.
+
+Now v6·a7 = 13 - 79/6 = 78/6 - 79/6 = -1/6.
+
+So v6·a7 = -1/6.
+
+Now v6·v6 = r66^2 = 7/12. So (q6^T a7)^2 = (v6·a7)^2 / (v6·v6) = (1/36) / (7/12) = (1/36)*(12/7) = 12/(252) = 1/21? Because 12/252 = 1/21. Yes (q6^T a7)^2 = 1/21.
+
+Now we have all squared projections for a7:
+
+(q1^T a7)^2 = 64/9
+(q2^T a7)^2 = 100/27
+(q3^T a7)^2 = 175/216
+(q4^T a7)^2 = 7/200
+(q5^T a7)^2 = 1/150
+(q6^T a7)^2 = 1/21
+
+And ||a7||^2 = 12.
+
+Now compute r77^2 = 12 - sum of these.
+
+We'll compute sum with common denominator. Find LCM of denominators: 9,27,216,200,150,21. Let's factor:
+
+9=3^2
+27=3^3
+216=2^3 * 3^3 (since 216=6^3=2^3*3^3)
+200=2^3 * 5^2
+150=2 * 3 * 5^2
+21=3 * 7
+So LCM = 2^3 * 3^3 * 5^2 * 7 = 8*27*25*7 = 8*27=216; 216*25=5400; 5400*7=37800. So denominator 37800 again.
+
+Convert each fraction:
+
+64/9 = 64 * (4200)/37800 = 268800/37800? Because 37800/9=4200, so 64*4200=268800.
+100/27 = 100 * (1400)/37800 = 140000/37800? 37800/27=1400, so 100*1400=140000.
+175/216 = 175 * (175)/37800? 37800/216 = 175? Since 216*175 = 216*100=21600, 216*75=16200, sum=37800, yes 175. So 175*175 = 30625? Actually 175*175 = 30625. So 30625/37800.
+7/200 = 7 * (189)/37800? 37800/200=189, so 7*189=1323 => 1323/37800.
+1/150 = 1 * (252)/37800? 37800/150=252, so 252/37800.
+1/21 = 1 * (1800)/37800? 37800/21=1800, so 1800/37800.
+
+Now sum = (268800 + 140000 + 30625 + 1323 + 252 + 1800) / 37800 = compute:
+
+268800 + 140000 = 408800.
+408800 + 30625 = 439425.
+439425 + 1323 = 440748.
+440748 + 252 = 441000.
+441000 + 1800 = 442800.
+
+So sum = 442800/37800 = simplify: divide numerator and denominator by 100? 4428/378 = maybe. Let's reduce: 442800/37800 = divide both by 100: 4428/378. Now divide by 2: 2214/189. Divide by 3: 738/63. Divide by 3: 246/21. Divide by 3: 82/7. So sum = 82/7? Check: 442800/37800 = (442800 ÷ 5400) / (37800 ÷ 5400) = 82/7? 5400*82=442800? 5400*80=432000, 5400*2=10800, total 442800 yes. 5400*7=37800 yes. So sum = 82/7.
+
+Thus r77^2 = 12 - 82/7 = 84/7 - 82/7 = 2/7.
+
+So seventh squared diagonal = 2/7.
+
+Thus squares of diagonal entries of R: r11^2=9, r22^2=12, r33^2=56/27, r44^2=25/14, r55^2=3/50, r66^2=7/12, r77^2=2/7.
+
+We should list them in order as a comma-separated list of exact numbers: 9, 12, 56/27, 25/14, 3/50, 7/12, 2/7.
+
+But maybe they want them as fractions or integers. 9 and 12 are integers, others fractions. Should we simplify fractions? They are already reduced. Check: 56/27 reduced (56 and 27 no common factor). 25/14 reduced. 3/50 reduced. 7/12 reduced. 2/7 reduced. So okay.
+
+Thus answer: 9, 12, 56/27, 25/14, 3/50, 7/12, 2/7.
+
+Let's double-check some steps for potential arithmetic errors. Might be wise to verify some computations by alternative approach: compute Cholesky of M directly, maybe using algorithm to compute diagonal entries.
+
+We can compute M = A^T A as we have. Then perform Cholesky decomposition. Let L be lower triangular with L L^T = M. Then L_{ii}^2 = M_{ii} - sum_{k=1}^{i-1} L_{ik}^2. We can compute L_{ik} as we go. This is essentially the same as Gram-Schmidt but with matrix entries. Since we already did it and got plausible fractions, we can double-check some of the sums.
+
+Check r33^2 = 56/27 ≈ 2.07407; r44^2 = 25/14 ≈ 1.7857; r55^2 = 3/50 = 0.06; r66^2 = 7/12 ≈ 0.58333; r77^2 = 2/7 ≈ 0.2857. And r11^2=9, r22^2=12. The product of all r_ii^2 should equal det(A^T A) = (det A)^2. Since A is integer, det A might be integer. The product of these squares: 9*12=108; times 56/27 = 108*56/27 = (108/27)*56 = 4*56=224; times 25/14 = 224*25/14 = (224/14)*25 = 16*25=400; times 3/50 = 400*3/50 = (400/50)*3 = 8*3=24; times 7/12 = 24*7/12 = (24/12)*7=2*7=14; times 2/7 = 14*2/7 = (14/7)*2=2*2=4. So product = 4. So det(A)^2 = 4, thus det(A) = ±2. That seems plausible for an integer matrix. So the product matches nicely, giving confidence.
+
+Thus the squares of diagonal entries of R are: 9, 12, 56/27, 25/14, 3/50, 7/12, 2/7.
+
+Now output as comma-separated list. Possibly they want them as exact numbers: 9, 12, 56/27, 25/14, 3/50, 7/12, 2/7.
+
+But some might be simplified further: 3/50 is already simplified; 7/12 simplified; 2/7 simplified. So answer.
+
+Thus final answer: ANSWER: 9, 12, 56/27, 25/14, 3/50, 7/12, 2/7.
+
+We should present them in the order R11^2,...,R77^2. So list as above.

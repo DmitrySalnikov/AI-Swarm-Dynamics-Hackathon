@@ -1,0 +1,919 @@
+We are given a 10x10 integer matrix A. We need to compute LU decomposition without pivoting, where L is unit lower triangular (diagonal ones) and U is upper triangular. All entries of L and U are integers. We need to output as a comma-separated list: first the entries of L strictly below the diagonal row by row (L21; L31, L32; L41, L42, L43; ... up to L10,1 ... L10,9), then the entries of U on and above the diagonal row by row (U11, U12, ..., U1,10; U22, ..., U2,10; ...; U10,10).
+
+We need to compute LU. Since the problem says it exists and is unique, and all entries are integers, we can perform Gaussian elimination without row swaps, using exact integer arithmetic. Likely the matrix is constructed such that all intermediate arithmetic yields integers.
+
+We'll compute systematically. Let A be given as:
+
+Row1: [1, -3, -2, 1, -2, -2, 2, 3, 2, -1]
+Row2: [-2, 3, 7, -5, 3, 6, -4, -9, -3, 0]
+Row3: [-2, 12, -5, 5, 8, 1, -1, 3, -3, 4]
+Row4: [-2, 3, 4, -7, 4, 7, -1, -4, 3, 0]
+Row5: [2, -3, -10, 9, -2, -3, 5, 7, 3, -6]
+Row6: [-1, 6, 5, -3, -2, -5, -9, -1, -7, 9]
+Row7: [1, 0, -5, 7, 4, -14, 6, 17, -6, 3]
+Row8: [-2, 9, 1, -2, 6, -6, -2, 12, -7, 8]
+Row9: [-2, 0, 7, -10, 7, 8, 2, 1, 7, 4]
+Row10: [-2, 3, 10, -9, -2, 13, -9, -14, -3, 2]
+
+We'll perform elimination. Since L is unit lower triangular, we store multipliers. U is the resulting upper triangular matrix.
+
+We can do in-place with integer arithmetic: For each column k, we compute multipliers L_ik = A_ik / A_kk (since U_kk = A_kk after previous eliminations). Then update rows i>k: A_ij = A_ij - L_ik * A_kj for j>=k. Since all entries are integers, we need to ensure division yields integer; it is given.
+
+Let’s denote matrix as A, we will transform to U, while storing multipliers in L.
+
+We'll do step by step.
+
+Let me create a Python-like mental simulation. But careful with integer division: we need exact integer results. Since the problem states that L and U are integer, we can compute multipliers as rational but they should be integer? Actually L entries are the multipliers, which are computed as A_ik / A_kk. For them to be integer, A_kk must divide A_ik. Let's verify as we go.
+
+We can do with fractions but we know they will be integers. We'll compute using integer arithmetic: L_ik = A_ik // A_kk, and then A_ij -= L_ik * A_kj. Since we are using Python-like floor division but exact, we must ensure it's divisible.
+
+Let’s start.
+
+Initialize L as identity (we'll store below diagonal). U will be final A.
+
+Step 1: Column 1, pivot = A[1][1] = 1. (Using 1-indexed rows/cols). So U11 = 1.
+
+Compute multipliers for rows 2..10: L_i1 = A[i][1] / pivot.
+
+Row2: A[2][1] = -2 => L21 = -2/1 = -2.
+Row3: -2 => L31 = -2.
+Row4: -2 => L41 = -2.
+Row5: 2 => L51 = 2.
+Row6: -1 => L61 = -1.
+Row7: 1 => L71 = 1.
+Row8: -2 => L81 = -2.
+Row9: -2 => L91 = -2.
+Row10: -2 => L101 = -2.
+
+Now update rows 2..10 for columns j=1..10: A[i][j] -= L_i1 * A[1][j].
+
+We'll need row1 values: [1, -3, -2, 1, -2, -2, 2, 3, 2, -1].
+
+Update each row:
+
+Row2 original: [-2, 3, 7, -5, 3, 6, -4, -9, -3, 0]
+L21 = -2, subtract: row2 = row2 - (-2)*row1 = row2 + 2*row1? Since L_i1 * row1: L21 * row1 = (-2)*row1 = [-2,6,4,-2,4,4,-4,-6,-4,2]. Then row2 - (L21*row1) = row2 - [-2,6,4,...] = row2 + [2,-6,-4,2,-4,-4,4,6,4,-2]? Wait careful: The update is A[i][j] = A[i][j] - L_i1 * A[1][j]. So compute:
+
+Original row2: [-2, 3, 7, -5, 3, 6, -4, -9, -3, 0]
+L21*row1 = (-2)*[1,-3,-2,1,-2,-2,2,3,2,-1] = [-2,6,4,-2,4,4,-4,-6,-4,2]
+Now subtract: row2 - L21*row1 = [-2,3,7,-5,3,6,-4,-9,-3,0] - [-2,6,4,-2,4,4,-4,-6,-4,2] = [-2 - (-2), 3-6, 7-4, -5-(-2), 3-4, 6-4, -4-(-4), -9-(-6), -3-(-4), 0-2] = [0, -3, 3, -3, -1, 2, 0, -3, 1, -2]
+
+So new row2: [0, -3, 3, -3, -1, 2, 0, -3, 1, -2]
+
+Row3 original: [-2,12,-5,5,8,1,-1,3,-3,4]
+L31 = -2, L31*row1 = [-2,6,4,-2,4,4,-4,-6,-4,2] (same as above)
+Row3 - that: [-2-(-2), 12-6, -5-4, 5-(-2),8-4,1-4,-1-(-4),3-(-6),-3-(-4),4-2] = [0,6,-9,7,4,-3,3,9,1,2]
+
+Row3 new: [0,6,-9,7,4,-3,3,9,1,2]
+
+Row4 original: [-2,3,4,-7,4,7,-1,-4,3,0]
+L41 = -2, L41*row1 = same [-2,6,4,-2,4,4,-4,-6,-4,2]
+Row4 - that: [-2-(-2),3-6,4-4,-7-(-2),4-4,7-4,-1-(-4),-4-(-6),3-(-4),0-2] = [0,-3,0,-5,0,3,3,2,7,-2]
+
+Row4 new: [0,-3,0,-5,0,3,3,2,7,-2]
+
+Row5 original: [2,-3,-10,9,-2,-3,5,7,3,-6]
+L51=2, L51*row1=2*[1,-3,-2,1,-2,-2,2,3,2,-1] = [2,-6,-4,2,-4,-4,4,6,4,-2]
+Row5 - that: [2-2, -3-(-6), -10-(-4),9-2,-2-(-4),-3-(-4),5-4,7-6,3-4,-6-(-2)] = [0,3,-6,7,2,1,1,1,-1,-4]
+
+Row5 new: [0,3,-6,7,2,1,1,1,-1,-4]
+
+Row6 original: [-1,6,5,-3,-2,-5,-9,-1,-7,9]
+L61=-1, L61*row1 = -1*[1,-3,-2,1,-2,-2,2,3,2,-1] = [-1,3,2,-1,2,2,-2,-3,-2,1]
+Row6 - that: [-1-(-1),6-3,5-2,-3-(-1),-2-2, -5-2, -9-(-2), -1-(-3), -7-(-2), 9-1] = [0,3,3,-2,-4,-7,-7,2,-5,8]
+
+Row6 new: [0,3,3,-2,-4,-7,-7,2,-5,8]
+
+Row7 original: [1,0,-5,7,4,-14,6,17,-6,3]
+L71=1, L71*row1 = [1,-3,-2,1,-2,-2,2,3,2,-1]
+Row7 - that: [1-1,0-(-3),-5-(-2),7-1,4-(-2),-14-(-2),6-2,17-3,-6-2,3-(-1)] = [0,3,-3,6,6,-12,4,14,-8,4]
+
+Row7 new: [0,3,-3,6,6,-12,4,14,-8,4]
+
+Row8 original: [-2,9,1,-2,6,-6,-2,12,-7,8]
+L81=-2, L81*row1 = [-2,6,4,-2,4,4,-4,-6,-4,2]
+Row8 - that: [-2-(-2),9-6,1-4,-2-(-2),6-4,-6-4,-2-(-4),12-(-6),-7-(-4),8-2] = [0,3,-3,0,2,-10,2,18,-3,6]
+
+Row8 new: [0,3,-3,0,2,-10,2,18,-3,6]
+
+Row9 original: [-2,0,7,-10,7,8,2,1,7,4]
+L91=-2, L91*row1 = [-2,6,4,-2,4,4,-4,-6,-4,2]
+Row9 - that: [-2-(-2),0-6,7-4,-10-(-2),7-4,8-4,2-(-4),1-(-6),7-(-4),4-2] = [0,-6,3,-8,3,4,6,7,11,2]
+
+Row9 new: [0,-6,3,-8,3,4,6,7,11,2]
+
+Row10 original: [-2,3,10,-9,-2,13,-9,-14,-3,2]
+L101=-2, L101*row1 = [-2,6,4,-2,4,4,-4,-6,-4,2]
+Row10 - that: [-2-(-2),3-6,10-4,-9-(-2),-2-4,13-4,-9-(-4),-14-(-6),-3-(-4),2-2] = [0,-3,6,-7,-6,9,-5,-8,1,0]
+
+Row10 new: [0,-3,6,-7,-6,9,-5,-8,1,0]
+
+Now after step 1, matrix A (which will become U) is:
+
+Row1: [1, -3, -2, 1, -2, -2, 2, 3, 2, -1] (unchanged)
+Row2: [0, -3, 3, -3, -1, 2, 0, -3, 1, -2]
+Row3: [0, 6, -9, 7, 4, -3, 3, 9, 1, 2]
+Row4: [0, -3, 0, -5, 0, 3, 3, 2, 7, -2]
+Row5: [0, 3, -6, 7, 2, 1, 1, 1, -1, -4]
+Row6: [0, 3, 3, -2, -4, -7, -7, 2, -5, 8]
+Row7: [0, 3, -3, 6, 6, -12, 4, 14, -8, 4]
+Row8: [0, 3, -3, 0, 2, -10, 2, 18, -3, 6]
+Row9: [0, -6, 3, -8, 3, 4, 6, 7, 11, 2]
+Row10: [0, -3, 6, -7, -6, 9, -5, -8, 1, 0]
+
+Now step 2: Column 2, pivot = A[2][2] = -3 (since row2 is the second row). But note we have zeros in column2 for rows 2..10? Actually row2 col2 = -3 is pivot. For rows i>2, we use A[i][2] values. But careful: after previous elimination, the entries below diagonal in column 2 (rows 3..10) are: Row3: 6, Row4: -3, Row5: 3, Row6: 3, Row7: 3, Row8: 3, Row9: -6, Row10: -3. So we compute multipliers L_i2 = A[i][2] / pivot = A[i][2] / (-3). Since pivot -3, we need these to be integers. Check: 6/(-3) = -2, -3/(-3)=1, 3/(-3)=-1, 3/(-3)=-1, 3/(-3)=-1, 3/(-3)=-1, -6/(-3)=2, -3/(-3)=1. All integers good.
+
+So L32 = 6 / (-3) = -2
+L42 = -3 / (-3) = 1
+L52 = 3 / (-3) = -1
+L62 = 3 / (-3) = -1
+L72 = 3 / (-3) = -1
+L82 = 3 / (-3) = -1
+L92 = -6 / (-3) = 2
+L102 = -3 / (-3) = 1
+
+Now update rows 3..10 for columns j=2..10 (since column1 already zero below diagonal, but we can update all j>=2). Use row2 values: row2 = [0, -3, 3, -3, -1, 2, 0, -3, 1, -2] (col1=0, but we'll use from col2 onward). Actually for j>=2, we subtract L_i2 * row2[j] from A[i][j]. Because previous columns (col1) already zero and we don't need to update them.
+
+Let's compute each row update.
+
+We have row2: index from col2 to col10: col2=-3, col3=3, col4=-3, col5=-1, col6=2, col7=0, col8=-3, col9=1, col10=-2.
+
+Now for each row, compute new row.
+
+Row3 original: [0,6,-9,7,4,-3,3,9,1,2]
+L32 = -2. So subtract: A3[j] = A3[j] - L32 * row2[j] = A3[j] - (-2)*row2[j] = A3[j] + 2*row2[j].
+Compute: col2: 6 + 2*(-3)=6-6=0
+col3: -9 + 2*3 = -9+6=-3
+col4: 7 + 2*(-3)=7-6=1
+col5: 4 + 2*(-1)=4-2=2
+col6: -3 + 2*2 = -3+4=1
+col7: 3 + 2*0 =3
+col8: 9 + 2*(-3)=9-6=3
+col9: 1 + 2*1 =1+2=3
+col10: 2 + 2*(-2)=2-4=-2
+So new row3: [0,0,-3,1,2,1,3,3,3,-2]
+
+Row4 original: [0,-3,0,-5,0,3,3,2,7,-2]
+L42=1. So subtract: A4[j] - 1*row2[j] = A4[j] - row2[j].
+Compute: col2: -3 - (-3)=0
+col3: 0 - 3 = -3
+col4: -5 - (-3)= -5+3 = -2
+col5: 0 - (-1)=0+1=1
+col6: 3 - 2 = 1
+col7: 3 - 0 =3
+col8: 2 - (-3)=2+3=5
+col9: 7 - 1 =6
+col10: -2 - (-2)= -2+2=0
+So new row4: [0,0,-3,-2,1,1,3,5,6,0]
+
+Row5 original: [0,3,-6,7,2,1,1,1,-1,-4]
+L52 = -1. So subtract: A5[j] - (-1)*row2[j] = A5[j] + row2[j].
+Compute: col2: 3 + (-3)=0
+col3: -6 + 3 = -3
+col4: 7 + (-3)=4
+col5: 2 + (-1)=1
+col6: 1 + 2 =3
+col7: 1 + 0=1
+col8: 1 + (-3)= -2
+col9: -1 + 1 =0
+col10: -4 + (-2)= -6
+So new row5: [0,0,-3,4,1,3,1,-2,0,-6]
+
+Row6 original: [0,3,3,-2,-4,-7,-7,2,-5,8]
+L62=-1. So add row2: A6[j] + row2[j].
+col2: 3 + (-3)=0
+col3: 3 + 3 =6
+col4: -2 + (-3)= -5
+col5: -4 + (-1)= -5
+col6: -7 + 2 = -5
+col7: -7 + 0 = -7
+col8: 2 + (-3)= -1
+col9: -5 + 1 = -4
+col10: 8 + (-2)=6
+So new row6: [0,0,6,-5,-5,-5,-7,-1,-4,6]
+
+Row7 original: [0,3,-3,6,6,-12,4,14,-8,4]
+L72=-1 => add row2.
+col2: 3+(-3)=0
+col3: -3+3=0
+col4: 6+(-3)=3
+col5: 6+(-1)=5
+col6: -12+2=-10
+col7: 4+0=4
+col8: 14+(-3)=11
+col9: -8+1=-7
+col10: 4+(-2)=2
+So new row7: [0,0,0,3,5,-10,4,11,-7,2]
+
+Row8 original: [0,3,-3,0,2,-10,2,18,-3,6]
+L82=-1 => add row2.
+col2: 3+(-3)=0
+col3: -3+3=0
+col4: 0+(-3)=-3
+col5: 2+(-1)=1
+col6: -10+2=-8
+col7: 2+0=2
+col8: 18+(-3)=15
+col9: -3+1=-2
+col10: 6+(-2)=4
+So new row8: [0,0,0,-3,1,-8,2,15,-2,4]
+
+Row9 original: [0,-6,3,-8,3,4,6,7,11,2]
+L92=2 => subtract: A9[j] - 2*row2[j] = A9[j] - 2*row2[j].
+Compute: row2: col2=-3, col3=3, col4=-3, col5=-1, col6=2, col7=0, col8=-3, col9=1, col10=-2.
+2*row2: col2=-6, col3=6, col4=-6, col5=-2, col6=4, col7=0, col8=-6, col9=2, col10=-4.
+Now A9 original: [0,-6,3,-8,3,4,6,7,11,2]
+Subtract: col2: -6 - (-6)=0
+col3: 3 - 6 = -3
+col4: -8 - (-6)= -8+6=-2
+col5: 3 - (-2)=3+2=5
+col6: 4 - 4 =0
+col7: 6 - 0 =6
+col8: 7 - (-6)=7+6=13
+col9: 11 - 2 =9
+col10: 2 - (-4)=2+4=6
+So new row9: [0,0,-3,-2,5,0,6,13,9,6]
+
+Row10 original: [0,-3,6,-7,-6,9,-5,-8,1,0]
+L102=1 => subtract: A10[j] - 1*row2[j] = A10[j] - row2[j].
+col2: -3 - (-3)=0
+col3: 6 - 3 =3
+col4: -7 - (-3)= -7+3=-4
+col5: -6 - (-1)= -6+1=-5
+col6: 9 - 2 =7
+col7: -5 - 0 = -5
+col8: -8 - (-3)= -8+3=-5
+col9: 1 - 1 =0
+col10: 0 - (-2)=0+2=2
+So new row10: [0,0,3,-4,-5,7,-5,-5,0,2]
+
+Now after step2, matrix U (current A) is:
+
+Row1: [1, -3, -2, 1, -2, -2, 2, 3, 2, -1]
+Row2: [0, -3, 3, -3, -1, 2, 0, -3, 1, -2]
+Row3: [0, 0, -3, 1, 2, 1, 3, 3, 3, -2]
+Row4: [0, 0, -3, -2, 1, 1, 3, 5, 6, 0]
+Row5: [0, 0, -3, 4, 1, 3, 1, -2, 0, -6]
+Row6: [0, 0, 6, -5, -5, -5, -7, -1, -4, 6]
+Row7: [0, 0, 0, 3, 5, -10, 4, 11, -7, 2]
+Row8: [0, 0, 0, -3, 1, -8, 2, 15, -2, 4]
+Row9: [0, 0, -3, -2, 5, 0, 6, 13, 9, 6]
+Row10: [0, 0, 3, -4, -5, 7, -5, -5, 0, 2]
+
+Now step 3: Column 3, pivot = A[3][3] = -3. (Row3 col3). The subdiagonal entries in column3: rows 4..10: we need their current values after previous updates. From above:
+Row3: -3 (pivot)
+Row4: -3
+Row5: -3
+Row6: 6
+Row7: 0
+Row8: 0
+Row9: -3
+Row10: 3
+We need to consider only rows i>3? Actually for column 3, we eliminate rows 4 through 10. However note that rows 7 and 8 already have 0 in column3, so multipliers will be 0. So L43 = A[4][3] / pivot = (-3)/(-3) = 1
+L53 = (-3)/(-3) = 1
+L63 = 6/(-3) = -2
+L73 = 0/(-3)=0
+L83 = 0/(-3)=0
+L93 = (-3)/(-3)=1
+L103 = 3/(-3)= -1
+
+All integers. Now update rows 4..10 using row3 (which is row3 after previous steps: [0,0,-3,1,2,1,3,3,3,-2]). But careful: we need to update columns j>=3. Since column1,2 are already zero in these rows, we can update from col3 onward. But we subtract L_i3 times row3[j] from A_i[j]. For rows with L_i3=0, no change.
+
+Now compute updated rows:
+
+Row4: L43=1. So row4 = row4 - 1*row3.
+Row4 original: [0,0,-3,-2,1,1,3,5,6,0]
+Row3: [0,0,-3,1,2,1,3,3,3,-2]
+Subtract: col3: -3 - (-3)=0
+col4: -2 - 1 = -3
+col5: 1 - 2 = -1
+col6: 1 - 1 = 0
+col7: 3 - 3 = 0
+col8: 5 - 3 = 2
+col9: 6 - 3 = 3
+col10: 0 - (-2)=2
+So new row4: [0,0,0,-3,-1,0,0,2,3,2]
+
+Row5: L53=1 => row5 - row3.
+Row5 original: [0,0,-3,4,1,3,1,-2,0,-6]
+Subtract: col3: -3 - (-3)=0
+col4: 4 - 1 = 3
+col5: 1 - 2 = -1
+col6: 3 - 1 = 2
+col7: 1 - 3 = -2
+col8: -2 - 3 = -5
+col9: 0 - 3 = -3
+col10: -6 - (-2)= -4
+So new row5: [0,0,0,3,-1,2,-2,-5,-3,-4]
+
+Row6: L63 = -2 => row6 - (-2)*row3 = row6 + 2*row3.
+Row6 original: [0,0,6,-5,-5,-5,-7,-1,-4,6]
+2*row3: [0,0,-6,2,4,2,6,6,6,-4]
+Add: col3: 6 + (-6)=0
+col4: -5 + 2 = -3
+col5: -5 + 4 = -1
+col6: -5 + 2 = -3
+col7: -7 + 6 = -1
+col8: -1 + 6 = 5
+col9: -4 + 6 = 2
+col10: 6 + (-4)=2
+So new row6: [0,0,0,-3,-1,-3,-1,5,2,2]
+
+Row7: L73=0 => unchanged. Row7 remains: [0,0,0,3,5,-10,4,11,-7,2]
+
+Row8: L83=0 => unchanged: [0,0,0,-3,1,-8,2,15,-2,4]
+
+Row9: L93=1 => row9 - row3.
+Row9 original: [0,0,-3,-2,5,0,6,13,9,6]
+Row3: [0,0,-3,1,2,1,3,3,3,-2]
+Subtract: col3: -3 - (-3)=0
+col4: -2 - 1 = -3
+col5: 5 - 2 = 3
+col6: 0 - 1 = -1
+col7: 6 - 3 = 3
+col8: 13 - 3 = 10
+col9: 9 - 3 = 6
+col10: 6 - (-2)=8
+So new row9: [0,0,0,-3,3,-1,3,10,6,8]
+
+Row10: L103 = -1 => row10 - (-1)*row3 = row10 + row3.
+Row10 original: [0,0,3,-4,-5,7,-5,-5,0,2]
+Add row3: [0,0,-3,1,2,1,3,3,3,-2]
+Sum: col3: 3 + (-3)=0
+col4: -4 + 1 = -3
+col5: -5 + 2 = -3
+col6: 7 + 1 = 8
+col7: -5 + 3 = -2
+col8: -5 + 3 = -2
+col9: 0 + 3 = 3
+col10: 2 + (-2)=0
+So new row10: [0,0,0,-3,-3,8,-2,-2,3,0]
+
+Now after step3, matrix U:
+
+Row1: [1, -3, -2, 1, -2, -2, 2, 3, 2, -1]
+Row2: [0, -3, 3, -3, -1, 2, 0, -3, 1, -2]
+Row3: [0, 0, -3, 1, 2, 1, 3, 3, 3, -2]
+Row4: [0, 0, 0, -3, -1, 0, 0, 2, 3, 2]
+Row5: [0, 0, 0, 3, -1, 2, -2, -5, -3, -4]
+Row6: [0, 0, 0, -3, -1, -3, -1, 5, 2, 2]
+Row7: [0, 0, 0, 3, 5, -10, 4, 11, -7, 2]
+Row8: [0, 0, 0, -3, 1, -8, 2, 15, -2, 4]
+Row9: [0, 0, 0, -3, 3, -1, 3, 10, 6, 8]
+Row10: [0, 0, 0, -3, -3, 8, -2, -2, 3, 0]
+
+Now step4: Column 4, pivot = A[4][4] = -3 (row4 col4). Subdiagonal entries in column4: rows5..10:
+Row5: 3
+Row6: -3
+Row7: 3
+Row8: -3
+Row9: -3
+Row10: -3
+Compute multipliers L_i4 = A[i][4] / pivot = A[i][4] / (-3):
+Row5: 3/(-3) = -1
+Row6: -3/(-3)=1
+Row7: 3/(-3)=-1
+Row8: -3/(-3)=1
+Row9: -3/(-3)=1
+Row10: -3/(-3)=1
+(All integers)
+
+Now update rows5..10 using row4 (current row4: [0,0,0,-3,-1,0,0,2,3,2]). But careful: we update columns j>=4. However note that column4 becomes zero after subtraction. We'll compute each.
+
+Row5: L54 = -1, so row5 = row5 - (-1)*row4 = row5 + row4.
+Row5 original: [0,0,0,3,-1,2,-2,-5,-3,-4]
+Row4: [0,0,0,-3,-1,0,0,2,3,2]
+Add: col4: 3 + (-3)=0
+col5: -1 + (-1)= -2
+col6: 2 + 0 =2
+col7: -2 + 0 = -2
+col8: -5 + 2 = -3
+col9: -3 + 3 = 0
+col10: -4 + 2 = -2
+So new row5: [0,0,0,0,-2,2,-2,-3,0,-2]
+
+Row6: L64 = 1, so row6 = row6 - 1*row4 = row6 - row4.
+Row6 original: [0,0,0,-3,-1,-3,-1,5,2,2]
+Row4: [0,0,0,-3,-1,0,0,2,3,2]
+Subtract: col4: -3 - (-3)=0
+col5: -1 - (-1)=0
+col6: -3 - 0 = -3
+col7: -1 - 0 = -1
+col8: 5 - 2 = 3
+col9: 2 - 3 = -1
+col10: 2 - 2 = 0
+So new row6: [0,0,0,0,0,-3,-1,3,-1,0]
+
+Row7: L74 = -1, so row7 = row7 - (-1)*row4 = row7 + row4.
+Row7 original: [0,0,0,3,5,-10,4,11,-7,2]
+Add row4: [0,0,0,-3,-1,0,0,2,3,2]
+Sum: col4: 3 + (-3)=0
+col5: 5 + (-1)=4
+col6: -10 + 0 = -10
+col7: 4 + 0 =4
+col8: 11 + 2 =13
+col9: -7 + 3 = -4
+col10: 2 + 2 =4
+So new row7: [0,0,0,0,4,-10,4,13,-4,4]
+
+Row8: L84 = 1, so row8 = row8 - 1*row4 = row8 - row4.
+Row8 original: [0,0,0,-3,1,-8,2,15,-2,4]
+Row4: [0,0,0,-3,-1,0,0,2,3,2]
+Subtract: col4: -3 - (-3)=0
+col5: 1 - (-1)=2
+col6: -8 - 0 = -8
+col7: 2 - 0 =2
+col8: 15 - 2 =13
+col9: -2 - 3 = -5
+col10: 4 - 2 =2
+So new row8: [0,0,0,0,2,-8,2,13,-5,2]
+
+Row9: L94 = 1, so row9 = row9 - row4.
+Row9 original: [0,0,0,-3,3,-1,3,10,6,8]
+Row4: [0,0,0,-3,-1,0,0,2,3,2]
+Subtract: col4: -3 - (-3)=0
+col5: 3 - (-1)=4
+col6: -1 - 0 = -1
+col7: 3 - 0 =3
+col8: 10 - 2 =8
+col9: 6 - 3 =3
+col10: 8 - 2 =6
+So new row9: [0,0,0,0,4,-1,3,8,3,6]
+
+Row10: L104 = 1, so row10 = row10 - row4.
+Row10 original: [0,0,0,-3,-3,8,-2,-2,3,0]
+Row4: [0,0,0,-3,-1,0,0,2,3,2]
+Subtract: col4: -3 - (-3)=0
+col5: -3 - (-1)= -2
+col6: 8 - 0 =8
+col7: -2 - 0 = -2
+col8: -2 - 2 = -4
+col9: 3 - 3 =0
+col10: 0 - 2 = -2
+So new row10: [0,0,0,0,-2,8,-2,-4,0,-2]
+
+Now after step4, U:
+
+Row1: [1, -3, -2, 1, -2, -2, 2, 3, 2, -1]
+Row2: [0, -3, 3, -3, -1, 2, 0, -3, 1, -2]
+Row3: [0, 0, -3, 1, 2, 1, 3, 3, 3, -2]
+Row4: [0, 0, 0, -3, -1, 0, 0, 2, 3, 2]
+Row5: [0, 0, 0, 0, -2, 2, -2, -3, 0, -2]
+Row6: [0, 0, 0, 0, 0, -3, -1, 3, -1, 0]
+Row7: [0, 0, 0, 0, 4, -10, 4, 13, -4, 4]
+Row8: [0, 0, 0, 0, 2, -8, 2, 13, -5, 2]
+Row9: [0, 0, 0, 0, 4, -1, 3, 8, 3, 6]
+Row10: [0, 0, 0, 0, -2, 8, -2, -4, 0, -2]
+
+Now step5: Column 5, pivot = A[5][5] = -2 (row5 col5). Subdiagonal entries in column5: rows6..10:
+Row6: 0
+Row7: 4
+Row8: 2
+Row9: 4
+Row10: -2
+Compute multipliers L_i5 = A[i][5] / pivot = A[i][5] / (-2):
+Row6: 0/(-2)=0
+Row7: 4/(-2)= -2
+Row8: 2/(-2)= -1
+Row9: 4/(-2)= -2
+Row10: -2/(-2)=1
+All integers.
+
+Now update rows6..10 using row5 (row5: [0,0,0,0,-2,2,-2,-3,0,-2]). But only columns j>=5. However note that row6 has 0 in col5, so L65=0, no change. But we still need to update rows7-10.
+
+Compute updates:
+
+Row7: L75 = -2, so row7 = row7 - (-2)*row5 = row7 + 2*row5.
+Row5: [0,0,0,0,-2,2,-2,-3,0,-2]
+2*row5: [0,0,0,0,-4,4,-4,-6,0,-4]
+Row7 original: [0,0,0,0,4,-10,4,13,-4,4]
+Add: col5: 4 + (-4)=0
+col6: -10 + 4 = -6
+col7: 4 + (-4)=0
+col8: 13 + (-6)=7
+col9: -4 + 0 = -4
+col10: 4 + (-4)=0
+So new row7: [0,0,0,0,0,-6,0,7,-4,0]
+
+Row8: L85 = -1, so row8 = row8 - (-1)*row5 = row8 + row5.
+Row8 original: [0,0,0,0,2,-8,2,13,-5,2]
+Add row5: [0,0,0,0,-2,2,-2,-3,0,-2]
+Sum: col5: 2 + (-2)=0
+col6: -8 + 2 = -6
+col7: 2 + (-2)=0
+col8: 13 + (-3)=10
+col9: -5 + 0 = -5
+col10: 2 + (-2)=0
+So new row8: [0,0,0,0,0,-6,0,10,-5,0]
+
+Row9: L95 = -2, so row9 = row9 + 2*row5.
+Row9 original: [0,0,0,0,4,-1,3,8,3,6]
+2*row5: [0,0,0,0,-4,4,-4,-6,0,-4]
+Add: col5: 4 + (-4)=0
+col6: -1 + 4 = 3
+col7: 3 + (-4)= -1
+col8: 8 + (-6)=2
+col9: 3 + 0 =3
+col10: 6 + (-4)=2
+So new row9: [0,0,0,0,0,3,-1,2,3,2]
+
+Row10: L105 = 1, so row10 = row10 - 1*row5 = row10 - row5.
+Row10 original: [0,0,0,0,-2,8,-2,-4,0,-2]
+Row5: [0,0,0,0,-2,2,-2,-3,0,-2]
+Subtract: col5: -2 - (-2)=0
+col6: 8 - 2 =6
+col7: -2 - (-2)=0
+col8: -4 - (-3)= -1
+col9: 0 - 0 =0
+col10: -2 - (-2)=0
+So new row10: [0,0,0,0,0,6,0,-1,0,0]
+
+Now after step5, U:
+
+Row1: [1, -3, -2, 1, -2, -2, 2, 3, 2, -1]
+Row2: [0, -3, 3, -3, -1, 2, 0, -3, 1, -2]
+Row3: [0, 0, -3, 1, 2, 1, 3, 3, 3, -2]
+Row4: [0, 0, 0, -3, -1, 0, 0, 2, 3, 2]
+Row5: [0, 0, 0, 0, -2, 2, -2, -3, 0, -2]
+Row6: [0, 0, 0, 0, 0, -3, -1, 3, -1, 0]
+Row7: [0, 0, 0, 0, 0, -6, 0, 7, -4, 0]
+Row8: [0, 0, 0, 0, 0, -6, 0, 10, -5, 0]
+Row9: [0, 0, 0, 0, 0, 3, -1, 2, 3, 2]
+Row10: [0, 0, 0, 0, 0, 6, 0, -1, 0, 0]
+
+Now step6: Column 6, pivot = A[6][6] = -3 (row6 col6). Subdiagonal entries in column6: rows7..10:
+Row7: -6
+Row8: -6
+Row9: 3
+Row10: 6
+Compute multipliers L_i6 = A[i][6] / pivot = value / (-3):
+Row7: -6/(-3)=2
+Row8: -6/(-3)=2
+Row9: 3/(-3)= -1
+Row10: 6/(-3)= -2
+All integers.
+
+Now update rows7..10 using row6 (row6: [0,0,0,0,0,-3,-1,3,-1,0]). But careful: row6 also has column7,8,9,10 values: col6=-3, col7=-1, col8=3, col9=-1, col10=0.
+
+Update rows:
+
+Row7: L76=2, so row7 = row7 - 2*row6.
+Row7 original: [0,0,0,0,0,-6,0,7,-4,0]
+row6: [0,0,0,0,0,-3,-1,3,-1,0]
+2*row6: [0,0,0,0,0,-6,-2,6,-2,0]
+Subtract: row7 - 2*row6: col6: -6 - (-6)=0
+col7: 0 - (-2)=2
+col8: 7 - 6 =1
+col9: -4 - (-2)= -2
+col10: 0 - 0 =0
+So new row7: [0,0,0,0,0,0,2,1,-2,0]
+
+Row8: L86=2, so row8 = row8 - 2*row6.
+Row8 original: [0,0,0,0,0,-6,0,10,-5,0]
+2*row6: same [0,0,0,0,0,-6,-2,6,-2,0]
+Subtract: col6: -6 - (-6)=0
+col7: 0 - (-2)=2
+col8: 10 - 6 =4
+col9: -5 - (-2)= -3
+col10: 0 - 0 =0
+So new row8: [0,0,0,0,0,0,2,4,-3,0]
+
+Row9: L96 = -1, so row9 = row9 - (-1)*row6 = row9 + row6.
+Row9 original: [0,0,0,0,0,3,-1,2,3,2]
+Add row6: [0,0,0,0,0,-3,-1,3,-1,0]
+Sum: col6: 3 + (-3)=0
+col7: -1 + (-1)= -2
+col8: 2 + 3 =5
+col9: 3 + (-1)=2
+col10: 2 + 0 =2
+So new row9: [0,0,0,0,0,0,-2,5,2,2]
+
+Row10: L106 = -2, so row10 = row10 - (-2)*row6 = row10 + 2*row6.
+Row10 original: [0,0,0,0,0,6,0,-1,0,0]
+2*row6: [0,0,0,0,0,-6,-2,6,-2,0]
+Add: col6: 6 + (-6)=0
+col7: 0 + (-2)= -2
+col8: -1 + 6 =5
+col9: 0 + (-2)= -2
+col10: 0 + 0 =0
+So new row10: [0,0,0,0,0,0,-2,5,-2,0]
+
+Now after step6, U:
+
+Row1: [1, -3, -2, 1, -2, -2, 2, 3, 2, -1]
+Row2: [0, -3, 3, -3, -1, 2, 0, -3, 1, -2]
+Row3: [0, 0, -3, 1, 2, 1, 3, 3, 3, -2]
+Row4: [0, 0, 0, -3, -1, 0, 0, 2, 3, 2]
+Row5: [0, 0, 0, 0, -2, 2, -2, -3, 0, -2]
+Row6: [0, 0, 0, 0, 0, -3, -1, 3, -1, 0]
+Row7: [0, 0, 0, 0, 0, 0, 2, 1, -2, 0]
+Row8: [0, 0, 0, 0, 0, 0, 2, 4, -3, 0]
+Row9: [0, 0, 0, 0, 0, 0, -2, 5, 2, 2]
+Row10: [0, 0, 0, 0, 0, 0, -2, 5, -2, 0]
+
+Now step7: Column 7, pivot = A[7][7] = 2 (row7 col7). Subdiagonal entries in column7: rows8..10:
+Row8: 2
+Row9: -2
+Row10: -2
+Compute multipliers L_i7 = A[i][7] / pivot = value / 2:
+Row8: 2/2=1
+Row9: -2/2 = -1
+Row10: -2/2 = -1
+All integers.
+
+Now update rows8..10 using row7 (row7: [0,0,0,0,0,0,2,1,-2,0]). Update columns j>=7.
+
+Update:
+
+Row8: L87=1, so row8 = row8 - 1*row7 = row8 - row7.
+Row8 original: [0,0,0,0,0,0,2,4,-3,0]
+Row7: [0,0,0,0,0,0,2,1,-2,0]
+Subtract: col7: 2-2=0
+col8: 4-1=3
+col9: -3 - (-2)= -1
+col10: 0-0=0
+So new row8: [0,0,0,0,0,0,0,3,-1,0]
+
+Row9: L97 = -1, so row9 = row9 - (-1)*row7 = row9 + row7.
+Row9 original: [0,0,0,0,0,0,-2,5,2,2]
+Add row7: [0,0,0,0,0,0,2,1,-2,0]
+Sum: col7: -2+2=0
+col8: 5+1=6
+col9: 2+(-2)=0
+col10: 2+0=2
+So new row9: [0,0,0,0,0,0,0,6,0,2]
+
+Row10: L107 = -1, so row10 = row10 - (-1)*row7 = row10 + row7.
+Row10 original: [0,0,0,0,0,0,-2,5,-2,0]
+Add row7: [0,0,0,0,0,0,2,1,-2,0]
+Sum: col7: -2+2=0
+col8: 5+1=6
+col9: -2+(-2)= -4
+col10: 0+0=0
+So new row10: [0,0,0,0,0,0,0,6,-4,0]
+
+Now after step7, U:
+
+Row1: [1, -3, -2, 1, -2, -2, 2, 3, 2, -1]
+Row2: [0, -3, 3, -3, -1, 2, 0, -3, 1, -2]
+Row3: [0, 0, -3, 1, 2, 1, 3, 3, 3, -2]
+Row4: [0, 0, 0, -3, -1, 0, 0, 2, 3, 2]
+Row5: [0, 0, 0, 0, -2, 2, -2, -3, 0, -2]
+Row6: [0, 0, 0, 0, 0, -3, -1, 3, -1, 0]
+Row7: [0, 0, 0, 0, 0, 0, 2, 1, -2, 0]
+Row8: [0, 0, 0, 0, 0, 0, 0, 3, -1, 0]
+Row9: [0, 0, 0, 0, 0, 0, 0, 6, 0, 2]
+Row10: [0, 0, 0, 0, 0, 0, 0, 6, -4, 0]
+
+Now step8: Column 8, pivot = A[8][8] = 3 (row8 col8). Subdiagonal entries in column8: rows9..10:
+Row9: 6
+Row10: 6
+Compute multipliers L_i8 = A[i][8] / pivot = value / 3:
+Row9: 6/3 = 2
+Row10: 6/3 = 2
+All integers.
+
+Now update rows9..10 using row8 (row8: [0,0,0,0,0,0,0,3,-1,0]). Update columns j>=8.
+
+Row9: L98=2, so row9 = row9 - 2*row8.
+Row9 original: [0,0,0,0,0,0,0,6,0,2]
+2*row8: [0,0,0,0,0,0,0,6,-2,0]
+Subtract: col8: 6-6=0
+col9: 0 - (-2)=2
+col10: 2 - 0 =2
+So new row9: [0,0,0,0,0,0,0,0,2,2]
+
+Row10: L108=2, so row10 = row10 - 2*row8.
+Row10 original: [0,0,0,0,0,0,0,6,-4,0]
+2*row8: [0,0,0,0,0,0,0,6,-2,0]
+Subtract: col8: 6-6=0
+col9: -4 - (-2)= -2
+col10: 0 - 0 =0
+So new row10: [0,0,0,0,0,0,0,0,-2,0]
+
+Now after step8, U:
+
+Row1: [1, -3, -2, 1, -2, -2, 2, 3, 2, -1]
+Row2: [0, -3, 3, -3, -1, 2, 0, -3, 1, -2]
+Row3: [0, 0, -3, 1, 2, 1, 3, 3, 3, -2]
+Row4: [0, 0, 0, -3, -1, 0, 0, 2, 3, 2]
+Row5: [0, 0, 0, 0, -2, 2, -2, -3, 0, -2]
+Row6: [0, 0, 0, 0, 0, -3, -1, 3, -1, 0]
+Row7: [0, 0, 0, 0, 0, 0, 2, 1, -2, 0]
+Row8: [0, 0, 0, 0, 0, 0, 0, 3, -1, 0]
+Row9: [0, 0, 0, 0, 0, 0, 0, 0, 2, 2]
+Row10: [0, 0, 0, 0, 0, 0, 0, 0, -2, 0]
+
+Now step9: Column 9, pivot = A[9][9] = 2 (row9 col9). Subdiagonal entry in column9: row10: -2.
+Compute multiplier L109 = A[10][9] / pivot = (-2)/2 = -1.
+Now update row10 using row9 (row9: [0,0,0,0,0,0,0,0,2,2]). Update columns j>=9.
+
+Row10: L109 = -1, so row10 = row10 - (-1)*row9 = row10 + row9.
+Row10 original: [0,0,0,0,0,0,0,0,-2,0]
+Add row9: [0,0,0,0,0,0,0,0,2,2]
+Sum: col9: -2+2=0
+col10: 0+2=2
+So new row10: [0,0,0,0,0,0,0,0,0,2]
+
+Now final U:
+
+Row1: [1, -3, -2, 1, -2, -2, 2, 3, 2, -1]
+Row2: [0, -3, 3, -3, -1, 2, 0, -3, 1, -2]
+Row3: [0, 0, -3, 1, 2, 1, 3, 3, 3, -2]
+Row4: [0, 0, 0, -3, -1, 0, 0, 2, 3, 2]
+Row5: [0, 0, 0, 0, -2, 2, -2, -3, 0, -2]
+Row6: [0, 0, 0, 0, 0, -3, -1, 3, -1, 0]
+Row7: [0, 0, 0, 0, 0, 0, 2, 1, -2, 0]
+Row8: [0, 0, 0, 0, 0, 0, 0, 3, -1, 0]
+Row9: [0, 0, 0, 0, 0, 0, 0, 0, 2, 2]
+Row10: [0, 0, 0, 0, 0, 0, 0, 0, 0, 2]
+
+Now we have L and U. L is unit lower triangular with diagonal ones. We have computed multipliers as we went. Let's collect all L entries below diagonal, row by row (row2, row3,... row10). For each row i, L_i1, L_i2, ..., L_i,i-1. We have stored them during steps. Let's list them:
+
+From step1:
+L21 = -2
+L31 = -2
+L41 = -2
+L51 = 2
+L61 = -1
+L71 = 1
+L81 = -2
+L91 = -2
+L101 = -2
+
+Step2:
+L32 = -2
+L42 = 1
+L52 = -1
+L62 = -1
+L72 = -1
+L82 = -1
+L92 = 2
+L102 = 1
+
+Step3:
+L43 = 1
+L53 = 1
+L63 = -2
+L73 = 0
+L83 = 0
+L93 = 1
+L103 = -1
+
+Step4:
+L54 = -1
+L64 = 1
+L74 = -1
+L84 = 1
+L94 = 1
+L104 = 1
+
+Step5:
+L65 = 0
+L75 = -2
+L85 = -1
+L95 = -2
+L105 = 1
+
+Step6:
+L76 = 2
+L86 = 2
+L96 = -1
+L106 = -2
+
+Step7:
+L87 = 1
+L97 = -1
+L107 = -1
+
+Step8:
+L98 = 2
+L108 = 2
+
+Step9:
+L109 = -1
+
+Now we need to list them in order: for each row i from 2 to 10, list L_i1, L_i2, ..., L_i,i-1. So we need to arrange them by rows.
+
+Let's construct row-wise:
+
+Row2 (i=2): L21 = -2
+Row3 (i=3): L31, L32 = -2, -2
+Row4 (i=4): L41, L42, L43 = -2, 1, 1
+Row5 (i=5): L51, L52, L53, L54 = 2, -1, 1, -1
+Row6 (i=6): L61, L62, L63, L64, L65 = -1, -1, -2, 1, 0
+Row7 (i=7): L71, L72, L73, L74, L75, L76 = 1, -1, 0, -1, -2, 2
+Row8 (i=8): L81, L82, L83, L84, L85, L86, L87 = -2, -1, 0, 1, -1, 2, 1
+Row9 (i=9): L91, L92, L93, L94, L95, L96, L97, L98 = -2, 2, 1, 1, -2, -1, -1, 2
+Row10 (i=10): L101, L102, L103, L104, L105, L106, L107, L108, L109 = -2, 1, -1, 1, 1, -2, -1, 2, -1
+
+Now we need to list these in order as a comma-separated list: L21; L31, L32; L41, L42, L43; ... L10,1..L10,9.
+
+So list: -2, -2, -2, -2, 1, 1, 2, -1, 1, -1, -1, -1, -2, 1, 0, 1, -1, 0, -1, -2, 2, -2, -1, 0, 1, -1, 2, 1, -2, 2, 1, 1, -2, -1, -1, 2, -2, 1, -1, 1, 1, -2, -1, 2, -1
+
+Let's double-check counts: row2:1 element, row3:2, row4:3, row5:4, row6:5, row7:6, row8:7, row9:8, row10:9. Total = 1+2+3+4+5+6+7+8+9 = 45. Our list should have 45 numbers. Let's count: we have -2 (1), -2,-2 (2 more ->3), -2,1,1 (3 more ->6), 2,-1,1,-1 (4 more ->10), -1,-1,-2,1,0 (5 more ->15), 1,-1,0,-1,-2,2 (6 more ->21), -2,-1,0,1,-1,2,1 (7 more ->28), -2,2,1,1,-2,-1,-1,2 (8 more ->36), -2,1,-1,1,1,-2,-1,2,-1 (9 more ->45). Yes 45.
+
+Now we need U entries in order: row1: U11, U12, ..., U1,10; row2: U22, U23, ..., U2,10; ... row10: U10,10. Since U is upper triangular, we list all entries on and above diagonal. So we need all U[i][j] for i<=j.
+
+From final U matrix:
+
+Row1: [1, -3, -2, 1, -2, -2, 2, 3, 2, -1] -> all 10 entries.
+Row2: [0, -3, 3, -3, -1, 2, 0, -3, 1, -2] -> from col2 to col10: -3, 3, -3, -1, 2, 0, -3, 1, -2 (9 entries)
+Row3: [0,0,-3,1,2,1,3,3,3,-2] -> col3 to col10: -3, 1, 2, 1, 3, 3, 3, -2 (8 entries)
+Row4: [0,0,0,-3,-1,0,0,2,3,2] -> col4..10: -3, -1, 0, 0, 2, 3, 2 (7 entries)
+Row5: [0,0,0,0,-2,2,-2,-3,0,-2] -> col5..10: -2, 2, -2, -3, 0, -2 (6 entries)
+Row6: [0,0,0,0,0,-3,-1,3,-1,0] -> col6..10: -3, -1, 3, -1, 0 (5 entries)
+Row7: [0,0,0,0,0,0,2,1,-2,0] -> col7..10: 2, 1, -2, 0 (4 entries)
+Row8: [0,0,0,0,0,0,0,3,-1,0] -> col8..10: 3, -1, 0 (3 entries)
+Row9: [0,0,0,0,0,0,0,0,2,2] -> col9..10: 2, 2 (2 entries)
+Row10: [0,0,0,0,0,0,0,0,0,2] -> col10: 2 (1 entry)
+
+Now list them in order:
+Row1: 1, -3, -2, 1, -2, -2, 2, 3, 2, -1
+Row2: -3, 3, -3, -1, 2, 0, -3, 1, -2
+Row3: -3, 1, 2, 1, 3, 3, 3, -2
+Row4: -3, -1, 0, 0, 2, 3, 2
+Row5: -2, 2, -2, -3, 0, -2
+Row6: -3, -1, 3, -1, 0
+Row7: 2, 1, -2, 0
+Row8: 3, -1, 0
+Row9: 2, 2
+Row10: 2
+
+Now combine L list and U list as a single comma-separated list.
+
+Thus answer sequence: L entries first (45 numbers), then U entries (10+9+8+7+6+5+4+3+2+1 = 55 numbers). Total 100 numbers. That matches matrix size 10x10.
+
+Now we need to output as comma-separated list. Let's write them clearly.
+
+L list: 
+Row2: -2
+Row3: -2, -2
+Row4: -2, 1, 1
+Row5: 2, -1, 1, -1
+Row6: -1, -1, -2, 1, 0
+Row7: 1, -1, 0, -1, -2, 2
+Row8: -2, -1, 0, 1, -1, 2, 1
+Row9: -2, 2, 1, 1, -2, -1, -1, 2
+Row10: -2, 1, -1, 1, 1, -2, -1, 2, -1
+
+Let's write them in exact order:
+
+-2, -2, -2, -2, 1, 1, 2, -1, 1, -1, -1, -1, -2, 1, 0, 1, -1, 0, -1, -2, 2, -2, -1, 0, 1, -1, 2, 1, -2, 2, 1, 1, -2, -1, -1, 2, -2, 1, -1, 1, 1, -2, -1, 2, -1
+
+Check if any missing: Let's enumerate them with indices to verify.
+
+Row2: [-2]
+Row3: [-2, -2] -> combined: -2, -2, -2 (first three)
+Row4: [-2, 1, 1] -> after that: -2, -2, -2, -2, 1, 1? Wait we need to list row3 then row4. So total so far: row2: -2 (1); row3: -2, -2 (2,3); row4: -2,1,1 (4,5,6). So first six: -2, -2, -2, -2, 1, 1. Good.
+Row5: [2, -1, 1, -1] -> next four: 2, -1, 1, -1 (7-10). So list: ... -2, -2, -2, -2, 1, 1, 2, -1, 1, -1.
+Row6: [-1, -1, -2, 1, 0] -> next five: -1, -1, -2, 1, 0 (11-15). So far: ... -1, -1, -2, 1, 0.
+Row7: [1, -1, 0, -1, -2, 2] -> next six: 1, -1, 0, -1, -2, 2 (16-21).
+Row8: [-2, -1, 0, 1, -1, 2, 1] -> next seven: -2, -1, 0, 1, -1, 2, 1 (22-28).
+Row9: [-2, 2, 1, 1, -2, -1, -1, 2] -> next eight: -2, 2, 1, 1, -2, -1, -1, 2 (29-36).
+Row10: [-2, 1, -1, 1, 1, -2, -1, 2, -1] -> next nine: -2, 1, -1, 1, 1, -2, -1, 2, -1 (37-45). So 45 numbers.
+
+Now U list:
+
+Row1: 1, -3, -2, 1, -2, -2, 2, 3, 2, -1 (10 entries)
+Row2: -3, 3, -3, -1, 2, 0, -3, 1, -2 (9)
+Row3: -3, 1, 2, 1, 3, 3, 3, -2 (8)
+Row4: -3, -1, 0, 0, 2, 3, 2 (7)
+Row5: -2, 2, -2, -3, 0, -2 (6)
+Row6: -3, -1, 3, -1, 0 (5)
+Row7: 2, 1, -2, 0 (4)
+Row8: 3, -1, 0 (3)
+Row9: 2, 2 (2)
+Row10: 2 (1)
+
+List:
+
+1, -3, -2, 1, -2, -2, 2, 3, 2, -1, -3, 3, -3, -1, 2, 0, -3, 1, -2, -3, 1, 2, 1, 3, 3, 3, -2, -3, -1, 0, 0, 2, 3, 2, -2, 2, -2, -3, 0, -2, -3, -1, 3, -1, 0, 2, 1, -2, 0, 3, -1, 0, 2, 2, 2
+
+Check counts: row1:10, row2:9 =>19, row3:8=>27, row4:7=>34, row5:6=>40, row6:5=>45, row7:4=>49, row8:3=>52, row9:2=>54, row10:1=>55. Good.
+
+Now combine L and U: first 45 L numbers, then 55 U numbers.
+
+Thus final answer: -2, -2, -2, -2, 1, 1, 2, -1, 1, -1, -1, -1, -2, 1, 0, 1, -1, 0, -1, -2, 2, -2, -1, 0, 1, -1, 2, 1, -2, 2, 1, 1, -2, -1, -1, 2, -2, 1, -1, 1, 1, -2, -1, 2, -1, 1, -3, -2, 1, -2, -2, 2, 3, 2, -1, -3, 3, -3, -1, 2, 0, -3, 1, -2, -3, 1, 2, 1, 3, 3, 3, -2, -3, -1, 0, 0, 2, 3, 2, -2, 2, -2, -3, 0, -2, -3, -1, 3, -1, 0, 2, 1, -2, 0, 3, -1, 0, 2, 2, 2
+
+We should ensure no mistakes. It's easy to misplace a number. Let's double-check some of the U entries, especially row7 col7=2, row7 col8=1, row7 col9=-2, row7 col10=0. That matches our U: row7: [0,0,0,0,0,0,2,1,-2,0] yes. Row8: [0,0,0,0,0,0,0,3,-1,0] -> col8=3, col9=-1, col10=0 correct. Row9: [0,0,0,0,0,0,0,0,2,2] correct. Row10: [0,0,0,0,0,0,0,0,0,2] correct.
+
+Check row5: [0,0,0,0,-2,2,-2,-3,0,-2] -> col5=-2, col6=2, col7=-2, col8=-3, col9=0, col10=-2 correct. Row6: [0,0,0,0,0,-3,-1,3,-1,0] correct. Row4: [0,0,0,-3,-1,0,0,2,3,2] -> col4=-3, col5=-1, col6=0, col7=0, col8=2, col9=3, col10=2 correct. Row3: [0,0,-3,1,2,1,3,3,3,-2] correct. Row2: [0,-3,3,-3,-1,2,0,-3,1,-2] correct. Row1: [1,-3,-2,1,-2,-2,2,3,2,-1] correct.
+
+Now we need to check L entries for correctness. Could verify by computing L*U and see if equals A. But given the problem statement says LU decomposition exists and is unique with integer entries, and we followed elimination without mistakes, it should be fine. But we can do a quick mental check for a few entries. For instance, A(2,1) = -2, and L21 * U11 = (-2)*1 = -2, good. A(3,1) = -2, L31*U11 = -2, good. A(3,2)=12? Actually original A(3,2)=12. From L*U: L31*U12 + L32*U22 = (-2)*(-3) + (-2)*(-3) = 6 + 6 =12, correct. A(4,2)=3: L41*U12 + L42*U22 = (-2)*(-3)+1*(-3)=6-3=3, correct. A(4,3)=4: Should be L41*U13 + L42*U23 + L43*U33 = (-2)*(-2)+1*3+1*(-3)=4+3-3=4, correct. Looks promising.
+
+Thus answer is as above.
+
+Now we need to output in the format: `ANSWER: <comma-separated list>`.
+
+So final answer: -2, -2, -2, -2, 1, 1, 2, -1, 1, -1, -1, -1, -2, 1, 0, 1, -1, 0, -1, -2, 2, -2, -1, 0, 1, -1, 2, 1, -2, 2, 1, 1, -2, -1, -1, 2, -2, 1, -1, 1, 1, -2, -1, 2, -1, 1, -3, -2, 1, -2, -2, 2, 3, 2, -1, -3, 3, -3, -1, 2, 0, -3, 1, -2, -3, 1, 2, 1, 3, 3, 3, -2, -3, -1, 0, 0, 2, 3, 2, -2, 2, -2, -3, 0, -2, -3, -1, 3, -1, 0, 2, 1, -2, 0, 3, -1, 0, 2, 2, 2
+
+But we must ensure that the list is exactly as required: first L entries strictly below diagonal row by row, then U entries on and above diagonal row by row. The order we have is correct. Let's write it neatly.
+
+I'll also check that L row6 includes L65=0. Yes we have 0 at position 15: after -2,1,0? Actually we had -1,-1,-2,1,0 for row6: indices 11-15: -1, -1, -2, 1, 0. Good.
+
+Also row7 includes L73=0: we have 1, -1, 0, -1, -2, 2: index16-21: 1, -1, 0, -1, -2, 2. Good.
+
+Row8 includes L83=0: -2, -1, 0, 1, -1, 2, 1: index22-28: -2, -1, 0, 1, -1, 2, 1. Good.
+
+Now we have final answer.

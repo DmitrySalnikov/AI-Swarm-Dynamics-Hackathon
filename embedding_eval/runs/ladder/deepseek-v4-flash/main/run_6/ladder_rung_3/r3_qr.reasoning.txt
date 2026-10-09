@@ -1,0 +1,544 @@
+We are given a 7x7 integer matrix A, and we need to compute the squares of the diagonal entries of R from its QR decomposition via Gram-Schmidt (classical, I assume) on the columns from left to right, where Q is orthogonal and R is upper-triangular with positive diagonal entries. The squares R_ii^2 are essentially the squared lengths of the vectors obtained after orthogonalizing the columns, but note that in Gram-Schmidt, when we process columns, the diagonal entries of R are the norms of the orthogonalized vectors (the ones that become columns of Q). Specifically, if we have columns a_1, ..., a_n, the Gram-Schmidt process yields orthonormal vectors q_1,...,q_n such that:
+
+For each k, define u_k = a_k - sum_{i=1}^{k-1} (q_i^T a_k) q_i, then r_{kk} = ||u_k||, and q_k = u_k / r_{kk}. Also r_{ik} = q_i^T a_k for i<k.
+
+Thus the R_{kk}^2 = ||u_k||^2 = squared length of the orthogonalized column before normalization. Since we need squares of diagonal entries, they are these squared norms.
+
+But we might also compute them via the Cholesky factorization of A^T A? Because QR decomposition yields R such that A^T A = R^T R, so the diagonal entries of R are the square roots of the diagonal entries of the Cholesky factor of A^T A (since R is upper triangular with positive diagonal). Actually, if A = QR, then A^T A = R^T Q^T Q R = R^T R. So R is the Cholesky factor of A^T A (the upper triangular factor with positive diagonal). Therefore, the squares of diagonal entries of R are exactly the diagonal entries of the Cholesky factor squared? Wait: In Cholesky decomposition, we write A^T A = G^T G where G is upper triangular with positive diagonal. Then the diagonal entries of G are square roots of something. But note: R is exactly that G. So R_ii^2 are the squares of the diagonal entries of the Cholesky factor. However, we can compute them directly from the Gram-Schmidt process. For an invertible matrix, the squares of the diagonal entries of R are also given by ratios of determinants: For each k, (R_kk)^2 = det( A_k^T A_k ) / det( A_{k-1}^T A_{k-1} ), where A_k is the submatrix of the first k columns of A, and define det( A_0^T A_0 ) = 1. This is a known property: for the QR decomposition, the squared diagonal entries are equal to the determinants of the Gram matrices of the first k columns divided by that of the first k-1 columns. Because the Gram-Schmidt process yields that the volume of the parallelepiped spanned by the first k columns is product_{i=1}^k R_ii, and also the squared volume is det(A_k^T A_k). So (det(A_k^T A_k)) = ∏_{i=1}^k R_ii^2. Therefore R_kk^2 = det(A_k^T A_k) / det(A_{k-1}^T A_{k-1}). So we can compute these determinants recursively.
+
+Given that A is 7x7 integer matrix, we can compute these determinants exactly as integers or rational numbers. That might be easier than performing Gram-Schmidt manually. Since A is integer, A_k^T A_k are integer matrices (symmetric). Their determinants are integers. So R_ii^2 are rational numbers? Actually the ratio of two determinants should be an integer? Not necessarily; but since A is invertible, A^T A is positive definite, and the Cholesky factors have rational entries? Actually for integer matrices, the R factor from QR via Gram-Schmidt may have irrational entries if we normalize; but the diagonal squares are rational, often integers? Let's test: For a 2x2 matrix, say A = [1 1; 0 1]. Then A^T A = [[1,1],[1,2]], det=1, so R_11^2 = det(first col)/1 = 1; R_22^2 = det(A^T A)/det(first col)=1/1=1, so both 1. For A = [1 1; 1 0], A^T A = [[2,1],[1,1]], det=1; first col norm^2=2 so R_11^2=2, then R_22^2=det/det1=1/2? Wait compute: first column [1;1] squared norm=2, so product R_11^2 * R_22^2 = det=1 => R_22^2 = 1/2. So it's rational. So squares can be fractions. So we need exact numbers, may be fractions.
+
+Thus we can compute determinants of Gram matrices for first k columns. That is doable with integer arithmetic, possibly via Gaussian elimination or using the fact that A is 7x7. We can compute all these determinants by hand? Might be tedious but doable with careful calculation. Since A is given, and we are to output squares, we need to compute them exactly. Perhaps we can compute the QR via Gram-Schmidt directly? But the matrix is given, we can compute by performing Gram-Schmidt step by step with fractions. Given that the numbers are not huge, it's possible to do manually with rational arithmetic. However, determinants may be easier if we compute the Gram matrix G = A^T A, which is 7x7 symmetric positive definite. Then we can compute its Cholesky decomposition (the factor L such that G = L L^T? Actually upper triangular). But we need R, which is the Cholesky factor of G = A^T A. So we can compute the Cholesky decomposition: G = R^T R, R upper triangular. The diagonal entries satisfy: R_11 = sqrt(G_11). For i>1: R_ii = sqrt( G_ii - sum_{k=1}^{i-1} R_{ki}^2 ). This is a standard algorithm. So we can compute the squares directly: R_ii^2 = G_ii - sum_{k=1}^{i-1} R_{ki}^2, where R_{ki} are the off-diagonal entries of R. But we need those off-diagonals to compute subsequent squares. That may require computing R entries themselves (which may be irrational if we take square roots). But we can compute the squares without square roots by using rational arithmetic: The Cholesky approach yields R_ii^2 as rational numbers because all operations are rational if we keep squares. In fact, we can compute the Cholesky decomposition in terms of the "square-free" version: Let D be diagonal matrix with entries d_i = R_ii^2. And let L be unit lower triangular such that G = L D L^T. Actually, the LDL^T decomposition: G = L D L^T, where L is unit lower triangular, D diagonal positive. Then the Cholesky factor R = D^{1/2} L^T is upper triangular. So d_i = R_ii^2. And they can be computed recursively: d_1 = G_11, and for i>1: d_i = G_ii - sum_{k=1}^{i-1} L_{ik}^2 d_k, where L_{ik} = (G_{ik} - sum_{j=1}^{k-1} L_{ij} d_j L_{kj}) / d_k. This is essentially the same as the Cholesky but without square roots, using rational arithmetic. So we can compute d_i exactly as fractions. Since G is integer, d_i will be rational numbers. They might be fractions with denominators that are products of previous d_k? But since we compute exactly, we can handle.
+
+Alternatively, compute determinants directly: R_kk^2 = det(G_k)/det(G_{k-1}), where G_k = A_k^T A_k, the k×k principal submatrix of G (since G = A^T A, the Gram matrix). Indeed, G_k = (first k columns of A)^T (first k columns of A) = the leading principal submatrix of G of size k. Because G = A^T A, and if we take first k columns of A, then the Gram matrix of those columns is exactly the leading k×k submatrix of G. So we need the determinants of the leading principal minors of G. Since G is symmetric positive definite, these determinants are positive. So compute all leading principal minors of G = A^T A. Then R_11^2 = det(G_1) = G_11, R_22^2 = det(G_2)/det(G_1), ... R_77^2 = det(G_7)/det(G_6). And det(G_7) = det(A^T A) = (det(A))^2, because A is square and invertible; so det(A^T A) = (det A)^2. So we can compute det(A) as well, and then get the last one. But we need the minors.
+
+Thus the problem reduces to computing the leading principal minors of the Gram matrix G = A^T A. Since A is 7x7, we can compute G = A^T A. Let's compute A explicitly:
+
+A = 7x7 matrix given as rows:
+
+Row1: [1, -1, 1, 1, 1, -1, -1]
+Row2: [1, -1, 0, 1, -1, -1, 0]
+Row3: [-1, 2, -1, 0, -1, 0, 0]
+Row4: [0, -1, -1, -2, -1, 1, 1]
+Row5: [1, 1, 0, 1, 0, -2, -1]
+Row6: [-2, -1, -1, -2, -1, 3, 3]
+Row7: [-1, 2, -1, 0, -1, 1, 0]
+
+But careful: The matrix is given as rows of A? Usually A is a matrix with entries as listed. The given representation is rows. So A is 7 rows, 7 columns. So columns are the vectors we are orthogonalizing. So the column vectors are: For j=1..7, column j = (a_{1j}, a_{2j}, ..., a_{7j})^T. So we need A^T A: the (i,j) entry is dot product of column i and column j. So we need to compute dot product of columns.
+
+Let's denote columns c1..c7. Compute them from rows:
+
+Row1: (c1_1=1, c2_1=-1, c3_1=1, c4_1=1, c5_1=1, c6_1=-1, c7_1=-1)
+Row2: (c1_2=1, c2_2=-1, c3_2=0, c4_2=1, c5_2=-1, c6_2=-1, c7_2=0)
+Row3: (c1_3=-1, c2_3=2, c3_3=-1, c4_3=0, c5_3=-1, c6_3=0, c7_3=0)
+Row4: (c1_4=0, c2_4=-1, c3_4=-1, c4_4=-2, c5_4=-1, c6_4=1, c7_4=1)
+Row5: (c1_5=1, c2_5=1, c3_5=0, c4_5=1, c5_5=0, c6_5=-2, c7_5=-1)
+Row6: (c1_6=-2, c2_6=-1, c3_6=-1, c4_6=-2, c5_6=-1, c6_6=3, c7_6=3)
+Row7: (c1_7=-1, c2_7=2, c3_7=-1, c4_7=0, c5_7=-1, c6_7=1, c7_7=0)
+
+Thus columns:
+
+c1 = (1, 1, -1, 0, 1, -2, -1)^T
+c2 = (-1, -1, 2, -1, 1, -1, 2)^T
+c3 = (1, 0, -1, -1, 0, -1, -1)^T
+c4 = (1, 1, 0, -2, 1, -2, 0)^T
+c5 = (1, -1, -1, -1, 0, -1, -1)^T
+c6 = (-1, -1, 0, 1, -2, 3, 1)^T
+c7 = (-1, 0, 0, 1, -1, 3, 0)^T
+
+Double-check: For c7 row7 is 0, row2 is 0, row3 is 0, row4 is 1, row5 is -1, row6 is 3, row7 is 0? Wait row7 entry for column7 is 0 from row7: row7 = [-1,2,-1,0,-1,1,0] so c7_7=0. So c7 = (-1,0,0,1,-1,3,0) indeed. Good.
+
+Now compute G = [g_{ij}] where g_{ij} = c_i·c_j. Since matrix symmetric, compute only half.
+
+We can compute dot products systematically. Let's list each column vector with components:
+
+c1: [1,1,-1,0,1,-2,-1]
+c2: [-1,-1,2,-1,1,-1,2]
+c3: [1,0,-1,-1,0,-1,-1]
+c4: [1,1,0,-2,1,-2,0]
+c5: [1,-1,-1,-1,0,-1,-1]
+c6: [-1,-1,0,1,-2,3,1]
+c7: [-1,0,0,1,-1,3,0]
+
+Let's compute squared norms first (diagonal entries):
+
+g11 = c1·c1 = 1^2+1^2+(-1)^2+0^2+1^2+(-2)^2+(-1)^2 = 1+1+1+0+1+4+1 = 9.
+g22 = c2·c2 = (-1)^2+(-1)^2+2^2+(-1)^2+1^2+(-1)^2+2^2 = 1+1+4+1+1+1+4 = 13? Let's sum: 1+1=2, +4=6, +1=7, +1=8, +1=9, +4=13. Yes.
+g33 = c3·c3 = 1^2+0^2+(-1)^2+(-1)^2+0^2+(-1)^2+(-1)^2 = 1+0+1+1+0+1+1 = 5.
+g44 = c4·c4 = 1^2+1^2+0^2+(-2)^2+1^2+(-2)^2+0^2 = 1+1+0+4+1+4+0 = 11.
+g55 = c5·c5 = 1^2+(-1)^2+(-1)^2+(-1)^2+0^2+(-1)^2+(-1)^2 = 1+1+1+1+0+1+1 = 6? Wait sum: 1+1=2, +1=3, +1=4, +0=4, +1=5, +1=6. Yes.
+g66 = c6·c6 = (-1)^2+(-1)^2+0^2+1^2+(-2)^2+3^2+1^2 = 1+1+0+1+4+9+1 = 17.
+g77 = c7·c7 = (-1)^2+0^2+0^2+1^2+(-1)^2+3^2+0^2 = 1+0+0+1+1+9+0 = 12.
+
+Now off-diagonals:
+
+Compute g12 = c1·c2:
+c1: (1,1,-1,0,1,-2,-1)
+c2: (-1,-1,2,-1,1,-1,2)
+Dot = 1*(-1) + 1*(-1) + (-1)*2 + 0*(-1) + 1*1 + (-2)*(-1) + (-1)*2 = -1 -1 -2 +0 +1 +2 -2 = (-1-1-2= -4) +1 = -3? Let's recalc: -1-1 = -2, -2-2 = -4, +1 = -3, +2 = 1, -2 = -1? Wait wrong order: Actually compute stepwise:
+1*(-1) = -1
+1*(-1) = -1 => sum -2
+(-1)*2 = -2 => sum -4
+0*(-1)=0 => sum -4
+1*1=1 => sum -3
+(-2)*(-1)=2 => sum -1
+(-1)*2=-2 => sum -3. So g12 = -3.
+But we must be careful: When summing: -1-1=-2; -2-2=-4; +1 = -3; +2 = -1; -2 = -3. Yes g12 = -3.
+
+g13 = c1·c3:
+c3: (1,0,-1,-1,0,-1,-1)
+Dot: 1*1 + 1*0 + (-1)*(-1) + 0*(-1) + 1*0 + (-2)*(-1) + (-1)*(-1) = 1 + 0 + 1 + 0 + 0 + 2 + 1 = 5? Check: 1*1=1; 1*0=0; (-1)*(-1)=1; 0*(-1)=0; 1*0=0; (-2)*(-1)=2; (-1)*(-1)=1. Sum = 1+0+1+0+0+2+1=5. So g13=5.
+
+g14 = c1·c4:
+c4: (1,1,0,-2,1,-2,0)
+Dot: 1*1 + 1*1 + (-1)*0 + 0*(-2) + 1*1 + (-2)*(-2) + (-1)*0 = 1+1+0+0+1+4+0 = 7. So g14=7.
+
+g15 = c1·c5:
+c5: (1,-1,-1,-1,0,-1,-1)
+Dot: 1*1 + 1*(-1) + (-1)*(-1) + 0*(-1) + 1*0 + (-2)*(-1) + (-1)*(-1) = 1 -1 +1 +0 +0 +2 +1 = 4? Compute: 1-1=0; +1=1; +0=1; +0=1; +2=3; +1=4. So g15=4.
+
+g16 = c1·c6:
+c6: (-1,-1,0,1,-2,3,1)
+Dot: 1*(-1) + 1*(-1) + (-1)*0 + 0*1 + 1*(-2) + (-2)*3 + (-1)*1 = -1 -1 +0 +0 -2 -6 -1 = -11. So g16 = -11.
+
+g17 = c1·c7:
+c7: (-1,0,0,1,-1,3,0)
+Dot: 1*(-1) + 1*0 + (-1)*0 + 0*1 + 1*(-1) + (-2)*3 + (-1)*0 = -1 +0+0+0 -1 -6 +0 = -8. So g17 = -8.
+
+Now g23 = c2·c3:
+c2: (-1,-1,2,-1,1,-1,2)
+c3: (1,0,-1,-1,0,-1,-1)
+Dot: (-1)*1 + (-1)*0 + 2*(-1) + (-1)*(-1) + 1*0 + (-1)*(-1) + 2*(-1) = -1 +0 -2 +1 +0 +1 -2 = -3? Compute: -1-2=-3; +1=-2; +1=-1; -2=-3. So g23 = -3.
+
+g24 = c2·c4:
+c4: (1,1,0,-2,1,-2,0)
+Dot: (-1)*1 + (-1)*1 + 2*0 + (-1)*(-2) + 1*1 + (-1)*(-2) + 2*0 = -1 -1 +0 +2 +1 +2 +0 = 3? Compute: -1-1=-2; +2=0; +1=1; +2=3; plus 0=3. So g24=3.
+
+g25 = c2·c5:
+c5: (1,-1,-1,-1,0,-1,-1)
+Dot: (-1)*1 + (-1)*(-1) + 2*(-1) + (-1)*(-1) + 1*0 + (-1)*(-1) + 2*(-1) = -1 +1 -2 +1 +0 +1 -2 = -2? Compute: -1+1=0; -2=-2; +1=-1; +1=0; -2=-2. So g25 = -2.
+
+g26 = c2·c6:
+c6: (-1,-1,0,1,-2,3,1)
+Dot: (-1)*(-1) + (-1)*(-1) + 2*0 + (-1)*1 + 1*(-2) + (-1)*3 + 2*1 = 1 +1 +0 -1 -2 -3 +2 = -2? Compute: 1+1=2; -1=1; -2=-1; -3=-4; +2=-2. So g26 = -2.
+
+g27 = c2·c7:
+c7: (-1,0,0,1,-1,3,0)
+Dot: (-1)*(-1) + (-1)*0 + 2*0 + (-1)*1 + 1*(-1) + (-1)*3 + 2*0 = 1+0+0-1-1-3+0 = -4. So g27 = -4.
+
+Now g34 = c3·c4:
+c3: (1,0,-1,-1,0,-1,-1)
+c4: (1,1,0,-2,1,-2,0)
+Dot: 1*1 + 0*1 + (-1)*0 + (-1)*(-2) + 0*1 + (-1)*(-2) + (-1)*0 = 1+0+0+2+0+2+0 = 5. So g34=5.
+
+g35 = c3·c5:
+c5: (1,-1,-1,-1,0,-1,-1)
+Dot: 1*1 + 0*(-1) + (-1)*(-1) + (-1)*(-1) + 0*0 + (-1)*(-1) + (-1)*(-1) = 1+0+1+1+0+1+1 = 5? Check: 1; +1=2; +1=3; +1=4; +1=5. So g35=5.
+
+g36 = c3·c6:
+c6: (-1,-1,0,1,-2,3,1)
+Dot: 1*(-1) + 0*(-1) + (-1)*0 + (-1)*1 + 0*(-2) + (-1)*3 + (-1)*1 = -1 +0 +0 -1 +0 -3 -1 = -6. So g36 = -6.
+
+g37 = c3·c7:
+c7: (-1,0,0,1,-1,3,0)
+Dot: 1*(-1) + 0*0 + (-1)*0 + (-1)*1 + 0*(-1) + (-1)*3 + (-1)*0 = -1+0+0-1+0-3+0 = -5. So g37 = -5.
+
+Now g45 = c4·c5:
+c4: (1,1,0,-2,1,-2,0)
+c5: (1,-1,-1,-1,0,-1,-1)
+Dot: 1*1 + 1*(-1) + 0*(-1) + (-2)*(-1) + 1*0 + (-2)*(-1) + 0*(-1) = 1 -1 +0 +2 +0 +2 +0 = 4. So g45=4.
+
+g46 = c4·c6:
+c6: (-1,-1,0,1,-2,3,1)
+Dot: 1*(-1) + 1*(-1) + 0*0 + (-2)*1 + 1*(-2) + (-2)*3 + 0*1 = -1 -1 +0 -2 -2 -6 +0 = -12. So g46 = -12.
+
+g47 = c4·c7:
+c7: (-1,0,0,1,-1,3,0)
+Dot: 1*(-1) + 1*0 + 0*0 + (-2)*1 + 1*(-1) + (-2)*3 + 0*0 = -1+0+0-2-1-6+0 = -10. So g47 = -10.
+
+Now g56 = c5·c6:
+c5: (1,-1,-1,-1,0,-1,-1)
+c6: (-1,-1,0,1,-2,3,1)
+Dot: 1*(-1) + (-1)*(-1) + (-1)*0 + (-1)*1 + 0*(-2) + (-1)*3 + (-1)*1 = -1 +1 +0 -1 +0 -3 -1 = -5. So g56 = -5.
+
+g57 = c5·c7:
+c7: (-1,0,0,1,-1,3,0)
+Dot: 1*(-1) + (-1)*0 + (-1)*0 + (-1)*1 + 0*(-1) + (-1)*3 + (-1)*0 = -1+0+0-1+0-3+0 = -5. So g57 = -5.
+
+g67 = c6·c7:
+c6: (-1,-1,0,1,-2,3,1)
+c7: (-1,0,0,1,-1,3,0)
+Dot: (-1)*(-1) + (-1)*0 + 0*0 + 1*1 + (-2)*(-1) + 3*3 + 1*0 = 1+0+0+1+2+9+0 = 13. So g67 = 13.
+
+Thus we have Gram matrix G = (g_{ij}):
+
+Row1: [9, -3, 5, 7, 4, -11, -8]
+Row2: [-3, 13, -3, 3, -2, -2, -4]
+Row3: [5, -3, 5, 5, 5, -6, -5]
+Row4: [7, 3, 5, 11, 4, -12, -10]
+Row5: [4, -2, 5, 4, 6, -5, -5]
+Row6: [-11, -2, -6, -12, -5, 17, 13]
+Row7: [-8, -4, -5, -10, -5, 13, 12]
+
+Check symmetry: g23 = -3 matches g32? Row2 col3 = -3, Row3 col2 = -3 okay. g34=5 matches g43=5. g45=4 matches g54=4. g56=-5 matches g65=-5? Row5 col6 = -5, Row6 col5 = -5 okay. g67=13 matches g76=13.
+
+Now we need the leading principal minors: det(G1), det(G2), ..., det(G7). Where G_k is the k×k top-left submatrix.
+
+We can compute determinants recursively. Since these are small matrices (up to 7x7) we can compute them by hand with careful elimination, or use the LDL^T decomposition we mentioned which directly yields the d_i = R_ii^2. And those d_i are exactly the successive ratios of leading principal minors: d_1 = det(G1) = 9; d_2 = det(G2)/det(G1); d_3 = det(G3)/det(G2); etc. So we can compute by performing the LDL^T decomposition of G (or Cholesky without square roots). This is essentially the same as the Gram-Schmidt process but in terms of G. So let's compute d_i and the lower triangular L entries using recurrence:
+
+We want to find D = diag(d1,...,d7) and L unit lower triangular such that G = L D L^T. Then d_i = R_ii^2.
+
+Algorithm:
+For i=1 to n:
+   d_i = G_{ii} - sum_{k=1}^{i-1} L_{ik}^2 d_k
+   For j=i+1 to n:
+       L_{ji} = ( G_{ij} - sum_{k=1}^{i-1} L_{ik} d_k L_{jk} ) / d_i
+But careful: Usually in LDL^T, we have G = L D L^T, with L unit lower triangular. So for i<j, the entry G_{ij} = sum_{k=1}^{i} L_{ik} d_k L_{jk}. Since L_{ii}=1. So we can compute column by column. Equivalent to Cholesky but without square roots.
+
+We compute sequentially:
+
+Initialize: For i=1: sum over k=0, so d1 = G11 = 9.
+Then for j=2..7 compute L_{j1} = G_{1j} / d1, because sum over k=1? Formula: L_{j1} = (G_{1j} - sum_{k=1}^{0} ...)/d1 = G_{1j}/d1. So:
+d1=9.
+L21 = G12 / d1 = -3/9 = -1/3.
+L31 = G13 / d1 = 5/9.
+L41 = G14 / d1 = 7/9.
+L51 = G15 / d1 = 4/9.
+L61 = G16 / d1 = -11/9.
+L71 = G17 / d1 = -8/9.
+
+Now i=2: compute d2 = G22 - sum_{k=1}^{1} L_{2k}^2 d_k = G22 - L21^2 * d1 = 13 - ( (-1/3)^2 * 9 ) = 13 - (1/9 * 9) = 13 - 1 = 12.
+So d2 = 12.
+
+Now compute L_{j2} for j=3..7:
+For j=3: L32 = (G23 - sum_{k=1}^{1} L_{2k} d_k L_{3k}) / d2. Actually formula: L_{j2} = ( G_{2j} - sum_{k=1}^{1} L_{2k} d_k L_{jk} ) / d2, since i=2. For j=3: G_{23} = -3. We need L_{21} = -1/3, L_{31} = 5/9, d1=9. Sum = L21*d1*L31 = (-1/3)*9*(5/9) = (-1/3)*5 = -5/3? Let's compute: 9*(5/9)=5, times L21 = -1/3 => -5/3. So G23 - sum = -3 - (-5/3) = -3 + 5/3 = (-9/3+5/3)= -4/3. Then L32 = (-4/3)/d2 = (-4/3)/12 = -4/(36) = -1/9. So L32 = -1/9.
+
+For j=4: L42 = (G24 - sum_{k=1}^{1} L_{2k} d_k L_{4k}) / d2. G24 = 3. L21=-1/3, L41=7/9, d1=9. Sum = L21*d1*L41 = (-1/3)*9*(7/9) = (-1/3)*7 = -7/3. So G24 - sum = 3 - (-7/3) = 3 + 7/3 = 9/3+7/3 = 16/3. Then L42 = (16/3)/12 = 16/(36) = 4/9? Actually 16/3 divided by 12 = 16/(36) = 4/9. So L42 = 4/9.
+
+For j=5: L52 = (G25 - sum) / d2. G25 = -2. L21=-1/3, L51=4/9, d1=9. Sum = (-1/3)*9*(4/9) = (-1/3)*4 = -4/3. So G25 - sum = -2 - (-4/3) = -2 + 4/3 = -6/3+4/3 = -2/3. Then L52 = (-2/3)/12 = -2/(36) = -1/18. So L52 = -1/18.
+
+For j=6: L62 = (G26 - sum) / d2. G26 = -2. L21=-1/3, L61=-11/9, d1=9. Sum = (-1/3)*9*(-11/9) = (-1/3)*(-11) = 11/3? Because 9*(-11/9) = -11, times -1/3 = 11/3. So G26 - sum = -2 - (11/3) = -2 - 11/3 = -6/3 - 11/3 = -17/3. Then L62 = (-17/3)/12 = -17/(36) = -17/36.
+
+For j=7: L72 = (G27 - sum) / d2. G27 = -4. L21=-1/3, L71=-8/9, d1=9. Sum = (-1/3)*9*(-8/9) = (-1/3)*(-8) = 8/3. So G27 - sum = -4 - 8/3 = -12/3 - 8/3 = -20/3. Then L72 = (-20/3)/12 = -20/(36) = -5/9. So L72 = -5/9.
+
+Now i=3: compute d3 = G33 - sum_{k=1}^{2} L_{3k}^2 d_k. L31=5/9, L32=-1/9. d1=9, d2=12.
+Compute L31^2 * d1 = (25/81)*9 = 25/9? Because 9*(25/81)= (9/81)*25 = (1/9)*25 = 25/9. Actually 25/81 * 9 = 225/81 = 25/9, yes.
+L32^2 * d2 = (1/81)*12 = 12/81 = 4/27? Simplify: 12/81 = 4/27.
+So sum = 25/9 + 4/27 = common denominator 27: (75/27 + 4/27) = 79/27.
+G33 = 5. So d3 = 5 - 79/27 = (135/27 - 79/27) = 56/27.
+Thus d3 = 56/27.
+
+Now compute L_{j3} for j=4..7:
+We need G_{3j} for j=4..7: G34=5, G35=5, G36=-6, G37=-5.
+Compute sum_{k=1}^{2} L_{3k} d_k L_{jk}. For each j, we have L3k known, Ljk known for k=1,2 (from previous). Then compute L_{j3} = (G_{3j} - sum)/d3.
+
+Let's compute necessary L values:
+L31=5/9, L32=-1/9.
+For each j, we need L_{j1} and L_{j2} (which we computed). L41=7/9, L42=4/9; L51=4/9, L52=-1/18; L61=-11/9, L62=-17/36; L71=-8/9, L72=-5/9.
+
+Now compute sums:
+
+For j=4:
+Sum_k=1..2 L3k d_k L4k = L31*d1*L41 + L32*d2*L42.
+Compute Term1: L31*d1*L41 = (5/9)*9*(7/9) = (5)*(7/9) = 35/9? Because (5/9)*9 =5, times L41=7/9 => 35/9.
+Term2: L32*d2*L42 = (-1/9)*12*(4/9) = (-1/9)*12*4/9 = (-1/9)*(48/9)= -48/81 = -16/27? Let's compute carefully: 12 * (4/9) = 48/9 = 16/3? Actually better: L32*d2 = (-1/9)*12 = -12/9 = -4/3. Then times L42 = -4/3 * (4/9) = -16/27. Or directly: (-1/9)*12*(4/9) = (-12*4)/(81) = -48/81 = -16/27. So term2 = -16/27.
+Thus sum = 35/9 + (-16/27) = convert 35/9 = 105/27, so sum = (105/27 - 16/27) = 89/27.
+Now G34 = 5 = 135/27. So G34 - sum = 135/27 - 89/27 = 46/27.
+Then L43 = (46/27) / d3 = (46/27) / (56/27) = 46/56 = 23/28. So L43 = 23/28? Simplify 46/56 = divide by 2: 23/28. Yes.
+
+For j=5:
+Sum = L31*d1*L51 + L32*d2*L52.
+Term1: (5/9)*9*(4/9) = 5*(4/9)=20/9.
+Term2: L32*d2*L52 = (-1/9)*12*(-1/18) = (-1/9)*12 * (-1/18) = (-12/9)*(-1/18) = (-4/3)*(-1/18) = 4/54 = 2/27? Let's compute stepwise: L32*d2 = (-1/9)*12 = -12/9 = -4/3. Multiply by L52 = -1/18 gives (-4/3)*(-1/18)= 4/54 = 2/27. Alternatively direct: (-1/9)*12*(-1/18) = (12)/(9*18) = 12/162 = 2/27? Actually sign: (-1/9)*12 = -12/9, times (-1/18)= 12/(9*18)=12/162=2/27. Yes positive 2/27.
+So sum = 20/9 + 2/27 = 60/27 + 2/27 = 62/27.
+G35 = 5 = 135/27. So G35 - sum = 135/27 - 62/27 = 73/27.
+Then L53 = (73/27) / (56/27) = 73/56. So L53 = 73/56.
+
+For j=6:
+Sum = L31*d1*L61 + L32*d2*L62.
+Term1: (5/9)*9*(-11/9) = 5*(-11/9) = -55/9.
+Term2: L32*d2*L62 = (-1/9)*12*(-17/36) = (-1/9)*12 = -4/3, times (-17/36) = (4/3)*(17/36) = (68)/(108) = simplify: divide by 4 => 17/27? Let's compute: (-4/3)*(-17/36)= (4*17)/(3*36)=68/108=17/27. Yes term2 = 17/27.
+Now sum = -55/9 + 17/27 = convert -55/9 = -165/27, so sum = -165/27 + 17/27 = -148/27.
+G36 = -6 = -162/27. So G36 - sum = -162/27 - (-148/27) = -162/27 + 148/27 = -14/27.
+Then L63 = (-14/27) / (56/27) = -14/56 = -1/4. So L63 = -1/4.
+
+For j=7:
+Sum = L31*d1*L71 + L32*d2*L72.
+Term1: (5/9)*9*(-8/9) = 5*(-8/9) = -40/9.
+Term2: L32*d2*L72 = (-1/9)*12*(-5/9) = (-1/9)*12 = -4/3, times (-5/9) = (4/3)*(5/9)=20/27? Let's compute: (-4/3)*(-5/9)=20/27. So term2 = 20/27.
+Sum = -40/9 + 20/27 = -120/27 + 20/27 = -100/27.
+G37 = -5 = -135/27. So G37 - sum = -135/27 - (-100/27) = -135/27 + 100/27 = -35/27.
+Then L73 = (-35/27) / (56/27) = -35/56 = -5/8? Simplify: divide by 7: 35/56 = 5/8, so -5/8. So L73 = -5/8.
+
+Now i=4: compute d4 = G44 - sum_{k=1}^{3} L_{4k}^2 d_k. L41=7/9, L42=4/9, L43=23/28. d1=9, d2=12, d3=56/27.
+Compute each term:
+Term1: L41^2 * d1 = (49/81)*9 = 49/9? Since 9*49/81 = 441/81 = 49/9? Actually 49/81 *9 = 49/9 indeed.
+Term2: L42^2 * d2 = (16/81)*12 = 192/81 = simplify divide by 3: 64/27? Let's compute: 16/81 *12 = 192/81 = 64/27 (since 192/81 ÷3/3? Actually 192 and 81 share gcd 3: 192/3=64, 81/3=27 → 64/27). So term2 = 64/27.
+Term3: L43^2 * d3 = (23/28)^2 * (56/27) = (529/784) * (56/27) = 529*56/(784*27). Simplify 56/784 = divide numerator and denominator by 28: 56/28=2, 784/28=28, so becomes 2/28 = 1/14? Actually 56/784 = 7/98? Let's do: 56 ÷ 56 =1, 784 ÷56 =14, so 56/784=1/14. Yes. So (529/784)*(56/27) = 529*(56)/(784*27) = 529 * (56/784) /27 = 529*(1/14)/27 = 529/(14*27)=529/378. So term3 = 529/378? Let's check: 529/378 can simplify? 529=23^2, 378=2*3^3*7 = 2*27*7=378, no common factor with 23, so okay.
+Now we need to sum these three terms and subtract from G44=11. But we need common denominator to combine. We have term1=49/9, term2=64/27, term3=529/378. Convert to denominator LCM: 9,27,378. 378 is multiple of 27 (27*14=378) and of 9 (9*42=378). So let's convert:
+Term1: 49/9 = (49*42)/378 = 2058/378? Compute 49*42=2058. Yes.
+Term2: 64/27 = (64*14)/378 = 896/378.
+Term3: 529/378 stays.
+Sum = (2058 + 896 + 529)/378 = (2058+896=2954; +529=3483)/378. So sum = 3483/378.
+Simplify 3483/378? Divide numerator and denominator by 3: 3483/3=1161, 378/3=126 → 1161/126. Divide by 3 again: 1161/3=387, 126/3=42 → 387/42. Divide by 3? 387/3=129, 42/3=14 → 129/14. So sum = 129/14? Let's double-check: 129/14 = 9.2142857, while 3483/378=9.2142857, yes. So sum = 129/14.
+Now G44 = 11 = 154/14? Since 11 = 154/14. So d4 = 154/14 - 129/14 = 25/14.
+Thus d4 = 25/14.
+
+Now compute L_{j4} for j=5,6,7:
+We need G_{4j} for j=5,6,7: G45=4, G46=-12, G47=-10.
+Compute sum_{k=1}^{3} L_{4k} d_k L_{jk}. Need L4k: L41=7/9, L42=4/9, L43=23/28. d1=9, d2=12, d3=56/27.
+And L_{jk} for j=5,6,7: we have L51=4/9, L52=-1/18, L53=73/56; L61=-11/9, L62=-17/36, L63=-1/4; L71=-8/9, L72=-5/9, L73=-5/8.
+
+We'll compute sums for each j.
+
+First compute some product combinations to simplify maybe. Compute the contributions term by term.
+
+For each j, sum = L41*d1*L_{j1} + L42*d2*L_{j2} + L43*d3*L_{j3}.
+
+Let's compute each term individually:
+
+First compute L41*d1 = (7/9)*9 = 7.
+So term1 = 7 * L_{j1}.
+
+Next, L42*d2 = (4/9)*12 = 48/9 = 16/3? Because 4/9*12 = 48/9 = 16/3. Yes.
+So term2 = (16/3) * L_{j2}.
+
+Next, L43*d3 = (23/28)*(56/27) = multiply: 23*56/(28*27) = 23*(56/28)/27 = 23*2/27 = 46/27. Because 56/28=2. So L43*d3 = 46/27.
+So term3 = (46/27) * L_{j3}.
+
+Thus sum = 7*L_{j1} + (16/3)*L_{j2} + (46/27)*L_{j3}.
+
+Then L_{j4} = (G_{4j} - sum)/d4, with d4=25/14.
+
+Now compute for j=5:
+L51=4/9, L52=-1/18, L53=73/56.
+Compute term1: 7 * (4/9) = 28/9.
+term2: (16/3)*(-1/18) = -16/(54) = -8/27? Since 16/3 * 1/18 = 16/54 = 8/27, negative => -8/27.
+term3: (46/27)*(73/56) = (46*73)/(27*56). Let's compute numerator and denominator: 46*73 = 46*70 + 46*3 = 3220+138=3358. Denominator: 27*56 = 1512. So term3 = 3358/1512. Simplify? Divide numerator and denominator by 2: 1679/756. 1679 maybe divisible by? 1679/13? 13*129=1677, remainder 2, so not. Keep as fraction for now. But we need to sum with term1 and term2 to get sum. To combine, get common denominator maybe 756? But we also have denominator 9 and 27. Let's compute with rational numbers step by step, perhaps use fractions with denominator 756 or compute numeric and then rational? Better to compute sum exactly: We have term1=28/9, term2=-8/27, term3=3358/1512. Simplify term3: 3358/1512 = reduce by dividing numerator and denominator by 2: 1679/756. So term3 = 1679/756.
+
+Now convert term1 and term2 to denominator 756:
+term1: 28/9 = (28*84)/756 = 2352/756? 9*84=756, yes 28*84=2352.
+term2: -8/27 = -(8*28)/756 = -224/756 (since 27*28=756).
+Sum = (2352 - 224 + 1679)/756 = (2352-224=2128; +1679=3807)/756. So sum = 3807/756.
+Simplify 3807/756? Divide by 3: 3807/3=1269, 756/3=252 => 1269/252. Divide by 3 again: 1269/3=423, 252/3=84 => 423/84. Divide by 3? 423/3=141, 84/3=28 => 141/28. So sum = 141/28? Check: 141/28 = 5.0357; 3807/756 ≈5.0357, yes. So sum = 141/28.
+Now G45 = 4 = 112/28. So G45 - sum = 112/28 - 141/28 = -29/28.
+Then L54 = (-29/28) / d4 = (-29/28) / (25/14) = (-29/28)*(14/25) = (-29*14)/(28*25) = (-29*14)/(700) because 28*25=700. Simplify: 14/28=1/2, so = (-29*1)/(2*25)= -29/50? Wait: (-29 * 14) / (28*25) = (-29)*(14/28)/25 = (-29)*(1/2)/25 = -29/(50). Yes. So L54 = -29/50? Check: 14/28=1/2, so (-29 * 1/2) /25 = -29/(50). So L54 = -29/50.
+
+But we should double-check arithmetic: sum = 141/28, G45=4=112/28, difference = -29/28. d4=25/14, so L54 = (-29/28) * (14/25) = (-29*14)/(28*25)= (-29*1)/(2*25)= -29/50. Yes.
+
+Now j=6:
+L61 = -11/9, L62 = -17/36, L63 = -1/4.
+Compute term1: 7 * (-11/9) = -77/9.
+term2: (16/3) * (-17/36) = -(16*17)/(3*36) = -(272)/(108) = simplify: divide by 4: 272/4=68, 108/4=27 => -68/27? Actually 272/108 = 68/27, negative so -68/27.
+term3: (46/27) * (-1/4) = -46/(108) = -23/54? Because 46/27 * 1/4 = 46/108 = 23/54, so negative => -23/54.
+Now sum = term1 + term2 + term3. Convert to common denominator. LCM of 9,27,54 is 54.
+term1: -77/9 = - (77*6)/54 = -462/54.
+term2: -68/27 = - (68*2)/54 = -136/54.
+term3: -23/54 = -23/54.
+Sum = -(462+136+23)/54 = -621/54 = simplify: divide by 3: -207/18 = divide by 3 again: -69/6 = -23/2? Actually 621/54 = divide by 9: 69/6 = 23/2? 69/6=11.5, 23/2=11.5. So sum = -23/2? Let's do: 621 ÷ 27 = 23, 54 ÷27=2, so -23/2. Yes sum = -23/2.
+Now G46 = -12 = -24/2. So G46 - sum = -12 - (-23/2) = -12 + 23/2 = -24/2 + 23/2 = -1/2.
+Thus L64 = (-1/2) / d4 = (-1/2) / (25/14) = (-1/2)*(14/25) = -14/(50) = -7/25. So L64 = -7/25.
+
+Now j=7:
+L71 = -8/9, L72 = -5/9, L73 = -5/8.
+Compute term1: 7 * (-8/9) = -56/9.
+term2: (16/3) * (-5/9) = -80/27? Because 16/3 * 5/9 = 80/27, negative => -80/27.
+term3: (46/27) * (-5/8) = -230/(216) = simplify: divide by 2: -115/108? Because 46*5=230, denominator 27*8=216, 230/216 = 115/108, negative => -115/108.
+Now sum = term1 + term2 + term3. Convert to denominator 108 perhaps:
+term1: -56/9 = - (56*12)/108 = -672/108.
+term2: -80/27 = - (80*4)/108 = -320/108.
+term3: -115/108 = -115/108.
+Sum = -(672+320+115)/108 = -(1107)/108 = -1107/108 simplify? Divide by 3: 1107/3=369, 108/3=36 => -369/36 = divide by 3: 369/3=123, 36/3=12 => -123/12 = divide by 3: 123/3=41, 12/3=4 => -41/4. So sum = -41/4? Let's verify: 1107/108 = 10.25? Actually 108*10=1080, remainder 27, so 10.25 = 41/4? 41/4=10.25, yes. So sum = -41/4.
+G47 = -10 = -40/4. So G47 - sum = -10 - (-41/4) = -10 + 41/4 = -40/4 + 41/4 = 1/4.
+Then L74 = (1/4) / d4 = (1/4) / (25/14) = (1/4)*(14/25) = 14/(100) = 7/50? Actually 1/4 * 14/25 = 14/100 = 7/50. So L74 = 7/50.
+
+Now i=5: compute d5 = G55 - sum_{k=1}^{4} L_{5k}^2 d_k. We have L51=4/9, L52=-1/18, L53=73/56, L54=-29/50. d1=9, d2=12, d3=56/27, d4=25/14.
+We need to compute each term:
+Term1: L51^2 * d1 = (16/81)*9 = 144/81? Actually (4/9)^2=16/81, times 9 = 144/81 = 16/9? Since 144/81 = divide by 9: 16/9. Yes term1 = 16/9.
+Term2: L52^2 * d2 = (1/324)*12? Because (-1/18)^2 = 1/324, times 12 = 12/324 = 1/27. So term2 = 1/27.
+Term3: L53^2 * d3 = (73/56)^2 * (56/27). (73/56)^2 = 5329/3136. Multiply by 56/27 = (5329*56)/(3136*27) = simplify 56/3136 = 1/56? Because 3136/56=56, yes 56/3136=1/56. So term3 = 5329/(56*27) = 5329/1512. (Since 56*27=1512). So term3 = 5329/1512.
+Term4: L54^2 * d4 = (29/50)^2 * (25/14) = (841/2500)*(25/14) = 841*25/(2500*14) = 841/(100*14) because 25/2500=1/100. So = 841/(1400) = simplify? 841=29^2, 1400= 14*100, no common factors? 1400/29 not integer. So term4 = 841/1400? Wait 841/1400 simplifies? 841=29^2, 1400=2^3*5^2*7, no factor 29. So leaves as 841/1400. But we can also reduce by dividing numerator and denominator by? 29 doesn't divide 1400, so okay.
+
+Now we need to sum these terms and subtract from G55=6. But we must get common denominator to compute d5 exactly as a fraction. Let's compute each term as rational and combine.
+
+Term1 = 16/9.
+Term2 = 1/27.
+Term3 = 5329/1512.
+Term4 = 841/1400.
+
+Find LCM of denominators: 9,27,1512,1400. Let's factor:
+9=3^2.
+27=3^3.
+1512 = ? 1512/27=56, so 1512 = 27*56 = 3^3 * 56 = 3^3 * 2^3 *7? 56=2^3*7. So 1512 = 2^3 * 3^3 * 7.
+1400 = 14*100 = 2*7 * (4*25) = 2*7 * 2^2*5^2 = 2^3 * 5^2 * 7.
+So LCM = 2^3 * 3^3 * 5^2 * 7 = 8 * 27 * 25 * 7 = 8*27=216; 216*25=5400; 5400*7=37800. So LCM = 37800.
+
+Convert each term to denominator 37800:
+Term1: 16/9 = (16 * 4200)/37800? Since 37800/9=4200, so 16*4200=67200. => 67200/37800.
+Term2: 1/27 = (1*1400)/37800 = 1400/37800.
+Term3: 5329/1512. 37800/1512 =? 1512*25 = 37800? Because 1512*20=30240, *5=7560, sum=37800. Yes 1512*25=37800. So term3 = 5329*25/37800 = 133225/37800? 5329*25 = 5329*100/4 = 532900/4=133225. So term3 = 133225/37800.
+Term4: 841/1400. 37800/1400 = 27? Because 1400*27=37800? 1400*20=28000, *7=9800, total=37800, yes. So term4 = 841*27/37800 = 22707/37800? 841*27 = 841*20=16820, +841*7=5887, total=22707. So term4 = 22707/37800.
+Now sum all: 67200 + 1400 + 133225 + 22707 = Let's compute: 67200+1400=68600; 68600+133225=201825; 201825+22707=224532. So sum = 224532/37800.
+Simplify fraction? We can reduce by dividing numerator and denominator by? But later we compute d5 = G55 - sum = 6 - sum. 6 = 6*37800/37800 = 226800/37800. So d5 = (226800 - 224532)/37800 = 2268/37800 = simplify: divide numerator and denominator by 12? 2268/12=189, 37800/12=3150, so 189/3150. Further divide by 3: 189/3=63, 3150/3=1050 -> 63/1050. Divide by 3 again: 63/3=21, 1050/3=350 -> 21/350. Divide by 7: 21/7=3, 350/7=50 -> 3/50. So d5 = 3/50? Check: 2268/37800 = divide by 12 -> 189/3150, divide by 3 -> 63/1050, divide by 3 -> 21/350, divide by 7 -> 3/50. Yes d5 = 3/50.
+
+Thus d5 = 3/50.
+
+Now i=5 done. Next we need L_{j5} for j=6,7 (since i=5, j >5). Then i=6 and i=7.
+
+Now compute L_{j5} for j=6,7:
+We need G_{5j} for j=6,7: G56 = -5, G57 = -5.
+Compute sum_{k=1}^{4} L_{5k} d_k L_{jk} for each j.
+We have L5k: L51=4/9, L52=-1/18, L53=73/56, L54=-29/50.
+d1=9, d2=12, d3=56/27, d4=25/14.
+We also have L_{jk} for j=6,7: we have L61=-11/9, L62=-17/36, L63=-1/4, L64=-7/25; L71=-8/9, L72=-5/9, L73=-5/8, L74=7/50.
+We need to compute sum = ∑ L5k d_k L_{jk}. Then L_{j5} = (G_{5j} - sum)/d5, with d5 = 3/50.
+
+We can compute the products in a similar way as before, maybe compute L5k d_k first:
+L51*d1 = (4/9)*9 = 4.
+L52*d2 = (-1/18)*12 = -12/18 = -2/3.
+L53*d3 = (73/56)*(56/27) = 73/27? Since 56 cancels: (73/56)*(56/27)=73/27. So L53*d3 = 73/27.
+L54*d4 = (-29/50)*(25/14) = (-29*25)/(50*14) = (-29*1)/(2*14) because 25/50=1/2 => = -29/(28). So L54*d4 = -29/28.
+Thus sum = 4*L_{j1} + (-2/3)*L_{j2} + (73/27)*L_{j3} + (-29/28)*L_{j4}.
+Then L_{j5} = (G_{5j} - sum) / d5 = (G_{5j} - sum) / (3/50) = (G_{5j} - sum) * (50/3).
+
+Now compute for j=6:
+We have L61 = -11/9, L62 = -17/36, L63 = -1/4, L64 = -7/25.
+Compute each term:
+Term1: 4 * (-11/9) = -44/9.
+Term2: (-2/3)*(-17/36) = (2/3)*(17/36) = 34/108 = simplify 17/54? Actually 2/3 * 17/36 = 34/108 = 17/54. Since double negative gives positive.
+Term3: (73/27)*(-1/4) = -73/(108) = -73/108.
+Term4: (-29/28)*(-7/25) = (29*7)/(28*25) = (203)/(700) = simplify divide by 7: 29/100? Because 203/7=29, 700/7=100, so =29/100.
+Now sum = term1 + term2 + term3 + term4. Need common denominator. Denominators: 9,54,108,100. LCM maybe 2700? Let's compute exactly. Let's convert each fraction to denominator 2700 perhaps. But maybe we can combine stepwise.
+Compute term1 = -44/9 = - (44*300)/2700? 9*300=2700, so -13200/2700.
+term2 = 17/54 = 17*50/2700 = 850/2700? Since 54*50=2700, yes 17*50=850.
+term3 = -73/108 = -73*25/2700 = -1825/2700? 108*25=2700, 73*25=1825.
+term4 = 29/100 = 29*27/2700 = 783/2700? 100*27=2700, 29*27=783.
+Now sum = (-13200 + 850 -1825 + 783) /2700 = (-13200 +850 = -12350; -12350 -1825 = -14175; -14175 +783 = -13392)/2700 = -13392/2700. Simplify divide by 12? 13392/12=1116, 2700/12=225 => -1116/225 = further divide by 3: 1116/3=372, 225/3=75 => -372/75 = divide by 3: 372/3=124, 75/3=25 => -124/25. So sum = -124/25? Let's verify: -13392/2700 = dividing numerator and denominator by 108? 2700/108=25, 13392/108? 108*124=13392? 108*124 = 108*100=10800, 108*24=2592, sum=13392 yes. So -13392/2700 = -124/25 indeed. So sum = -124/25.
+Now G56 = -5 = -125/25? Actually -5 = -125/25. So G56 - sum = -125/25 - (-124/25) = -125/25 + 124/25 = -1/25.
+Then L65 = (-1/25) * (50/3) = -50/(75) = -2/3? Because (-1/25)*(50/3) = -50/(75)= -2/3. So L65 = -2/3.
+
+Now for j=7:
+We have L71 = -8/9, L72 = -5/9, L73 = -5/8, L74 = 7/50.
+Compute each term:
+Term1: 4 * (-8/9) = -32/9.
+Term2: (-2/3)*(-5/9) = (10/27) because -2/3 * -5/9 = 10/27.
+Term3: (73/27)*(-5/8) = -365/(216). Because 73*5=365, denominator 27*8=216.
+Term4: (-29/28)*(7/50) = -203/(1400) = simplify? 29*7=203, 28*50=1400; divide numerator and denominator by 7: 203/7=29, 1400/7=200 => -29/200.
+Now sum = term1 + term2 + term3 + term4. Compute common denominator. Denominators: 9,27,216,200. LCM? 216 = 2^3*3^3; 200=2^3*5^2; 27=3^3;9=3^2. So LCM = 2^3 * 3^3 * 5^2 = 8 * 27 * 25 = 5400. So convert to denominator 5400.
+Term1: -32/9 = - (32*600)/5400? Since 9*600=5400, 32*600=19200 -> -19200/5400.
+Term2: 10/27 = 10*200/5400 = 2000/5400.
+Term3: -365/216 = -365*25/5400? Since 216*25=5400, 365*25=9125 -> -9125/5400.
+Term4: -29/200 = -29*27/5400 = -783/5400? 200*27=5400, 29*27=783.
+Now sum = (-19200 + 2000 -9125 -783)/5400 = (-19200+2000 = -17200; -17200-9125 = -26325; -26325-783 = -27108)/5400 = -27108/5400. Simplify: divide by 12? 27108/12=2259, 5400/12=450 => -2259/450. Divide by 3: 2259/3=753, 450/3=150 => -753/150. Divide by 3: 753/3=251, 150/3=50 => -251/50. So sum = -251/50? Let's check 27108/5400 = reduce by dividing by 108? 5400/108=50, 27108/108=251? Since 108*251 = 108*250=27000, +108=27108, yes. So sum = -251/50.
+Now G57 = -5 = -250/50. So G57 - sum = -250/50 - (-251/50) = -250/50 + 251/50 = 1/50.
+Then L75 = (1/50) * (50/3) = 1/3. So L75 = 1/3.
+
+Now i=6: compute d6 = G66 - sum_{k=1}^{5} L_{6k}^2 d_k. We have L61=-11/9, L62=-17/36, L63=-1/4, L64=-7/25, L65=-2/3. d1=9, d2=12, d3=56/27, d4=25/14, d5=3/50.
+Compute each term:
+Term1: L61^2 * d1 = (121/81)*9 = 121/9? Because 121/81 *9 = 1089/81 = 121/9? Actually 9*121/81 = 1089/81 = 121/9. So term1 = 121/9.
+Term2: L62^2 * d2 = (289/1296)*12 = 289*12/1296 = 3468/1296 = simplify: divide by 12? 3468/12=289, 1296/12=108 => 289/108? Actually 3468/1296 = reduce: divide numerator and denominator by 12: 289/108, yes. So term2 = 289/108.
+Term3: L63^2 * d3 = (1/16)*(56/27) = 56/(432) = simplify: divide by 8? 56/8=7, 432/8=54 => 7/54? Actually 1/16 * 56/27 = 56/(432) = reduce: divide by 8 gives 7/54. So term3 = 7/54.
+Term4: L64^2 * d4 = (49/625)*(25/14) = 49*25/(625*14) = (49*25)/(8750)? But simplify: 25/625=1/25, so term4 = 49/(25*14) = 49/(350) = simplify divide by 7: 7/50? Actually 49/350 = 7/50. So term4 = 7/50.
+Term5: L65^2 * d5 = (4/9)*(3/50) = (4/9)*(3/50) = 12/(450) = 2/75? Since 12/450=2/75. So term5 = 2/75.
+
+Now sum = term1 + term2 + term3 + term4 + term5. Let's compute numerically as rational with common denominator. But we can combine carefully. Denominators: 9,108,54,50,75. LCM of 9,108,54,50,75. Let's compute LCM: prime factors:
+9=3^2
+108=2^2*3^3? Actually 108=2^2*27=2^2*3^3.
+54=2*3^3.
+50=2*5^2.
+75=3*5^2.
+So LCM = 2^2 * 3^3 * 5^2 = 4 * 27 * 25 = 2700. So use denominator 2700.
+Convert each:
+Term1: 121/9 = (121*300)/2700 = 36300/2700? Since 9*300=2700, 121*300=36300.
+Term2: 289/108 = (289*25)/2700? Because 108*25=2700, 289*25=7225. So =7225/2700.
+Term3: 7/54 = (7*50)/2700 = 350/2700.
+Term4: 7/50 = (7*54)/2700 = 378/2700.
+Term5: 2/75 = (2*36)/2700 = 72/2700.
+Now sum = (36300 + 7225 + 350 + 378 + 72)/2700 = let's add: 36300+7225=43525; +350=43875; +378=44253; +72=44325. So sum = 44325/2700. Simplify? Divide numerator and denominator by 75? 2700/75=36, 44325/75=591? Because 75*591=44325? 75*500=37500, 75*91=6825, sum=44325, yes. So sum = 591/36? Actually 44325/2700 = (44325÷75)/(2700÷75)=591/36. Simplify further: divide by 3: 591/3=197, 36/3=12, so 197/12. So sum = 197/12? Check: 197/12 = 16.41666, and 44325/2700=16.41666, yes. So sum = 197/12.
+Now G66 = 17 = 204/12. So d6 = 204/12 - 197/12 = 7/12. So d6 = 7/12.
+
+Now compute L_{j6} for j=7 (only j=7). Need L76. We have G67 = 13. Compute sum_{k=1}^{5} L_{6k} d_k L_{7k} for k=1..5, because i=6, j=7. Then L76 = (G67 - sum)/d6.
+We have L6k: L61=-11/9, L62=-17/36, L63=-1/4, L64=-7/25, L65=-2/3.
+L7k: L71=-8/9, L72=-5/9, L73=-5/8, L74=7/50, L75=1/3.
+d1=9, d2=12, d3=56/27, d4=25/14, d5=3/50.
+We can compute L6k d_k as before? Actually for sum, we need each term L6k d_k L7k. Better compute L6k d_k first:
+L61*d1 = (-11/9)*9 = -11.
+L62*d2 = (-17/36)*12 = -17*12/36 = -17/3? Because 12/36=1/3, so = -17/3.
+L63*d3 = (-1/4)*(56/27) = -56/(108) = -14/27? Actually 56/108 = 14/27, so = -14/27.
+L64*d4 = (-7/25)*(25/14) = -7/14 = -1/2.
+L65*d5 = (-2/3)*(3/50) = -2/50 = -1/25.
+Now sum = ∑ (L6k d_k) * L7k.
+So compute:
+Term1: (-11) * L71 = (-11)*(-8/9) = 88/9.
+Term2: (-17/3) * L72 = (-17/3)*(-5/9) = (85)/(27) because -17/3 * -5/9 = 85/27.
+Term3: (-14/27) * L73 = (-14/27)*(-5/8) = (70)/(216) = simplify divide by 2: 35/108? Actually 70/216 = 35/108.
+Term4: (-1/2) * L74 = (-1/2)*(7/50) = -7/100.
+Term5: (-1/25) * L75 = (-1/25)*(1/3) = -1/75.
+Now sum these five terms. Compute common denominator maybe 2700 again? Or compute stepwise rational.
+Let's get a common denominator. Denominators: 9,27,108,100,75. LCM? 9=3^2;27=3^3;108=2^2*3^3;100=2^2*5^2;75=3*5^2. So LCM = 2^2 * 3^3 * 5^2 = 4*27*25=2700. So convert:
+Term1: 88/9 = (88*300)/2700 = 26400/2700.
+Term2: 85/27 = (85*100)/2700 = 8500/2700.
+Term3: 35/108 = (35*25)/2700 = 875/2700.
+Term4: -7/100 = -(7*27)/2700 = -189/2700.
+Term5: -1/75 = -(1*36)/2700 = -36/2700.
+Sum = (26400+8500+875 -189 -36)/2700 = (26400+8500=34900; +875=35775; -189=35586; -36=35550)/2700 = 35550/2700. Simplify divide by 150? 35550/150=237, 2700/150=18 => 237/18 = 79/6? Because 237/18 = divide by 3: 79/6. So sum = 79/6? Let's verify: 35550/2700 = 3555/270 = 711/54 = 237/18 = 79/6. Yes sum = 79/6.
+Now G67 = 13 = 78/6? Actually 13 = 78/6? 78/6=13 yes. So G67 - sum = 78/6 - 79/6 = -1/6.
+Then L76 = (-1/6) / d6 = (-1/6) / (7/12) = (-1/6)*(12/7) = -12/(42) = -2/7. So L76 = -2/7.
+
+Now i=7: compute d7 = G77 - sum_{k=1}^{6} L_{7k}^2 d_k. We have L71=-8/9, L72=-5/9, L73=-5/8, L74=7/50, L75=1/3, L76=-2/7. d1=9, d2=12, d3=56/27, d4=25/14, d5=3/50, d6=7/12.
+Compute each term:
+Term1: L71^2 * d1 = (64/81)*9 = 576/81 = 64/9? Because 64/81*9 = 576/81 = 64/9. So term1 = 64/9.
+Term2: L72^2 * d2 = (25/81)*12 = 300/81 = 100/27? Simplify: 300/81 = divide by 3: 100/27. So term2 = 100/27.
+Term3: L73^2 * d3 = (25/64)*(56/27) = (25*56)/(64*27) = (1400)/(1728) = simplify divide by 8: 175/216? Because 1400/8=175, 1728/8=216. So term3 = 175/216? Wait 25/64 * 56/27 = (25*56)/(64*27) = (1400)/(1728). Reduce: divide by 8 gives 175/216. Yes term3 = 175/216.
+Term4: L74^2 * d4 = (49/2500)*(25/14) = 49*25/(2500*14) = 49*1/(100*14) because 25/2500=1/100, so = 49/(1400) = simplify: divide by 7 => 7/200? Actually 49/1400 = 7/200? 49/7=7, 1400/7=200, yes. So term4 = 7/200.
+Term5: L75^2 * d5 = (1/9)*(3/50) = 3/450 = 1/150. So term5 = 1/150.
+Term6: L76^2 * d6 = (4/49)*(7/12) = (4*7)/(49*12) = 28/(588) = divide by 28: 1/21? Because 28/588 = 1/21. Indeed 588/28=21. So term6 = 1/21.
+Now sum = term1+term2+term3+term4+term5+term6. We need common denominator to compute d7 = G77 - sum = 12 - sum. Compute sum exactly. Denominators: 9,27,216,200,150,21. Find LCM. Let's factor:
+9=3^2
+27=3^3
+216=2^3*3^3
+200=2^3*5^2
+150=2*3*5^2
+21=3*7
+So LCM = 2^3 * 3^3 * 5^2 * 7 = 8 * 27 * 25 * 7 = 8*27=216; 216*25=5400; 5400*7=37800. So LCM = 37800.
+Convert each term to denominator 37800:
+Term1: 64/9 = (64*4200)/37800 = 268800/37800? Because 9*4200=37800, 64*4200=268800. So term1=268800/37800.
+Term2: 100/27 = (100*1400)/37800 = 140000/37800? Because 27*1400=37800, 100*1400=140000.
+Term3: 175/216 = (175*175)/37800? Wait 216*175 = 37800? Let's compute 216*175 = 216*100=21600, 216*75=16200, total=37800, yes. So term3 = 175*175/37800 = 30625/37800? 175*175 = 30625. So term3 = 30625/37800.
+Term4: 7/200 = (7*189)/37800? Because 200*189=37800? 200*189=37800, yes. 7*189=1323. So term4 = 1323/37800.
+Term5: 1/150 = (1*252)/37800? 150*252=37800? 150*250=37500, plus 150*2=300, total=37800, yes. So term5 = 252/37800.
+Term6: 1/21 = (1*1800)/37800? 21*1800=37800, so term6 = 1800/37800.
+Now sum = (268800 + 140000 + 30625 + 1323 + 252 + 1800)/37800 = Compute:
+268800+140000=408800.
+408800+30625=439425.
+439425+1323=440748.
+440748+252=441000.
+441000+1800=442800.
+So sum = 442800/37800 = simplify: divide numerator and denominator by 100? 4428/378 = further reduction. Let's reduce fraction: 442800/37800 = divide by 100 => 4428/378. Divide both by 6: 4428/6=738, 378/6=63 => 738/63 = divide by 3: 738/3=246, 63/3=21 => 246/21 = divide by 3: 246/3=82, 21/3=7 => 82/7. So sum = 82/7? Check: 82/7 ≈11.7142857. Our sum=442800/37800=11.7142857, yes. So sum = 82/7.
+Now G77 = 12 = 84/7. So d7 = 84/7 - 82/7 = 2/7.
+Thus d7 = 2/7.
+
+Therefore the squares of the diagonal entries of R are: d1=9, d2=12, d3=56/27, d4=25/14, d5=3/50, d6=7/12, d7=2/7.
+
+We must present them in order as a comma-separated list of exact numbers (integers or fractions). They are: 9, 12, 56/27, 25/14, 3/50, 7/12, 2/7.
+
+But we should check if any simplification needed: 56/27 is already simplified? 56 and 27 share no common factors (27=3^3, 56=2^3*7). So fine. 25/14 is fine. 3/50 fine. 7/12 fine. 2/7 fine.
+
+Thus answer: 9,12,56/27,25/14,3/50,7/12,2/7.
+
+We should ensure the order is R11^2,...,R77^2. That's what we have.
+
+Now, we should double-check the computations, especially d3, d4, d5, d6, d7. Because there might be errors in arithmetic. Let's verify some steps using alternative method: compute leading principal minors directly? Could compute det of G_k and ratios. Let's compute determinants quickly using known results: d1=9. det(G1)=9. d1=9 ok.
+d2=12, so det(G2)=d1*d2=9*12=108. Compute det(G2) manually: G2 = [[9,-3],[-3,13]]. det=9*13 - (-3)*(-3)=117-9=108. Good.
+d3 = 56/27, so det(G3)=d1*d2*d3 = 9*12*(56/27) = (108)*(56/27) = 108/27=4, times 56=224. So det(G3)=224. Let's compute det(G3) manually? G3 = first 3 rows/cols:
+[9, -3, 5; -3,13,-3; 5,-3,5]. Compute determinant: 9*(13*5 - (-3)*(-3)) - (-3)*((-3)*5 - (-3)*5) +5*((-3)*(-3)-13*5). Compute: 13*5=65, minus 9=56? Actually (-3)*(-3)=9, so 65-9=56. So first term:9*56=504. Second term: -(-3)*[ (-3)*5 - (-3)*5 ] = +3 * [ -15 +15? Wait careful: (-3)*5 = -15, (-3)*5 = -15, so (-3)*5 - (-3)*5 = -15 - (-15) = 0. So second term = 3*0=0. Third term: 5*[ (-3)*(-3) - 13*5 ] = 5*[9 - 65] = 5*(-56)= -280. So total =504 -280 =224. Yes matches. Good.
+d4 = 25/14, so det(G4)=d1*d2*d3*d4 = 9*12*(56/27)*(25/14)= (9*12*56*25)/(27*14). Simplify: 9/27=1/3, so (12*56*25)/(3*14). 12/3=4, so (4*56*25)/14 = (4*56/14)*25 = (4*4)*25 =16*25=400. Because 56/14=4. So det(G4)=400. Let's compute det(G4) manually? G4 = leading 4x4. Could verify quickly perhaps using known values? Might be okay.
+d5 = 3/50, so det(G5)=det(G4)*d5 = 400*(3/50)= (400/50)*3 =8*3=24. So det(G5)=24. Let's check? Possibly correct.
+d6 = 7/12, so det(G6)=det(G5)*d6 =24*(7/12)=2*7=14. So det(G6)=14.
+d7 = 2/7, so det(G7)=det(G6)*d7 =14*(2/7)=4. So det(G7)=4. But det(G7)=det(A^T A)= (det(A))^2. So det(A)^2 =4, thus det(A)=±2. Since A is invertible integer matrix, det(A) is integer, magnitude 2. That is plausible. So these determinants seem consistent. So our d_i are correct.
+
+Thus final answer: 9, 12, 56/27, 25/14, 3/50, 7/12, 2/7.
+
+We need to output as a comma-separated list: "9,12,56/27,25/14,3/50,7/12,2/7". Possibly they want them as exact fractions, so that's fine.
+
+Now produce final line: ANSWER: 9,12,56/27,25/14,3/50,7/12,2/7
