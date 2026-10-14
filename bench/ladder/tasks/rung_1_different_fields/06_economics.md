@@ -1,0 +1,196 @@
+# Равновесие Курно с неактивными фирмами
+
+- id: `ladder_rung_1/economics`
+- источник: own generator (answer computed by code); лицензия: CC BY-NC-SA 4.0 (this repository)
+- генератор: `r1_econ_cournot`, number of firms = 176, сид 1000
+- отбор: медиана 21259 ток., CV 0.08, верно 5/5
+
+## Условие
+
+```text
+176 firms compete in quantities (Cournot) in a market with inverse demand P = 7861 − 5·Q, where Q is the total quantity. Each firm i has a constant marginal cost c_i and no fixed cost, and chooses its quantity q_i ≥ 0 simultaneously to maximise its own profit (P − c_i)·q_i. Marginal costs:
+  Firm 1: c = 66
+  Firm 2: c = 77
+  Firm 3: c = 156
+  Firm 4: c = 91
+  Firm 5: c = 59
+  Firm 6: c = 144
+  Firm 7: c = 169
+  Firm 8: c = 153
+  Firm 9: c = 27
+  Firm 10: c = 138
+  Firm 11: c = 25
+  Firm 12: c = 54
+  Firm 13: c = 46
+  Firm 14: c = 94
+  Firm 15: c = 40
+  Firm 16: c = 143
+  Firm 17: c = 152
+  Firm 18: c = 111
+  Firm 19: c = 167
+  Firm 20: c = 119
+  Firm 21: c = 84
+  Firm 22: c = 156
+  Firm 23: c = 20
+  Firm 24: c = 38
+  Firm 25: c = 85
+  Firm 26: c = 85
+  Firm 27: c = 71
+  Firm 28: c = 93
+  Firm 29: c = 156
+  Firm 30: c = 75
+  Firm 31: c = 144
+  Firm 32: c = 84
+  Firm 33: c = 104
+  Firm 34: c = 170
+  Firm 35: c = 34
+  Firm 36: c = 55
+  Firm 37: c = 20
+  Firm 38: c = 66
+  Firm 39: c = 58
+  Firm 40: c = 89
+  Firm 41: c = 63
+  Firm 42: c = 64
+  Firm 43: c = 25
+  Firm 44: c = 84
+  Firm 45: c = 51
+  Firm 46: c = 32
+  Firm 47: c = 72
+  Firm 48: c = 158
+  Firm 49: c = 32
+  Firm 50: c = 142
+  Firm 51: c = 152
+  Firm 52: c = 155
+  Firm 53: c = 152
+  Firm 54: c = 151
+  Firm 55: c = 71
+  Firm 56: c = 72
+  Firm 57: c = 57
+  Firm 58: c = 81
+  Firm 59: c = 167
+  Firm 60: c = 144
+  Firm 61: c = 51
+  Firm 62: c = 84
+  Firm 63: c = 54
+  Firm 64: c = 102
+  Firm 65: c = 63
+  Firm 66: c = 143
+  Firm 67: c = 154
+  Firm 68: c = 134
+  Firm 69: c = 62
+  Firm 70: c = 143
+  Firm 71: c = 154
+  Firm 72: c = 56
+  Firm 73: c = 65
+  Firm 74: c = 100
+  Firm 75: c = 90
+  Firm 76: c = 76
+  Firm 77: c = 60
+  Firm 78: c = 58
+  Firm 79: c = 160
+  Firm 80: c = 155
+  Firm 81: c = 159
+  Firm 82: c = 59
+  Firm 83: c = 79
+  Firm 84: c = 116
+  Firm 85: c = 73
+  Firm 86: c = 55
+  Firm 87: c = 26
+  Firm 88: c = 135
+  Firm 89: c = 149
+  Firm 90: c = 38
+  Firm 91: c = 120
+  Firm 92: c = 172
+  Firm 93: c = 58
+  Firm 94: c = 134
+  Firm 95: c = 47
+  Firm 96: c = 114
+  Firm 97: c = 95
+  Firm 98: c = 155
+  Firm 99: c = 86
+  Firm 100: c = 38
+  Firm 101: c = 167
+  Firm 102: c = 136
+  Firm 103: c = 36
+  Firm 104: c = 58
+  Firm 105: c = 23
+  Firm 106: c = 172
+  Firm 107: c = 151
+  Firm 108: c = 46
+  Firm 109: c = 63
+  Firm 110: c = 153
+  Firm 111: c = 133
+  Firm 112: c = 86
+  Firm 113: c = 90
+  Firm 114: c = 62
+  Firm 115: c = 162
+  Firm 116: c = 104
+  Firm 117: c = 152
+  Firm 118: c = 92
+  Firm 119: c = 51
+  Firm 120: c = 62
+  Firm 121: c = 120
+  Firm 122: c = 34
+  Firm 123: c = 116
+  Firm 124: c = 66
+  Firm 125: c = 32
+  Firm 126: c = 117
+  Firm 127: c = 110
+  Firm 128: c = 40
+  Firm 129: c = 62
+  Firm 130: c = 134
+  Firm 131: c = 138
+  Firm 132: c = 61
+  Firm 133: c = 166
+  Firm 134: c = 29
+  Firm 135: c = 78
+  Firm 136: c = 101
+  Firm 137: c = 143
+  Firm 138: c = 46
+  Firm 139: c = 146
+  Firm 140: c = 70
+  Firm 141: c = 157
+  Firm 142: c = 135
+  Firm 143: c = 76
+  Firm 144: c = 120
+  Firm 145: c = 162
+  Firm 146: c = 41
+  Firm 147: c = 50
+  Firm 148: c = 80
+  Firm 149: c = 167
+  Firm 150: c = 108
+  Firm 151: c = 87
+  Firm 152: c = 93
+  Firm 153: c = 33
+  Firm 154: c = 42
+  Firm 155: c = 51
+  Firm 156: c = 54
+  Firm 157: c = 23
+  Firm 158: c = 79
+  Firm 159: c = 83
+  Firm 160: c = 160
+  Firm 161: c = 67
+  Firm 162: c = 93
+  Firm 163: c = 108
+  Firm 164: c = 134
+  Firm 165: c = 32
+  Firm 166: c = 20
+  Firm 167: c = 159
+  Firm 168: c = 33
+  Firm 169: c = 63
+  Firm 170: c = 43
+  Firm 171: c = 42
+  Firm 172: c = 146
+  Firm 173: c = 101
+  Firm 174: c = 71
+  Firm 175: c = 32
+  Firm 176: c = 97
+
+In the Nash equilibrium some high-cost firms may find it optimal to produce zero. Find the equilibrium market price P. Give it exactly, as a reduced fraction p/q (or an integer).
+
+Think it through, then finish with a final line of the form `ANSWER: <your answer>`.
+```
+
+## Эталон
+
+`16037/123` — проверка: число, точное совпадение

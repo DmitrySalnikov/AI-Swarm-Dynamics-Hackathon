@@ -42,7 +42,7 @@ NEAR_ACCEPT = {
 
 def items():
     out = {}
-    for f in ("main.jsonl", "rung2_extra.jsonl", "borderline.jsonl"):
+    for f in ("main.jsonl", "rung2_extra.jsonl", "pool2.jsonl", "borderline.jsonl"):
         p = CAND / f
         if p.exists():
             for l in p.read_text().splitlines():

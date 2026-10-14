@@ -1,0 +1,578 @@
+We are given a 6x6 integer matrix A. We need to compute its Smith normal form over the integers. The Smith normal form is a diagonal matrix diag(d1,d2,...,d6) where each di is non-negative integer, di divides di+1, and zeros come last. We need to find the invariant factors d1,...,d6.
+
+We need to compute the Smith normal form via integer row and column operations. We can do it by hand using systematic reduction, but since it's 6x6, maybe we can compute the invariant factors by considering determinants of minors? The invariant factors are related to the gcd of all k×k minors (the k-th determinantal divisor). Specifically, let D_k be the gcd of all k×k minors of A (with D_0=1). Then the invariant factors are d_k = D_k / D_{k-1} for k=1,...,r where r is the rank, and d_{r+1}=...=0. But careful: For integer matrices, the Smith normal form yields d_i = D_i/D_{i-1} for i=1..r, and zeros beyond. However, D_k are defined as the gcd of all k×k minors, but they are defined up to sign; we take positive. Also note that the order: d_1 | d_2 | ... | d_r.
+
+So we can compute the determinantal divisors D_1, D_2, ..., D_6. The matrix is 6x6, we need to compute gcd of entries (1x1 minors) for D1, gcd of 2x2 minors for D2, etc. However, computing all 2x2 minors for a 6x6 matrix is many but doable with systematic elimination? Could be heavy but manageable if we use properties. Since A is integer, we can also perform row and column operations to compute the Smith normal form directly. Given the matrix is relatively small, we can try to reduce it manually.
+
+Let's write matrix A:
+
+Row1: [2,6,3,4,3,-3]
+Row2: [2,5,2,2,2,-3]
+Row3: [1,5,3,4,1,-2]
+Row4: [6,14,6,7,7,-7]
+Row5: [0,3,2,3,-1,0]
+Row6: [3,7,4,5,3,-2]
+
+We can use integer row/column operations: swap rows/cols, add integer multiples of one row to another, multiply rows by ±1 (since we need unit multipliers, invertible operations over integers: we can multiply a row by -1 but not by other integers because the inverse must be integer; multiplying by -1 is invertible because -1 is a unit in Z). Adding integer multiple of one row to another is invertible (determinant 1). Swapping rows/columns flips sign, but we can adjust.
+
+Goal: reduce to diagonal form with divisibility condition.
+
+We can perform Gaussian elimination over Z, but careful: we need to use gcd operations to reduce entries.
+
+I'll try to reduce step by step.
+
+Let's denote matrix entries a_{ij}.
+
+We may start by using row/column swaps to bring a small entry to top-left, maybe 1. There is a 1 in row3 col1. So swap rows to bring row3 to top? Let's see: Row3 col1 =1. That's good because we can use it to clear other entries in first column and first row. But we also have zeros? Row5 col1=0. So we might want to move row3 to row1.
+
+Perform row swap: R1 <-> R3. But careful: if we swap rows, we keep track. Let's do:
+
+Original rows: R1, R2, R3, R4, R5, R6.
+
+Swap R1 and R3:
+
+New matrix:
+
+Row1 (old R3): [1,5,3,4,1,-2]
+Row2 (old R1): [2,6,3,4,3,-3]
+Row3 (old R2): [2,5,2,2,2,-3]
+Row4 (old R4): [6,14,6,7,7,-7]
+Row5 (old R5): [0,3,2,3,-1,0]
+Row6 (old R6): [3,7,4,5,3,-2]
+
+Now we have a 1 at (1,1). Use it to eliminate entries in column 1 below: for rows i=2..6, we want to subtract appropriate multiple of row1 to make a_{i1}=0. But since we are over integers, we can add integer multiples. For row2: a21=2, we subtract 2*row1: row2 -> row2 - 2*row1. Row3: a31=2, subtract 2*row1. Row4: a41=6, subtract 6*row1. Row5: a51=0 already. Row6: a61=3, subtract 3*row1.
+
+Perform these operations:
+
+Row2 = row2 - 2*row1: (2-2*1, 6-2*5, 3-2*3, 4-2*4, 3-2*1, -3-2*(-2)) = (0, 6-10=-4, 3-6=-3, 4-8=-4, 3-2=1, -3+4=1). So row2: [0, -4, -3, -4, 1, 1].
+
+Row3 = row3 - 2*row1: (2-2=0, 5-10=-5, 2-6=-4, 2-8=-6, 2-2=0, -3+4=1) => [0, -5, -4, -6, 0, 1].
+
+Row4 = row4 - 6*row1: (6-6=0, 14-30=-16, 6-18=-12, 7-24=-17, 7-6=1, -7+12=5) => [0, -16, -12, -17, 1, 5].
+
+Row5 unchanged: [0,3,2,3,-1,0].
+
+Row6 = row6 - 3*row1: (3-3=0, 7-15=-8, 4-9=-5, 5-12=-7, 3-3=0, -2+6=4) => [0, -8, -5, -7, 0, 4].
+
+Now we have zeros in first column except pivot. Also we want to clear first row except pivot using column operations. We can use the 1 at (1,1) to eliminate entries in row1 columns 2..6. Subtract appropriate multiples of column1 from each column. But careful: column operations: we can add integer multiples of column1 to other columns. Since we have 1 at (1,1), we can subtract 5*col1 from col2, 3*col1 from col3, etc. to make row1 entries zero except pivot. However, we also need to maintain integer entries, and column operations will affect other rows. That's fine. We'll do column operations: For j=2..6, col_j = col_j - a_{1j} * col1. Row1 entries become zero. Let's compute a_{1j}: row1 = [1,5,3,4,1,-2]. So subtract 5*col1 from col2, 3*col1 from col3, 4*col1 from col4, 1*col1 from col5, and -2*col1 from col6? Actually to zero out entry at (1,j): we want new col_j = col_j - a_{1j} * col1. Since a_{1j} is the entry at (1,j). For j=2: subtract 5*col1; j=3: subtract 3*col1; j=4: subtract 4*col1; j=5: subtract 1*col1; j=6: subtract (-2)*col1 = add 2*col1? Since a_{1,6} = -2, so we do col6 = col6 - (-2)*col1 = col6 + 2*col1. Let's apply these column operations to the whole matrix. Current matrix after row ops (col1 unchanged, but we need to update all columns). Let's denote current matrix after row ops:
+
+We have rows:
+
+Row1: [1,5,3,4,1,-2]
+Row2: [0,-4,-3,-4,1,1]
+Row3: [0,-5,-4,-6,0,1]
+Row4: [0,-16,-12,-17,1,5]
+Row5: [0,3,2,3,-1,0]
+Row6: [0,-8,-5,-7,0,4]
+
+Now apply column ops:
+
+col1 remains as is: [1,0,0,0,0,0]^T? Actually col1 currently: row1:1, row2:0, row3:0, row4:0, row5:0, row6:0.
+
+We modify col2: col2 = col2 - 5*col1. So subtract 5 times col1 from col2. col1 values: row1:1, row2:0, row3:0, row4:0, row5:0, row6:0. So new col2 = old col2 - 5* [1,0,0,0,0,0] = old col2 with row1 entry reduced by 5: row1: 5-5=0; others unchanged: row2: -4; row3: -5; row4: -16; row5: 3; row6: -8. So col2 becomes [0,-4,-5,-16,3,-8]^T.
+
+col3: subtract 3*col1: row1: 3-3=0; row2: -3; row3: -4; row4: -12; row5: 2; row6: -5. So col3: [0,-3,-4,-12,2,-5]^T.
+
+col4: subtract 4*col1: row1:4-4=0; row2: -4; row3: -6; row4: -17; row5: 3; row6: -7. So col4: [0,-4,-6,-17,3,-7]^T.
+
+col5: subtract 1*col1: row1:1-1=0; row2:1; row3:0; row4:1; row5:-1; row6:0. So col5: [0,1,0,1,-1,0]^T.
+
+col6: subtract (-2)*col1 = add 2*col1: row1: -2+2=0; row2:1; row3:1; row4:5; row5:0; row6:4. Actually careful: a_{1,6} = -2, so col6 = col6 - (-2)*col1 = col6 + 2*col1. So row1: -2+2*1=0; row2:1+2*0=1; row3:1+2*0=1; row4:5+2*0=5; row5:0+2*0=0; row6:4+2*0=4. So col6: [0,1,1,5,0,4]^T.
+
+Now matrix after row and column ops: 
+Row1: [1,0,0,0,0,0]
+Row2: [0,-4,-3,-4,1,1]
+Row3: [0,-5,-4,-6,0,1]
+Row4: [0,-16,-12,-17,1,5]
+Row5: [0,3,2,3,-1,0]
+Row6: [0,-8,-5,-7,0,4]
+
+Now we have a 1 at (1,1). Next, we focus on the submatrix from rows 2..6 and columns 2..6. We need to reduce that 5x5 block to Smith normal form. But we can also perform swaps to bring a small entry to the (2,2) position. Note that there is a 1 at (2,5)? Actually (2,5) = 1, (2,6)=1, (3,6)=1, (4,5)=1, (5,5)=-1, etc. There are many 1's. So we can use these to simplify. For systematic reduction, we can compute the gcd of all entries in the submatrix, and reduce to get a pivot. Alternatively, we can use the fact that we have a 1 in column5 row2, column6 row2, etc. We can use column swaps to bring a 1 to the (2,2) position.
+
+Let's look at the submatrix (rows 2-6, cols2-6). Write it out:
+
+Rows 2..6, columns 2..6:
+
+col2: row2 -4, row3 -5, row4 -16, row5 3, row6 -8
+col3: -3, -4, -12, 2, -5
+col4: -4, -6, -17, 3, -7
+col5: 1, 0, 1, -1, 0
+col6: 1, 1, 5, 0, 4
+
+We want to reduce this block. Since there are many 1's, we can swap columns to bring a 1 to column2. Or we can use row operations to bring a 1 to row2 col2. Let's see: column5 has entries: row2=1, row3=0, row4=1, row5=-1, row6=0. So we could swap column5 with column2 to have a 1 at (2,2). However, note that we have already reduced first row and column; swapping columns will affect the first row? But first row has zeros in all columns beyond column1, so swapping columns among 2..6 does not affect row1 because row1 entries are zero. So that's fine. Similarly, we could swap rows among 2..6; row1 is zero in those columns too. So we can freely permute rows 2..6 and columns 2..6. So we can bring a 1 to (2,2) by swapping.
+
+Let's swap column2 with column5 (or column6). Since column5 has a 1 at row2, that's good. Let's swap column2 and column5. Then the new col2 becomes old col5, and col5 becomes old col2. Also we should update the entire matrix, but row1 col2 and col5 are zero anyway. So after swapping cols2 and 5:
+
+New matrix (first row unchanged):
+Row1: [1,0,0,0,0,0] (but after swap, col2 is now old col5, which was 0 at row1, so still 0; col5 is old col2, which was 0 at row1, so fine)
+Now submatrix rows2-6, cols2-6 (order: col2 (old col5), col3, col4, col5 (old col2), col6):
+
+col2 (old col5): values: row2:1, row3:0, row4:1, row5:-1, row6:0
+col3: same: row2:-3, row3:-4, row4:-12, row5:2, row6:-5
+col4: same: row2:-4, row3:-6, row4:-17, row5:3, row6:-7
+col5 (old col2): row2:-4, row3:-5, row4:-16, row5:3, row6:-8
+col6: same: row2:1, row3:1, row4:5, row5:0, row6:4
+
+So now (2,2) = 1. Good. We can use this 1 to clear the rest of row2 and column2 in the submatrix.
+
+First, use row operations: For rows i=3..6, we can subtract appropriate multiples of row2 to make entry in column2 zero. Since (2,2)=1, we can subtract a_{i2} times row2 from row i. Also we can use column operations to clear row2 entries other than (2,2): for columns j=3..6, subtract a_{2j} times column2 from column j.
+
+But careful: row2 currently has entries: col2=1, col3=-3, col4=-4, col5=-4, col6=1. Actually row2: row2 (original row2 after row ops, but now after column swap, row2 entries in cols 2-6: we have: col2=1, col3=-3, col4=-4, col5=-4, col6=1. (We also have row2 col1=0). So we can use the pivot 1 to eliminate other entries in row2 by column operations: for column j=3,4,5,6, do col_j = col_j - a_{2j} * col2. This will zero out row2 entries in those columns. Similarly, we can eliminate entries below pivot in column2 by row operations: for row i=3..6, do row_i = row_i - a_{i2} * row2. Since a_{i2} are: row3 col2=0, row4 col2=1, row5 col2=-1, row6 col2=0. So we need to adjust rows 4 and 5.
+
+Let's do row operations first to zero column2 below pivot.
+
+Current rows (2..6) with columns (2..6) after swap:
+
+Row2: [1, -3, -4, -4, 1] (col2,3,4,5,6)
+Row3: [0, -4, -6, -5, 1] (since row3 col2=0, col3=-4, col4=-6, col5=-5, col6=1)
+Row4: [1, -12, -17, -16, 5] (row4 col2=1, col3=-12, col4=-17, col5=-16, col6=5)
+Row5: [-1, 2, 3, 3, 0] (row5 col2=-1, col3=2, col4=3, col5=3, col6=0)
+Row6: [0, -5, -7, -8, 4] (row6 col2=0, col3=-5, col4=-7, col5=-8, col6=4)
+
+Now perform row ops:
+For row4: a42=1, so row4 = row4 - 1*row2 = row4 - row2.
+Compute row4 - row2: (1-1=0, -12 - (-3) = -12+3=-9, -17 - (-4) = -17+4=-13, -16 - (-4) = -16+4=-12, 5-1=4). So row4 becomes [0, -9, -13, -12, 4].
+
+For row5: a52 = -1, so row5 = row5 - (-1)*row2 = row5 + row2. Actually to zero out, we want new row5 = row5 - (-1)*row2 = row5 + row2. So add row2 to row5:
+row5 + row2: (-1+1=0, 2+(-3)=-1, 3+(-4)=-1, 3+(-4)=-1, 0+1=1). So row5 becomes [0, -1, -1, -1, 1].
+
+Row3 is already 0 at col2, so no change. Row6 also 0, no change.
+
+Now after row ops, we have:
+
+Row2: [1, -3, -4, -4, 1]
+Row3: [0, -4, -6, -5, 1]
+Row4: [0, -9, -13, -12, 4]
+Row5: [0, -1, -1, -1, 1]
+Row6: [0, -5, -7, -8, 4]
+
+Now column2 has pivot 1 at row2, zeros elsewhere (rows3-6 are zero in col2). Good.
+
+Now we can use column operations to zero out row2 entries in columns 3,4,5,6. For each column j=3..6, do col_j = col_j - a_{2j} * col2, where a_{2j} are row2 entries: col3 = -3, col4 = -4, col5 = -4, col6 = 1. But note: col2 is the pivot column? Yes. We'll perform column operations on the whole matrix (including rows 1..6, but row1 entries in these columns are zero, so it's fine). However, we must update all rows for those columns. Let's define current matrix (rows1-6, cols1-6). We have row1: [1,0,0,0,0,0] (since after column swap, row1 col2 is old col5 which was 0, col5 old col2 was 0). So row1 remains zeros in cols2-6. For rows2-6, we have the values above.
+
+Now column operations: we will modify columns 3,4,5,6 by subtracting multiples of column2. We need to compute new column vectors.
+
+Let's denote col2 vector (current): from rows1-6: row1:0, row2:1, row3:0, row4:0, row5:0, row6:0. So col2 = [0,1,0,0,0,0]^T. So subtracting a multiple of col2 will only affect row2 entry of the target column because other rows are zero in col2. So for each column j, new col_j = old col_j - a_{2j} * col2. That will set row2 entry in col_j to 0 (since old row2 entry becomes a_{2j} - a_{2j}*1 = 0). Other rows unchanged. So we can directly set row2 entries to 0 in those columns. So we can simply zero out row2 columns 3-6 by setting those entries to 0. But we need to actually perform the operations to see if they affect other rows? They don't because col2 has zeros elsewhere. So we can just set row2 entries in cols 3-6 to 0. However, we must also consider that column operations may affect other rows if the column we are modifying has entries that combine with col2's other rows? But col2 has zeros, so no. So we can simply set row2's entries in cols3-6 to 0. That gives new row2: [1, -3? Actually row2 col2 is 1, but we don't modify col2; after column ops, row2 becomes: col2=1, col3=0, col4=0, col5=0, col6=0. Wait, we also need to consider the original a_{2j} we subtracted? Actually we set col_j = col_j - a_{2j}*col2. Since col2 has only row2=1, this subtracts a_{2j} from row2 entry of col_j, making it zero. So indeed row2 entries become zero. So we have row2: [1,0,0,0,0] in columns 2-6. However, we also had a_{2,2}=1, we keep that. So after column ops, row2 becomes [1,0,0,0,0] for cols2-6. But note: we also have column2 unchanged, so row2 col2 =1. So row2: col2=1, col3=0, col4=0, col5=0, col6=0. Good.
+
+Now the submatrix (rows2-6, cols2-6) after these column operations: we need to recalc columns 3-6 after subtracting. Since only row2 entries changed to zero, but other rows remain as before. So we have:
+
+Row2: [1,0,0,0,0]
+Row3: col2=0, col3=-4, col4=-6, col5=-5, col6=1
+Row4: col2=0, col3=-9, col4=-13, col5=-12, col6=4
+Row5: col2=0, col3=-1, col4=-1, col5=-1, col6=1
+Row6: col2=0, col3=-5, col4=-7, col5=-8, col6=4
+
+Now we have a 1 at (2,2). Good. Now we focus on the submatrix from rows 3-6 and columns 3-6 (since row2 and col2 are done). We need to reduce the 4x4 block. Let's extract that block:
+
+Rows 3,4,5,6; Columns 3,4,5,6:
+
+Row3: [-4, -6, -5, 1]
+Row4: [-9, -13, -12, 4]
+Row5: [-1, -1, -1, 1]
+Row6: [-5, -7, -8, 4]
+
+We can also include row2 and col2 but they are already handled. Now we want to compute Smith normal form for this 4x4 block. Again we can try to bring a 1 or small number to top-left of this block (i.e., (3,3) after the previous reduction). We have a -1 at (5,3) maybe? Actually row5 col3 = -1 (since row5: [-1,-1,-1,1] so col3 entry -1). Also row5 col4 = -1, row5 col5 = -1, row5 col6 = 1. There is a 1 at row3 col6 =1, row5 col6=1, etc. So we can use these to simplify. We can swap rows/columns to bring a 1 or -1 to the (3,3) position. Since we are allowed to multiply rows or columns by -1, we can also change signs.
+
+Let's see: current block rows 3-6, cols 3-6. Let's denote the matrix B:
+
+B = 
+[ -4, -6, -5,  1 ]
+[ -9, -13, -12, 4 ]
+[ -1, -1, -1,  1 ]
+[ -5, -7, -8,  4 ]
+
+We want to reduce it. A nice entry: row5 (which is third row of B? Actually row5 in original is row5 of the whole matrix; in B, it's row3 because rows 3,4,5,6 correspond to indices 3,4,5,6. So row3 of B is row5 of whole: [-1,-1,-1,1]. That contains -1's. We can multiply that row by -1 to get [1,1,1,-1]. Or we could swap rows to bring that row to the top of B. Similarly, we could swap columns to bring a 1 to first column. For instance, column6 of B has a 1 at row1 (row3) and row3 (row5) has 1, etc. So let's try to get a 1 at (3,3) (the new top-left of B). Since we have a -1 at row3 col3? Actually row3 (of whole) has -4, -6, -5,1; so not. But row5 has -1 at col3. So we could swap row5 (original row5) with row3 (original row3) to bring that -1 to row3. Or we can swap columns to bring column6 (which has a 1 in row3) to column3. Let's consider swapping column6 with column3. Since we want to maintain the division property later, but any permutation is allowed.
+
+Let's try to get a 1 at (3,3). Option: swap rows within the block: bring row5 (which is row5 of whole) up to row3. Since block rows are 3-6, we can swap row3 and row5. That would bring the row [-1,-1,-1,1] to row3. Then we can multiply that row by -1 to get [1,1,1,-1]. Then we can use that 1 in column3 to eliminate others. Let's do that.
+
+Swap row3 and row5 (whole rows 3 and 5). But careful: row3 currently is original row3? We have row3 (the third row of whole matrix) after previous ops: we have row3 from above: [0,0,-4,-6,-5,1]? Actually recall the full matrix after column ops: rows2 done, row3 we had: row3: [0,0,-4,-6,-5,1] (since row3 col1=0, col2=0, col3=-4, col4=-6, col5=-5, col6=1). Row5: [0,0,-1,-1,-1,1] (since row5 col1=0, col2=0, col3=-1, col4=-1, col5=-1, col6=1). So swapping row3 and row5 will exchange these rows. We can do that. Also row4 and row6 unchanged.
+
+After swapping row3 and row5 (so new row3 becomes old row5, new row5 becomes old row3). Let's write the whole matrix after swap:
+
+Row1: [1,0,0,0,0,0]  (unchanged)
+Row2: [1,0,0,0,0,0]? Wait row2 is [1,0,0,0,0,0]? Actually we had row2: [0? Let's reconstruct full matrix before row swap. After column operations, we had:
+
+Row1: [1,0,0,0,0,0] (since we used column ops to zero row1 beyond col1)
+Row2: [0,1,0,0,0,0]? Wait earlier we set row2 entries in cols3-6 to zero, but row2 col2=1, and row2 col1=0. So row2 = [0,1,0,0,0,0].
+Check: row2 originally had col1=0, col2=1 (from pivot), col3=0, col4=0, col5=0, col6=0. So correct.
+Row3: [0,0,-4,-6,-5,1] (from earlier)
+Row4: [0,0,-9,-13,-12,4]
+Row5: [0,0,-1,-1,-1,1]
+Row6: [0,0,-5,-7,-8,4]
+
+Now swap row3 and row5:
+
+New rows:
+Row1: [1,0,0,0,0,0]
+Row2: [0,1,0,0,0,0]
+Row3: [0,0,-1,-1,-1,1]   (old row5)
+Row4: [0,0,-9,-13,-12,4]
+Row5: [0,0,-4,-6,-5,1]   (old row3)
+Row6: [0,0,-5,-7,-8,4]
+
+Now we have row3 col3 = -1. Multiply row3 by -1 to make it 1 (since multiply row by -1 is allowed invertible operation). So do row3 = -row3:
+
+New row3: [0,0,1,1,1,-1] (since -(-1)=1, -(-1)=1, -(-1)=1, -1 becomes -1? Wait careful: row3 originally [0,0,-1,-1,-1,1]. Multiply by -1 gives [0,0,1,1,1,-1]. Yes.
+
+Now we have a pivot 1 at (3,3). Use it to eliminate other entries in column3 for rows 4-6 and also in row3 for columns 4-6. We can use row operations to zero column3 below pivot, and column operations to zero row3 entries in columns 4-6.
+
+First, column operations: zero out row3 entries in columns 4,5,6 using column3. For column j=4,5,6, do col_j = col_j - a_{3j} * col3, where a_{3j} are row3 entries: col4=1, col5=1, col6=-1. But careful: col3 is the pivot column. We need to know col3's entries across rows. Currently col3 vector: row1:0, row2:0, row3:1, row4:-9, row5:-4, row6:-5. So if we do col_j = col_j - a_{3j} * col3, we will subtract a multiple of col3 from col_j. This will affect all rows, not just row3. It will zero out row3 entry in col_j because row3 col3=1, so row3 new entry = old a_{3j} - a_{3j}*1 = 0. For other rows, we subtract a_{3j} times col3's entry in that row. So we need to compute the new columns.
+
+Let's compute before column ops. We have current matrix (rows 1-6, cols 1-6), but we only need cols 3-6 for now. Let's list the entire matrix for clarity:
+
+Rows:
+R1: [1,0,0,0,0,0]
+R2: [0,1,0,0,0,0]
+R3: [0,0,1,1,1,-1]
+R4: [0,0,-9,-13,-12,4]
+R5: [0,0,-4,-6,-5,1]
+R6: [0,0,-5,-7,-8,4]
+
+Now we want to zero out R3 entries in cols4,5,6. Use column ops:
+
+For col4: a_{3,4}=1. So col4 = col4 - 1*col3.
+Compute new col4: old col4 values: R1:0, R2:0, R3:1, R4:-13, R5:-6, R6:-7.
+col3 values: R1:0, R2:0, R3:1, R4:-9, R5:-4, R6:-5.
+So new col4: R1:0-0=0; R2:0-0=0; R3:1-1=0; R4:-13 - (-9) = -13+9 = -4; R5:-6 - (-4) = -6+4 = -2; R6:-7 - (-5) = -7+5 = -2.
+So col4 becomes [0,0,0,-4,-2,-2]^T.
+
+For col5: a_{3,5}=1. col5 = col5 - 1*col3. old col5: R1:0, R2:0, R3:1, R4:-12, R5:-5, R6:-8. Subtract col3: R1:0, R2:0, R3:1, R4:-9, R5:-4, R6:-5. New col5: R3:1-1=0; R4:-12-(-9)=-3; R5:-5-(-4)=-1; R6:-8-(-5)=-3; R1,R2:0. So col5: [0,0,0,-3,-1,-3]^T.
+
+For col6: a_{3,6} = -1. So col6 = col6 - (-1)*col3 = col6 + col3. old col6: R1:0, R2:0, R3:-1, R4:4, R5:1, R6:4. Add col3: R1:0, R2:0, R3:1, R4:-9, R5:-4, R6:-5. So new col6: R3:-1+1=0; R4:4+(-9)=-5; R5:1+(-4)=-3; R6:4+(-5)=-1; R1,R2:0. So col6: [0,0,0,-5,-3,-1]^T.
+
+Now after column ops, row3 becomes [0,0,1,0,0,0] because we zeroed out cols4,5,6: row3 col3=1, others 0. So row3 = [0,0,1,0,0,0].
+
+Now we also want to eliminate column3 entries below row3 (rows 4,5,6). We can use row operations: For rows i=4,5,6, we have entries in col3: R4 col3 = -9, R5 col3 = -4, R6 col3 = -5. We can subtract appropriate multiples of row3 from these rows to zero out col3. Since row3 has 1 at col3, we can do row_i = row_i - a_{i3} * row3, where a_{i3} is the entry in col3 for row i. This will zero out col3. Let's do that.
+
+Current rows (after column ops) we have:
+
+R1: [1,0,0,0,0,0]
+R2: [0,1,0,0,0,0]
+R3: [0,0,1,0,0,0]
+R4: [0,0,-9, -4, -3, -5]? Wait we need to update R4 after column ops: R4 originally was [0,0,-9, -13, -12, 4] but after column ops, we modified col4, col5, col6. So new R4 entries: col1=0, col2=0, col3=-9, col4=-4, col5=-3, col6=-5. Because we computed new col4: -4, col5: -3, col6: -5. So R4 = [0,0,-9,-4,-3,-5].
+R5: originally [0,0,-4,-6,-5,1]; after column ops: col4=-2, col5=-1, col6=-3. So R5 = [0,0,-4,-2,-1,-3].
+R6: originally [0,0,-5,-7,-8,4]; after column ops: col4=-2, col5=-3, col6=-1. So R6 = [0,0,-5,-2,-3,-1].
+
+Now perform row ops to zero col3 below pivot:
+
+For row4: a43 = -9. So row4 = row4 - (-9)*row3? Actually we want to zero out col3: row4 = row4 - a43 * row3 = row4 - (-9)*row3 = row4 + 9*row3. Since row3 = [0,0,1,0,0,0], adding 9*row3 adds 9 to col3 and 0 elsewhere. So row4 becomes: col3: -9+9=0; col4: -4+0=-4; col5: -3+0=-3; col6: -5+0=-5; others unchanged. So row4 = [0,0,0,-4,-3,-5].
+
+For row5: a53 = -4. So row5 = row5 - (-4)*row3 = row5 + 4*row3. Then row5: col3: -4+4=0; col4: -2+0=-2; col5: -1+0=-1; col6: -3+0=-3. So row5 = [0,0,0,-2,-1,-3].
+
+For row6: a63 = -5. So row6 = row6 + 5*row3: col3: -5+5=0; col4: -2; col5: -3; col6: -1. So row6 = [0,0,0,-2,-3,-1].
+
+Now after these row ops, the matrix becomes:
+
+R1: [1,0,0,0,0,0]
+R2: [0,1,0,0,0,0]
+R3: [0,0,1,0,0,0]
+R4: [0,0,0,-4,-3,-5]
+R5: [0,0,0,-2,-1,-3]
+R6: [0,0,0,-2,-3,-1]
+
+Now we have a 3x3 block in rows4-6, cols4-6. Let's denote that block C:
+
+C = 
+[ -4, -3, -5 ]
+[ -2, -1, -3 ]
+[ -2, -3, -1 ]
+
+Now we need to reduce this 3x3 block. Again, we can try to get a small pivot. Notice there are -1's: entry (5,5) = -1? Actually row5 col5 = -1. So we can swap rows/columns to bring a -1 to the top-left (4,4). Let's examine C:
+
+Rows (4,5,6) and columns (4,5,6). We can swap rows among 4-6 and columns among 4-6. Also we can multiply rows or columns by -1.
+
+Let's list C:
+
+Row4: [-4, -3, -5]
+Row5: [-2, -1, -3]
+Row6: [-2, -3, -1]
+
+We can see that row5 col5 = -1. Also row6 col6 = -1. So we can bring one of these to (4,4). Let's swap row5 with row4? That would put row5 at row4. Then we can multiply by -1 to get a 1 at (4,4). But careful: after swapping, the pivot may be at col4? We can also swap columns accordingly. Let's try to get a 1 at (4,4). Option: swap row4 and row5. Then row4 (new) = old row5 = [-2,-1,-3]. Multiply by -1 to get [2,1,3]. That gives 1 at col5? Not col4. To have pivot at col4, we also need to swap columns to bring the column containing 1 to col4. Since old row5 col5 = -1, if we bring that row to row4, then we need to bring col5 to col4. So we can swap col4 and col5. Let's do systematically.
+
+We can also directly use the -1 at (5,5) as pivot without swapping rows: we could treat it as pivot but it's at (5,5). But we want to reduce block, we could use current ordering. However, it might be easier to bring a 1 to (4,4). Since we can swap rows and columns, we can reorder the submatrix arbitrarily. Let's perform swaps:
+
+We want to move the -1 at (5,5) to (4,4). So swap row5 and row4 (rows 4 and 5) and then swap col5 and col4 (columns 4 and 5). But careful: swapping rows and columns will affect the entire matrix, but rows 1-3 and columns 1-3 are already diagonal with 1's, and they are zero in these rows/columns? Actually rows 1-3 have zeros in cols 4-6, and rows4-6 have zeros in cols1-3. So swapping rows within 4-6 and columns within 4-6 will not affect the diagonal 1's as they are separate. So it's fine.
+
+Let's do: first swap row4 and row5 (rows 4 and 5). Then we have:
+
+After swapping R4 and R5:
+
+R4 becomes old R5: [0,0,0,-2,-1,-3] (but note we have full rows, but the block part: col4=-2, col5=-1, col6=-3)
+R5 becomes old R4: [0,0,0,-4,-3,-5]
+
+R6 unchanged: [0,0,0,-2,-3,-1]
+
+Now swap column4 and column5 (cols 4 and 5). That will interchange col4 and col5. After swapping, the matrix (rows4-6, cols4-6) becomes:
+
+We need to compute new columns. Let's write the current submatrix C after row swap but before column swap:
+
+Rows4-6, cols4-6 (before column swap):
+Row4 (old R5): col4=-2, col5=-1, col6=-3
+Row5 (old R4): col4=-4, col5=-3, col6=-5
+Row6: col4=-2, col5=-3, col6=-1
+
+Now swap col4 and col5:
+
+New col4 = old col5: so row4 new col4 = -1, row5 new col4 = -3, row6 new col4 = -3.
+New col5 = old col4: row4 new col5 = -2, row5 new col5 = -4, row6 new col5 = -2.
+col6 unchanged.
+
+So after column swap, the submatrix becomes:
+
+Row4: [ -1, -2, -3 ]
+Row5: [ -3, -4, -5 ]
+Row6: [ -3, -2, -1 ]
+
+Now we have a -1 at (4,4). Multiply row4 by -1 to turn into 1: row4 = -row4 gives [1,2,3] (since -(-1)=1, -(-2)=2, -(-3)=3). So now row4: [1,2,3]. Then we can use this pivot 1 to eliminate other entries in column4 (rows5,6) and in row4 columns5,6.
+
+Current matrix after these operations (row4 multiplied by -1):
+
+R4: [0,0,0,1,2,3] (since we have zeros in cols1-3)
+R5: [0,0,0,-3,-4,-5]
+R6: [0,0,0,-3,-2,-1]
+
+Now use row operations to zero column4 below pivot: For row5: a54 = -3, so row5 = row5 - (-3)*row4 = row5 + 3*row4. For row6: a64 = -3, so row6 = row6 + 3*row4.
+
+Compute new row5: row5 + 3*row4 = [-3+3*1=0, -4+3*2=-4+6=2, -5+3*3=-5+9=4]. So row5 becomes [0,0,0,0,2,4].
+Row6: row6 + 3*row4 = [-3+3=0, -2+6=4, -1+9=8]. So row6 becomes [0,0,0,0,4,8].
+
+Now column4 has pivot 1 at row4, zeros elsewhere. Now use column operations to zero row4 entries in columns5 and 6. Row4 entries: col5=2, col6=3. So we do col5 = col5 - 2*col4, col6 = col6 - 3*col4. Since col4 vector: row1:0, row2:0, row3:0, row4:1, row5:0, row6:0 (after row ops). So subtracting multiples of col4 only affects row4 entry. So we can simply set row4 col5=0, row4 col6=0. So after these column ops, row4 becomes [1,0,0] in cols4-6. So new matrix:
+
+R4: [0,0,0,1,0,0]
+R5: [0,0,0,0,2,4]
+R6: [0,0,0,0,4,8]
+
+Now we have a 2x2 block in rows5-6, cols5-6: 
+[2,4; 4,8]. Need to reduce this to diagonal form. Compute Smith normal form of this 2x2 matrix.
+
+Matrix D = [[2,4],[4,8]]. We can compute its invariant factors. The gcd of all entries is 2, so d1 = 2? But we need to consider divisibility. Actually the Smith normal form of a 2x2 matrix with entries a,b,c,d will be diag(g, lcm/g?) Actually for a 2x2, the invariant factors are d1 = gcd of all entries, and d2 = |det|/d1 if det !=0. Here det = 2*8 - 4*4 = 16 - 16 = 0. So the matrix is singular. So the rank is 1? Actually the matrix has rank 1 because rows are multiples: row6 = 2*row5? Row5 = [2,4]; row6 = [4,8] = 2*[2,4]. So rank=1. So invariant factors: d1 = gcd(2,4,4,8) = 2, and d2 = 0 (since determinant zero, the second invariant factor should be 0 because the gcd of all 2x2 minors is 0? Actually for a matrix of rank r, the invariant factors d1,...,dr are positive, and dr+1,...=0. So here rank=1, so we should have d1 = gcd of all entries = 2, and then d2 = 0. But we also need to consider that the Smith normal form requires d_i dividing d_{i+1}. For a 2x2 block, if the matrix is singular, we would have diag(d1,0) with d1 >0. So the diagonal entries are 2 and 0. However, recall that we are constructing the full 6x6 Smith normal form; we already have d1=1, d2=1, d3=1 from previous steps? Actually we have three 1's on diagonal so far. Then we have this 2x2 block that should yield d4 and d5? Wait we have 6x6 matrix; we have already reduced rows 1-3 and columns 1-3 to 1's, and we have rows 4-6 and columns 4-6 not yet fully diagonal. The current submatrix is 3x3? Actually after operations, we have R4, R5, R6 and cols4,5,6. We have R4 = [1,0,0] (pivot at (4,4)=1). Then we have a 2x2 block at rows5-6, cols5-6: [[2,4],[4,8]]. We need to reduce this 2x2 to Smith form. That will produce d5 and d6 perhaps? But note we already have d4 = 1? Actually we have a 1 at (4,4), so that's the fourth diagonal entry. So d4 = 1? But we need the invariant factors d1,...,d6 with divisibility. So far we have d1=1, d2=1, d3=1, d4=1? But we haven't yet ensured divisibility: d4 must divide d5, and d5 divides d6. If d4=1, that's fine as it divides anything. But we need to compute d5 and d6 from the 2x2 block. However, note that the 2x2 block is not yet in Smith form; we still need to reduce it. Let's reduce it.
+
+We have submatrix B2 = [[2,4],[4,8]]. Perform row/column operations to get Smith form. Since it's singular, we expect diag(2,0). But we also need to consider that there may be a zero at the end. However, the entire 6x6 matrix may have rank less than 6. Let's compute the rank of original matrix? We can compute determinant later, but likely it's singular. So we may have zeros at the end. Our goal: find invariant factors d1,...,d6 (some may be zero). They should be non-negative, with d_i dividing d_{i+1} and zeros last.
+
+Now reduce B2: We have rows5-6, cols5-6. We can use gcd operations. First, we can try to get a 1 or small number as pivot. The gcd of all entries is 2. So we can use column operations to reduce. For instance, we can subtract 2*col5 from col6? Actually we want to get a 2 as first pivot. Let's do:
+
+B2 = 
+[2, 4]
+[4, 8]
+
+We can subtract 2*col5 from col6: col6 = col6 - 2*col5. Then col6 becomes: [4-2*2=0, 8-2*4=0]. So B2 becomes [[2,0],[4,0]]. Then we can use row operations: subtract 2*row5 from row6? row6 = row6 - 2*row5 gives [4-2*2=0, 0-2*0=0]. So we get [[2,0],[0,0]]. So the Smith normal form of this 2x2 is diag(2,0). So d5 = 2, d6 = 0? But careful: we already have d4=1, so the diagonal entries for the whole matrix would be: (1,1,1,1,2,0). That satisfies divisibility: 1|1|1|1|2|0? But 2 divides 0? Typically we require d_i dividing d_{i+1} for all i, and zeros come last. Usually the invariant factors are defined for the nonzero ones, and then zeros. So 2 divides 0 is true (0 is divisible by any integer? Actually 0 is a multiple of any integer, since 0 = k*0 for any k, but the divisibility condition is d_i | d_{i+1}. For d_i >0 and d_{i+1}=0, we consider that 0 is divisible by any integer? Usually in definition, if d_{i+1}=0 then d_i can be any positive integer? Actually the condition is that d_i divides d_{i+1} for each i. Since 0 is a multiple of any integer (0 = d_i * 0), yes d_i divides 0. So it's fine. So the invariant factors would be 1,1,1,1,2,0. But are we sure that the first four are all 1? We have d1=1, d2=1, d3=1, d4=1. But we need to check if d4 should be 1? Because we got a 1 at (4,4) after reduction. However, we need to ensure that the reduction we performed is correct and that we haven't missed any factors that could be greater than 1 earlier. For instance, could d2 be greater than 1? Initially we had a 1 at (1,1), then we got a 1 at (2,2), then at (3,3), then at (4,4) all became 1. So we have four 1's. But we must verify that the gcd of all 2x2 minors is 1, etc. Let's check determinantal divisors to confirm.
+
+We have computed D1 = gcd of all entries of original matrix. Let's compute D1: entries include 2,6,3,4,3,-3,... many numbers. gcd of all entries? entries: 2,6,3,4,3,-3,2,5,2,2,2,-3,1,5,3,4,1,-2,6,14,6,7,7,-7,0,3,2,3,-1,0,3,7,4,5,3,-2. The smallest absolute values are 1 (there is a 1 in row3 col1). So gcd is 1. So D1=1 => d1=1.
+
+Now D2 = gcd of all 2x2 minors. Since we have a 1 in the matrix, it's likely D2=1 as well. But we need to be careful: the presence of a 1 ensures that any 2x2 minor that includes that 1 and another entry can produce a gcd that divides that entry? Actually if there is a 1 somewhere, we can take a 2x2 minor that includes that 1 and any other entry, giving a minor equal to that other entry (up to sign). Since the gcd of all entries is 1, we might argue D2=1. But it's plausible that D2=1. So d2=1.
+
+Similarly, D3: existence of a 1 in a 3x3 minor? Possibly. But we can also trust our reduction if done correctly. However, we must ensure that we didn't accidentally create a factor that is not 1 for d4? For instance, after reducing the first three rows and columns, we had a 3x3 block that we reduced to a 1 and then a 2x2 block. That seems to yield d4=1. But we should verify that the 3x3 block we reduced (rows4-6, cols4-6) originally had entries [-4,-3,-5; -2,-1,-3; -2,-3,-1]. The gcd of all entries in that block? gcd(4,3,5,2,1,3,2,3,1) = 1. So indeed the first invariant factor of that block should be 1, which we obtained. Then after reducing to pivot 1, we got a 2x2 block with entries that had gcd=2. That suggests the next invariant factor is 2. So d5=2. Then the final invariant factor for the 6x6 would be 0 because the matrix is singular? Let's check if the original matrix is singular. We can compute its determinant quickly? Possibly determinant is 0. Since we got a zero at the end, it suggests the matrix has rank 5. Let's verify by computing rank or determinant. We can compute determinant of original A using software? But we can also compute from our reduction: after reduction, we have diagonal entries 1,1,1,1,2,0. The product of nonzero diagonal entries is 2, which is the absolute value of the product of all invariant factors? But the determinant of the original matrix, up to sign, is the product of the invariant factors if the matrix is square? Actually for a square matrix, the determinant is the product of the invariant factors times a unit (±1). But if the matrix is singular, the product includes zeros, so determinant = 0. So our reduction yields determinant 0, which is plausible. Let's test by computing determinant of original matrix manually? Might be messy but we can do symbolic checks. Alternatively, we can compute the Smith normal form by a more systematic approach using Python mental? Since we are not allowed to use external tools, we can compute the determinantal divisors to confirm.
+
+Another way: compute D5 (gcd of all 5x5 minors) and D6 (determinant). Since D6 = |det A| if non-zero, else 0. If det A = 0, then D6=0, and the rank is less than 6. Then d6 = D6/D5 = 0/D5 =0. So that matches. So we need to find D5. If D5 = 2, then d5 = D5/D4, and D4 would be? D4 = d1 d2 d3 d4 = 1*1*1*1 =1, so d5 = D5. So we need to verify that the gcd of all 5x5 minors is 2. That seems plausible. Let's check quickly: Is there a 5x5 minor that is not divisible by 2? Possibly the whole matrix has entries with some parity? The original matrix entries: many even numbers. The gcd of all entries is 1, but the determinant might be even. Let's compute the determinant modulo 2. Over Z/2Z, the matrix becomes:
+
+A mod2:
+[0,0,1,0,1,1] because 2->0,6->0,3->1,4->0,3->1,-3->1 (since -3 mod2 = 1)
+[0,1,0,0,0,1] 2->0,5->1,2->0,2->0,2->0,-3->1
+[1,1,1,0,1,0] 1->1,5->1,3->1,4->0,1->1,-2->0
+[0,0,0,1,1,1] 6->0,14->0,6->0,7->1,7->1,-7->1
+[0,1,0,1,1,0] 0->0,3->1,2->0,3->1,-1->1,0->0
+[1,1,0,1,1,0] 3->1,7->1,4->0,5->1,3->1,-2->0
+
+So mod2 matrix:
+R1: [0,0,1,0,1,1]
+R2: [0,1,0,0,0,1]
+R3: [1,1,1,0,1,0]
+R4: [0,0,0,1,1,1]
+R5: [0,1,0,1,1,0]
+R6: [1,1,0,1,1,0]
+
+We can compute its rank over GF(2). If the rank is 6, then determinant is odd, so det A would be odd, and then D6 would be odd, possibly 1? But our reduction gave a zero, so det A must be 0. Over GF(2), if the matrix is singular, then det A is even, but could be 0 mod2 if determinant is even? Actually if determinant is even, it could be 0 mod2. So let's see if the matrix over GF(2) is singular. Compute determinant mod2. We can compute using row reduction mod2.
+
+Write matrix mod2:
+
+R1: 0 0 1 0 1 1
+R2: 0 1 0 0 0 1
+R3: 1 1 1 0 1 0
+R4: 0 0 0 1 1 1
+R5: 0 1 0 1 1 0
+R6: 1 1 0 1 1 0
+
+Let's row reduce:
+
+Swap R1 and R3 to get pivot at (1,1): new R1 = [1,1,1,0,1,0]; R3 becomes old R1 [0,0,1,0,1,1]; others unchanged.
+
+Now eliminate column1 below: R6 has 1 at col1, so R6 = R6 + R1 (since mod2, addition). So R6 becomes: [1+1=0, 1+1=0, 0+1=1, 1+0=1, 1+1=0, 0+0=0] => [0,0,1,1,0,0]. Others R2,R4,R5 have 0 in col1. So matrix:
+
+R1: [1,1,1,0,1,0]
+R2: [0,1,0,0,0,1]
+R3: [0,0,1,0,1,1]
+R4: [0,0,0,1,1,1]
+R5: [0,1,0,1,1,0]
+R6: [0,0,1,1,0,0]
+
+Now column2: pivot at (2,2) using R2: it has 1 at col2. Use to eliminate col2 in other rows: R5 has 1 at col2, so R5 = R5 + R2: R5 becomes [0,1+1=0,0+0=0,1+0=1,1+0=1,0+1=1] -> [0,0,0,1,1,1]. Also R1 has 1 at col2, so R1 = R1 + R2: [1,1+1=0,1+0=1,0+0=0,1+0=1,0+1=1] -> [1,0,1,0,1,1]. Others R3,R4,R6 have 0 in col2. Now matrix:
+
+R1: [1,0,1,0,1,1]
+R2: [0,1,0,0,0,1]
+R3: [0,0,1,0,1,1]
+R4: [0,0,0,1,1,1]
+R5: [0,0,0,1,1,1] (since we got [0,0,0,1,1,1])
+R6: [0,0,1,1,0,0]
+
+Now column3: pivot at (3,3) using R3: [0,0,1,0,1,1]. Use to eliminate col3 in other rows: R1 has 1 at col3: R1 = R1 + R3: [1,0,1+1=0,0+0=0,1+1=0,1+1=0] -> [1,0,0,0,0,0]. R6 has 1 at col3: R6 = R6 + R3: [0,0,1+1=0,1+0=1,0+1=1,0+1=1] -> [0,0,0,1,1,1]. Also R5? R5 has 0 at col3, R4 0, R2 0. So matrix becomes:
+
+R1: [1,0,0,0,0,0]
+R2: [0,1,0,0,0,1]
+R3: [0,0,1,0,1,1]
+R4: [0,0,0,1,1,1]
+R5: [0,0,0,1,1,1]
+R6: [0,0,0,1,1,1]
+
+Now column4: we have rows4-6 with entries in col4: R4=1, R5=1, R6=1. Use R4 as pivot? But note R4, R5, R6 are identical: [0,0,0,1,1,1]. So we can zero out R5 and R6 using R4: R5 = R5 + R4 -> [0,0,0,0,0,0]; R6 = R6 + R4 -> [0,0,0,0,0,0]. Then we have:
+
+R1: [1,0,0,0,0,0]
+R2: [0,1,0,0,0,1]
+R3: [0,0,1,0,1,1]
+R4: [0,0,0,1,1,1]
+R5: [0,0,0,0,0,0]
+R6: [0,0,0,0,0,0]
+
+Now rank over GF(2) is 4. So the matrix mod2 has rank 4, meaning that the original determinant is even? Actually if the rank over GF(2) is 4, then the determinant is 0 mod2 (since a full rank 6 would give non-zero determinant mod2). But also it shows that the matrix is singular over integers? Actually if the rank modulo 2 is less than 6, it doesn't necessarily imply the rank over integers is less than 6; it could be that the determinant is even but non-zero. However, if the determinant is even, it could still be non-zero. But we saw that modulo 2, the matrix has rank 4, meaning that all 6x6 minors (the determinant) are divisible by 2? Actually the determinant over integers mod2 is the determinant mod2. If the matrix mod2 is singular (rank <6), then det ≡ 0 mod2, so det is even. But it could be non-zero even integer. However, we also had a zero row after reduction mod2, which indicates that there is a linear dependence mod2. But that doesn't guarantee linear dependence over integers; it could be that the determinant is a multiple of 2 but non-zero. But our Smith reduction gave a zero at the end, meaning the matrix is singular over integers (determinant 0). So we need to check if the original matrix is indeed singular. Let's compute the determinant quickly using maybe row reduction or properties. The matrix is 6x6; we can compute its determinant using our Smith reduction: since we applied invertible integer row and column operations, the determinant of the transformed diagonal matrix is product of diagonal entries times ±1. If the diagonal entries are 1,1,1,1,2,0, then the determinant is 0. Thus the original determinant must be 0 because the operations preserve determinant up to sign (since row/column swaps change sign, but product of units). So the original determinant is 0. So the matrix is singular. So our Smith form includes a zero. Good.
+
+Now we have d1=1, d2=1, d3=1, d4=1, d5=2, d6=0. But we need to confirm that d5 is indeed 2, not something else like 1? Because we got a 2 from the 2x2 block. But the gcd of all entries of that block was 2. However, could there be some factor from the earlier steps that would make d5 larger? For instance, when we reduced the 3x3 block, we got a 1 and then a 2x2 with gcd 2. That suggests the invariant factors of the 3x3 block are 1, 2, 0? Or 1, 2? Actually the 3x3 block originally had rank 2? We got after reduction: one pivot=1, then a 2x2 block with gcd 2 and determinant 0, so the Smith form of that 3x3 block would be diag(1,2,0). So that matches our full matrix's d4=1, d5=2, d6=0. So indeed the invariant factors of the entire matrix are 1,1,1,1,2,0? But wait, we have already three 1's from the first three rows and columns. Then the fourth is 1, so that makes four 1's. That would mean the Smith form is diag(1,1,1,1,2,0). But is it possible that the first three 1's are actually 1? Yes. However, note: The invariant factors are ordered such that d1 divides d2 divides d3... So having four 1's is fine.
+
+But before finalizing, we should double-check our reduction steps to ensure no mistakes. It's easy to make arithmetic errors. Let's verify each step carefully, perhaps recompute the Smith normal form using a more systematic approach: compute the determinantal divisors D1,...,D6. Since we have the matrix, we can compute D1=1. D2: need gcd of all 2x2 minors. Since there is a 1, D2=1. D3: We need gcd of all 3x3 minors. Might also be 1. D4: gcd of all 4x4 minors, could be 1? Possibly. D5: gcd of all 5x5 minors, we suspect 2. Let's test some 5x5 minor to see if it is odd or even. Since we have many even entries, 5x5 minors might all be even? Could there be a 5x5 minor that is odd? If there is, then D5=1. So we need to check if there exists a 5x5 submatrix with determinant odd. Because if any 5x5 minor is odd, then D5 would be 1. Our reduction suggested D5=2, so we need to confirm that all 5x5 minors are even. Let's test a specific 5x5 minor. Maybe the matrix after row/column ops we got a diagonal with 1,1,1,1,2,0. So the product of the first five invariant factors is D5 = d1*d2*d3*d4*d5 = 1*1*1*1*2 = 2. So D5=2. So indeed the gcd of all 5x5 minors is 2. So we need to ensure that there is no 5x5 minor that is odd. Let's try to compute one 5x5 minor that might be odd. Since the matrix contains a 1, we might be able to form a 5x5 minor that includes that 1 and other entries such that the determinant is odd. For example, take the submatrix formed by deleting row3 and column1? But row3 col1 is 1. Let's try a specific 5x5: delete row3 and column3? Not sure. We can test using modular arithmetic mod2. Over GF(2), if we can find a 5x5 submatrix that is invertible (non-singular) over GF(2), then its determinant mod2 is 1, meaning the minor is odd. So if the rank over GF(2) is at least 5, then there exists a 5x5 invertible submatrix. But we computed the rank over GF(2) of the whole 6x6 matrix as 4. That means all 6x6 determinant is 0, and also all 5x5 minors? Actually if the rank over GF(2) is 4, then any 5x5 submatrix has rank at most 4, so its determinant is zero mod2. Therefore, all 5x5 minors are even. So indeed D5 is even. And D5 may be exactly 2, or a multiple of 2. Could be 2, 4, etc. But from our Smith reduction we got d5=2. So D5=2 is plausible. To confirm D5 is exactly 2, we need to show that there is a 5x5 minor that is exactly ±2 (i.e., not a multiple of 4). That would give D5=2. Our reduction suggests that after reduction we have a 2, so the gcd of 5x5 minors should be 2. So it's consistent.
+
+Now we should also check D4. D4 = product of first four invariant factors = 1*1*1*1 =1. So all 4x4 minors have gcd 1. That seems plausible because we have many 1's. So the invariant factors are: d1=1, d2=1, d3=1, d4=1, d5=2, d6=0.
+
+But wait, the Smith normal form diagonal entries are usually non-negative and include zeros at the end. So the list is: 1,1,1,1,2,0.
+
+However, we must double-check if there might be any additional factor: Could d5 be something like 1? That would mean the matrix has rank 6? No because determinant 0. Or d5 could be 1 and d6=0? But then d1..d5=1,1,1,1,1,0 would imply D5=1, meaning all 5x5 minors have gcd 1. But we saw that over GF(2) all 5x5 minors are even, so D5 at least 2. So can't be 1.
+
+Could d5 be 2 and d6=0, but also maybe d4 is 2? That would give D4=2, but we think D4=1. Let's test D4 by computing a specific 4x4 minor that is odd. For instance, take the submatrix consisting of rows 1-4 and columns 1-4? The 4x4 minor from the original matrix? Original A rows 1-4, columns 1-4:
+[2,6,3,4; 2,5,2,2; 1,5,3,4; 6,14,6,7]. Compute its determinant? Could be odd? Let's try to compute mod2: mod2 this submatrix:
+[0,0,1,0; 0,1,0,0; 1,1,1,0; 0,0,0,1]. Determinant mod2? Compute: we can compute quickly: The matrix mod2:
+row1: 0,0,1,0
+row2: 0,1,0,0
+row3: 1,1,1,0
+row4: 0,0,0,1
+We can compute determinant by expansion. Since row4 has only col4=1, det = det of 3x3 from rows1-3, cols1-3 times 1. So det3 = det of [[0,0,1],[0,1,0],[1,1,1]] mod2. Compute: det = 0*det[[1,0],[1,1]] -0*det[[0,0],[1,1]] +1*det[[0,1],[1,1]] = 1*(0*1 - 1*1) = -1 ≡ 1 mod2. So determinant mod2 = 1. Thus the 4x4 minor is odd. So D4 is odd, hence 1. So that confirms D4=1. Good.
+
+Now D5: we need to see if any 5x5 minor is not a multiple of 4? Could be 2. Let's test a 5x5 minor that might be 2. For instance, consider deleting row4 and column4? Or maybe the 5x5 minor formed by rows 1-5 and columns 1-5 (excluding row6, col6). Let's compute its determinant maybe? That submatrix is:
+Rows1-5, cols1-5:
+[2,6,3,4,3]
+[2,5,2,2,2]
+[1,5,3,4,1]
+[6,14,6,7,7]
+[0,3,2,3,-1]
+We can compute its determinant mod2: mod2, it becomes:
+[0,0,1,0,1]
+[0,1,0,0,0]
+[1,1,1,0,1]
+[0,0,0,1,1]
+[0,1,0,1,1]
+We can compute determinant mod2. Let's compute using row reduction mod2. Write matrix:
+
+R1: 0,0,1,0,1
+R2: 0,1,0,0,0
+R3: 1,1,1,0,1
+R4: 0,0,0,1,1
+R5: 0,1,0,1,1
+
+Swap R1 and R3 to get pivot: new R1 = [1,1,1,0,1]; R3 becomes [0,0,1,0,1]. Then eliminate column1: only R1 has 1; others have 0 in col1. So matrix:
+R1: [1,1,1,0,1]
+R2: [0,1,0,0,0]
+R3: [0,0,1,0,1]
+R4: [0,0,0,1,1]
+R5: [0,1,0,1,1]
+
+Now column2: pivot at R2 (1 at col2). Use to eliminate other rows: R1 has 1 at col2: R1 = R1 + R2 -> [1,0,1,0,1]; R5 has 1 at col2: R5 = R5 + R2 -> [0,0,0,1,1]. So now:
+R1: [1,0,1,0,1]
+R2: [0,1,0,0,0]
+R3: [0,0,1,0,1]
+R4: [0,0,0,1,1]
+R5: [0,0,0,1,1]
+
+Now column3: pivot at R3 (1 at col3). Use to eliminate R1: R1 = R1 + R3 -> [1,0,0,0,0]. Others have 0 in col3. So:
+R1: [1,0,0,0,0]
+R2: [0,1,0,0,0]
+R3: [0,0,1,0,1]
+R4: [0,0,0,1,1]
+R5: [0,0,0,1,1]
+
+Now column4: pivot at R4 (1 at col4). Use to eliminate R5: R5 = R5 + R4 -> [0,0,0,0,0]. So R5 becomes zero row. Then we have:
+R1: [1,0,0,0,0]
+R2: [0,1,0,0,0]
+R3: [0,0,1,0,1]
+R4: [0,0,0,1,1]
+R5: [0,0,0,0,0]
+
+So the rank over GF(2) is 4, determinant mod2 = 0. So this 5x5 minor is even. But we need to know if it is exactly 2 mod4? Possibly 2, but could be 0 mod4? We can compute the exact determinant of this 5x5 minor using integer arithmetic? That might be tedious. But our reduction gave d5=2, so we expect that the gcd of all 5x5 minors is 2, meaning there exists some 5x5 minor that is exactly ±2, and all are multiples of 2. Let's try to find a 5x5 minor that might be ±2. Perhaps the submatrix after deleting row3 and column3? But we can rely on the Smith reduction we did. Let's re-check the reduction steps to ensure no mistake that could cause an extra factor. Our reduction seemed systematic. However, we might have made an arithmetic mistake in the earlier steps, particularly when we reduced the 3x3 block. Let's re-do the reduction of the 3x3 block more carefully, verifying each operation.
+
+We had after reducing first three rows/cols to 1's, we got a 3x3 block C = 
+[ -4, -3, -5 ]
+[ -2, -1, -3 ]
+[ -2, -3, -1 ]
+
+Then we performed row swaps and column swaps to bring a 1 to the top-left. We ended up with d4=1 and then a 2x2 block [[2,4],[4,8]]. But we should verify that the 2x2 block is indeed that. Let's re-reduce C from scratch.
+
+C = 
+Row4: -4, -3, -5
+Row5: -2, -1, -3
+Row6: -2, -3, -1
+
+I'll denote them as rows A, B, C for clarity.
+
+We want to compute its Smith normal form. Compute gcd of all entries: gcd(4,3,5,2,1,3,2,3,1) = 1. So first invariant factor is 1. So we can reduce to get a 1. There is a 1 in the matrix: entry (5,5) = -1 (row5 col5 = -1). So we can use that as pivot. Let's try to bring it to top-left without messing up the zeros we already have in other parts. Since the block is isolated, we can swap rows and columns within the block. Bring row5 to row4 and col5 to col4? Actually we want the pivot at (4,4). So swap row4 and row5: swap rows 4 and 5. Then swap col4 and col5: swap columns 4 and 5. Then multiply the new row4 by -1. Let's do that step by step.
+
+Original C (rows4-6, cols4-6):
+C:
+row4: [-4, -3, -5]
+row5: [-2, -1, -3]
+row6: [-2, -3, -1]
+
+Swap row4 and row5:
+new row4 = old row5: [-2, -1, -3]
+new row5 = old row4: [-4, -3, -5]
+row6 unchanged: [-2, -3, -1]
+
+Now swap col4 and col5: This swaps the first two columns of this block. So after swapping columns, the coordinates: originally columns are (col4, col5, col6). Swapping col4 and col5:
+new col4 = old col5, new col5 = old col4, col6 unchanged.
+So row4: old row4 = [-2, -1, -3]; after column swap, row4 becomes: [old col5 entry: -1, old col4 entry: -2, col6: -3] -> [-1, -2, -3]
+row5: old row5 = [-4, -3, -5]; becomes: [-3, -4, -5]
+row6: old row6 = [-2, -3, -1]; becomes: [-3, -2, -1]
+Now multiply row4 by -1: row4 = [1,2,3]. So we have:
+row4: [1,2,3]
+row5: [-3,-4,-5]
+row6: [-3,-2,-1]
+
+Now we use the pivot 1 at (4,4) to eliminate column4 below: For row5: entry = -3, so row5 = row5 + 3*row4 = [-3+3, -4+6, -5+9] = [0,2,4]. For row6: entry = -3, so row6 = row6 + 3*row4 = [-3+3, -2+6, -1+9] = [0,4,8]. So we get:
+row4: [1,2,3]
+row5: [0,2,4]
+row6: [0,4,8]
+Now use column operations to zero row4 columns5 and6: col5 = col5 - 2*col4, col6 = col6 - 3*col4. Since col4 is [1,0,0]^T after row operations? Actually col4 vector: row4=1, row5=0, row6=0. So subtracting multiples only affects row4. So we get row4: [1,0,0]. So now we have:
+row4: [1,0,0]
+row5: [0,2,4]
+row6: [0,4,8]
+Now the 2x2 block is [[2,4],[4,8]]. Good.
+
+Now reduce the 2x2: we need to get Smith form of M = [[2,4],[4,8]]. Compute gcd of all entries = 2. So d1 = 2. Then compute determinant = 2*8 - 4*4 = 16-16=0, so d2 = 0. So Smith form of M is diag(2,0). But note: In the full matrix, the block is at rows5-6, cols5-6. So the diagonal entries will be: row5 col5 = 2, row6 col6 = 0? But we need to ensure that after further operations we can get the zeros and the 2 on diagonal. We already performed column operations to reduce M to diag(2,0). Let's do it: From M = [[2,4],[4,8]]. We can subtract 2*col5 from col6: col6 = col6 - 2*col5 gives [4-2*2=0, 8-2*4=0]. So M becomes [[2,0],[4,0]]. Then subtract 2*row5 from row6: row6 = row6 - 2*row5 gives [4-2*2=0, 0-2*0=0]. So we get [[2,0],[0,0]]. So final diagonal entries: (2,0). So the full matrix diagonal becomes: (1,1,1,1,2,0). So the Smith normal form is diag(1,1,1,1,2,0).
+
+But is that the final Smith normal form? Usually the Smith normal form requires that the diagonal entries be non-negative and d_i divides d_{i+1}. Here 1 divides 1, 1 divides 1, 1 divides 1, 1 divides 2, 2 divides 0. That's fine. However, note that we have four 1's. Could there be a possibility that the invariant factors are 1,1,1,2,2,0? Because sometimes when we compute determinantal divisors, D4 might be 2? But we already found a 4x4 minor that is odd, so D4=1. So four 1's is correct.
+
+But wait: The rank of the matrix might be 5, so we have 5 nonzero invariant factors? Actually we have 5 nonzero: 1,1,1,1,2. That's 5 nonzero, and then zero. So rank=5. That seems plausible.
+
+We should also check D5 again: Since D5 = d1*d2*d3*d4*d5 = 1*1*1*1*2 = 2, so gcd of all 5x5 minors is 2. That is consistent with our mod2 analysis: all 5x5 minors are even. But is there a 5x5 minor that is exactly 2, not a multiple of 4? We can try to find one from our reduced matrix: In the reduced form, the 5x5 minor formed by deleting row6 and column6 gives a diagonal matrix diag(1,1,1,1,2) whose determinant is 2. But that submatrix is not a submatrix of the original? However, since we applied invertible row and column operations to A, the gcd of 5x5 minors is invariant up to sign? Actually, the determinantal divisors are invariant under unimodular transformations. So if in the Smith form, the 5x5 principal minor (taking first 5 rows and columns) is 2, then there exists a 5x5 minor in the original matrix that is ±2. So D5=2 is correct. So our answer is 1,1,1,1,2,0.
+
+However, we must ensure that the final diagonal entries are in non-decreasing order and non-negative. 0 is last. So the list is 1,1,1,1,2,0. Usually the Smith normal form is given with d_i >=0 and d_i divides d_{i+1}. So 0 at the end is fine. Some definitions may require positive entries and then zeros; but here we have zeros. So answer: 1,1,1,1,2,0.
+
+But wait: Could there be a possibility that the invariant factors are 1,1,1,2,2,0? Let's double-check D4. We computed a 4x4 minor from rows1-4, cols1-4 gave odd determinant. That's one 4x4 minor that is odd, so D4 must be 1. So d4 must be 1 (since D4 = d1 d2 d3 d4 = 1*1*1*d4 = d4). So d4=1. So the fourth invariant factor is 1. So we have four 1's.
+
+Now, could d3 be something else? D3 = d1 d2 d3 = 1*1*d3 = d3. Since there is a 3x3 minor that is odd? Likely. Let's verify quickly: take the 3x3 submatrix from rows1-3, cols1-3: original A rows1-3, cols1-3: [[2,6,3],[2,5,2],[1,5,3]]. Compute its determinant? mod2: [[0,0,1],[0,1,0],[1,1,1]] determinant mod2 as earlier? Actually we computed a 3x3 earlier for the 4x4 minor gave determinant 1 mod2. That 3x3 from rows1-3, cols1-3 is the top-left 3x3. Its determinant mod2: same as earlier? The matrix mod2: row1: 0,0,1; row2:0,1,0; row3:1,1,1. Determinant = 0*det[[1,0],[1,1]] -0*det[[0,0],[1,1]] +1*det[[0,1],[1,1]] = 1*(0*1-1*1) = -1 ≡1 mod2. So odd. So D3=1, d3=1. So three 1's.
+
+Now d2: D2 = gcd of 2x2 minors. Since there is a 1 in the matrix, D2=1, so d2=1. d1=1. So indeed four 1's. So our Smith form is correct.
+
+Thus the invariant factors: 1,1,1,1,2,0.
+
+We should present them as a comma-separated list: 1,1,1,1,2,0.
+
+But note: Smith normal form sometimes is defined with d_i positive for i <= rank, and zeros after. So we can also write 1,1,1,1,2,0.
+
+Thus final answer: 1,1,1,1,2,0.
+
+I'll output that.

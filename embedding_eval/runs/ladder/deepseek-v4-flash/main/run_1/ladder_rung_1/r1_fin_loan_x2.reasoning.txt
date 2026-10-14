@@ -1,0 +1,657 @@
+We need to track the loan balance month by month from start (month 1 start balance = 50586.54) through month 84 end. There are various interest rate changes and extra payments at specific months. We must follow the process: each month, compute interest = balance at start * monthly rate (rounded to nearest cent, half-up), add interest to balance, subtract regular payment of 496, then subtract any extra prepayment scheduled for that month (after regular payment). The resulting balance is the start of next month. The extra payments occur at the end of the month after regular payment. Note: "at the end of month X" means after step 2 (interest and regular payment) and then extra payment is subtracted. So for month X, after computing interest and subtracting regular, we also subtract extra if scheduled.
+
+We have list of events: 
+- End of month 23: extra $2366.00.
+- Starting month 37: rate changes to 0.65% (so for month 37 onward, until further change, use that rate. Note: rate changes apply to the interest calculation for that month. So for month m, the rate in effect is the one that applies starting that month. For example, starting month 37 means for month 37, use 0.65% when computing interest.
+- End of month 41: extra $568.79
+- End of month 48: extra $1198.94
+- End of month 49: extra $1568.99
+- End of month 52: extra $1725.00
+- Starting month 53: rate becomes 0.55%
+- Starting month 57: rate becomes 0.65%
+- Starting month 61: rate becomes 0.75%
+- End of month 72: extra $2273.41
+- End of month 73: extra $688.00
+- Starting month 75: rate becomes 0.65%
+- Starting month 76: rate becomes 0.75%
+- End of month 82: extra $1784.00
+
+We need balance at end of month 84. That is after step 3 of month 84. So we will simulate month by month from month 1 to month 84.
+
+We'll need to keep track of the balance. The initial balance B0 = 50586.54 at start of month 1. Let's denote B_{start} for each month. For month i, interest = round(B_{start} * r_i, 2) where r_i is monthly rate in decimal. Then B_after_interest = B_start + interest. Then subtract regular payment 496: B_after_regular = B_after_interest - 496. Then if extra payment E_i is scheduled for that month, subtract it: B_next_start = B_after_regular - E_i. Note: extra payments are only made at specified months. For months with no extra, E_i=0.
+
+We'll do this from i=1 to 84. Since many months, we need to do systematic calculations. Let's create a spreadsheet mentally or programmatically. Since we are text-based, we'll do step-by-step but can group months with constant rate and no extra payments to simplify using amortization formulas? But because rounding introduces small errors, we need to simulate exactly with rounding each month. However, we can do manual calculations with careful rounding, maybe using a systematic approach: For a series of months with constant rate and no extra payments, the balance evolves as: B_{next} = B * (1+r) - P, but with rounding each month: B_{next} = round(B*(1+r), 2) - P? Actually interest is rounded, then added, then subtract P, so it's round(B*r) + B - P, which is B + round(B*r) - P. So it's not exactly B*(1+r)-P because of rounding. But rounding to nearest cent is small, we can simulate with careful arithmetic.
+
+Given many months (84), manual simulation might be tedious but we can do it with careful step-by-step. Perhaps we can use programming-like approach in mind. Since I'm an AI, I can simulate in my reasoning step by step, but I need to be careful not to make arithmetic mistakes. Let's try to do it systematically.
+
+We'll denote B_i = balance at start of month i. For i=1, B1=50586.54. For each month we compute interest, then balance after interest and regular, then if extra.
+
+Let's list all months with interest rate changes and extra payments:
+
+Months 1-36: rate = 0.70% (0.007). Because starting month 37 changes to 0.65%. So from month 1 to 36 inclusive, rate=0.007.
+But there is extra at end of month 23 (i=23), so that month has extra. Also note: Starting month 37 means for month 37 the rate is 0.65%. So month 37 onward.
+
+Then months 37-52: rate = 0.65%? But there are further changes: starting month 53 becomes 0.55%, so months 37-52? Actually month 53 is when rate changes to 0.55%, so months 37 to 52 inclusive have rate 0.65%? But there are extra payments at end of month 41,48,49,52. So those months have extra. And also note: starting month 53 rate changes, so month 53 uses 0.55%.
+
+Then months 53-56: rate = 0.55%? Starting month 57 becomes 0.65%, so month 53 to 56 inclusive have 0.55%. There might be extra payments? Only extra at 52 is earlier, then next extra at 72,73,82. So no extra in months 53-56.
+
+Then months 57-60: rate = 0.65%? Starting month 61 becomes 0.75%, so months 57-60 have 0.65%. No extra.
+
+Then months 61-71: rate = 0.75%? Starting month 75 changes to 0.65%, but month 75 is later. Also month 61-71? Actually starting month 61 becomes 0.75% until further change. Then starting month 75 becomes 0.65%, so months 61 to 74 inclusive have rate 0.75%? Wait: There is also a change at month 76 to 0.75% again? Let's list all rate changes:
+
+- Starting month 37: rate = 0.65% (so months 37+)
+- Starting month 53: rate = 0.55% (so months 53+)
+- Starting month 57: rate = 0.65% (so months 57+)
+- Starting month 61: rate = 0.75% (so months 61+)
+- Starting month 75: rate = 0.65% (so months 75+)
+- Starting month 76: rate = 0.75% (so months 76+)
+
+Thus we have intervals:
+
+- Month 1-36: 0.70%
+- Month 37-52: 0.65%
+- Month 53-56: 0.55%
+- Month 57-60: 0.65%? But note: Starting month 57 is 0.65%, but before that month 53-56 were 0.55%, and then month 57-60 become 0.65%. However, later starting month 61 becomes 0.75%, so months 61-74: 0.75%? But then starting month 75 becomes 0.65%, so months 75 only? Actually month 75 is 0.65%, then starting month 76 becomes 0.75%, so months 76-84? But there is extra at month 82. Also note month 75-? Let's clarify: Starting month 75 means for month 75, the rate is 0.65%. Then starting month 76 means for month 76, rate is 0.75%. So after month 76, it stays 0.75% until the end? No further changes given, so months 76 through 84 have rate 0.75%. However we also have extra at month 82. So months 76-84 rate 0.75%.
+
+But we also have month 74? Since starting month 75 changes, months 61-74 have rate 0.75% (since from month 61 to 74 inclusive, rate = 0.75%). Then month 75: 0.65%, then month 76-84: 0.75%. So there is a brief dip to 0.65% for month 75 only.
+
+Also note that there are extra payments at months: 23, 41, 48, 49, 52, 72, 73, 82. No other extras.
+
+Now we need to simulate from month 1 to 84. That's many months. Let's try to do it systematically, perhaps using a spreadsheet approach in text. Since we need exact rounding, we should compute interest = round(B * rate, 2). Then B = B + interest - 496 - extra.
+
+We'll do it month by month. But with 84 months, it's a lot of manual arithmetic. However we can group months with constant rate and no extras to compute in a loop, but rounding makes it necessary to do each step. But we can try to do it with high precision. Alternatively, we can use a programming mindset and simulate step by step, writing down the balance after each month. Let's try.
+
+I'll keep track of balance to two decimal places (cents). We'll need to round interest to nearest cent. Let's start.
+
+Initial B1 = 50586.54.
+
+Month 1: rate 0.007
+Interest = B1 * 0.007 = 50586.54 * 0.007 = 354.10578? Let's compute: 50586.54 * 0.007 = 50586.54 * 7 / 1000 = (50586.54*7)/1000 = 354105.78/1000 = 354.10578. Rounded to nearest cent: 354.11? Because 0.10578, the third decimal is 5? Actually 354.10578, the cents are 354.10, the third decimal is 5, so half cent rounds up: 354.11. But careful: rounding to nearest cent: look at thousandths digit: 354.10578, the thousandths is 5, and then there are digits after, so it's exactly 0.10578 > 0.105, so it's above half? Actually half cent is 0.005, so we look at the fraction after hundredths: 354.10578, the hundredths digit is 0, the thousandths is 5, and since it is 5 or more, we round up the hundredths from 0 to 1. So 354.11. However note that the rule says "rounded to the nearest cent (half a cent rounds up)". So yes, 354.11.
+Thus interest = 354.11.
+Then after interest: 50586.54 + 354.11 = 50940.65.
+Then subtract regular payment 496: 50940.65 - 496 = 50444.65.
+No extra in month 1, so B2 = 50444.65.
+
+Month 2: B2 = 50444.65, rate 0.007
+Interest = 50444.65 * 0.007 = 353.11255? Compute: 50444.65 * 7 /1000 = 353112.55/1000 = 353.11255, rounded to 353.11? Because 353.11255: thousandths = 2? Actually 353.11255: hundredths = 1, thousandths = 2, so less than 5, round down: 353.11. So interest = 353.11.
+B after interest: 50444.65 + 353.11 = 50797.76
+Less regular: 50797.76 - 496 = 50301.76
+B3 = 50301.76
+
+Month 3: B3=50301.76
+Interest = 50301.76 * 0.007 = 352.11232 -> 352.11? 352.11232, thousandths=2 -> 352.11
+B after interest: 50301.76+352.11=50653.87
+Less regular: 50653.87-496=50157.87
+B4=50157.87
+
+Month 4: B4=50157.87
+Interest = 50157.87*0.007=351.10509 -> 351.11? Actually 351.10509: hundredths=0, thousandths=5, and further digits >0, so round up to 351.11? Check: 351.10509, the thousandths is 5 and beyond means >0.5 cent? Actually rounding: if exactly 0.105, the thousandths is 5 and no further digits, then half rounds up. Here there are digits beyond, so it's >0.105, so definitely round up to 351.11. So interest=351.11.
+Then 50157.87+351.11=50508.98
+Less 496=50012.98
+B5=50012.98
+
+Month 5: B5=50012.98
+Interest=50012.98*0.007=350.09086 -> 350.09? 350.09086: hundredths=9, thousandths=0? Actually 350.09086: digits: 350.09 086, thousandths=0, so round down to 350.09. So interest=350.09.
+Then 50012.98+350.09=50363.07
+Less 496=49867.07
+B6=49867.07
+
+Month 6: B6=49867.07
+Interest=49867.07*0.007=349.06949 -> 349.07? 349.06949: hundredths=6, thousandths=9 -> round up to 349.07. So interest=349.07.
+Then 49867.07+349.07=50216.14
+Less 496=49720.14
+B7=49720.14
+
+Month 7: B7=49720.14
+Interest=49720.14*0.007=348.04098 -> 348.04? 348.04098: hundredths=4, thousandths=0 => 348.04? Actually 348.04098, thousandths=0, so round down: 348.04. So interest=348.04.
+Then 49720.14+348.04=50068.18
+Less 496=49572.18
+B8=49572.18
+
+Month 8: B8=49572.18
+Interest=49572.18*0.007=347.00526 -> 347.01? 347.00526: hundredths=0, thousandths=5, and beyond digits >0 => round up to 347.01. So interest=347.01.
+Then 49572.18+347.01=49919.19
+Less 496=49423.19
+B9=49423.19
+
+Month 9: B9=49423.19
+Interest=49423.19*0.007=345.96233 -> 345.96? 345.96233: hundredths=6, thousandths=2 => 345.96. So interest=345.96.
+Then 49423.19+345.96=49769.15
+Less 496=49273.15
+B10=49273.15
+
+Month 10: B10=49273.15
+Interest=49273.15*0.007=344.91205 -> 344.91? 344.91205: hundredths=1, thousandths=2 => 344.91. So interest=344.91.
+Then 49273.15+344.91=49618.06
+Less 496=49122.06
+B11=49122.06
+
+Month 11: B11=49122.06
+Interest=49122.06*0.007=343.85442 -> 343.85? 343.85442: hundredths=5, thousandths=4 => round down? Actually 343.85442: hundredths=5, thousandths=4, so round down to 343.85. So interest=343.85.
+Then 49122.06+343.85=49465.91
+Less 496=48969.91
+B12=48969.91
+
+Month 12: B12=48969.91
+Interest=48969.91*0.007=342.78937 -> 342.79? 342.78937: hundredths=8, thousandths=9 -> round up to 342.79? Wait, 342.78937: hundredths=8, thousandths=9, so round up to 342.79 (since 8 becomes 9). Actually 342.78937: rounding to cents: look at thousandths=9 >=5, so hundredths 8 -> 9, so 342.79. So interest=342.79.
+Then 48969.91+342.79=49312.70
+Less 496=48816.70
+B13=48816.70
+
+Month 13: B13=48816.70
+Interest=48816.70*0.007=341.7169 -> 341.72? 341.7169: hundredths=1, thousandths=6 -> round up to 341.72. So interest=341.72.
+Then 48816.70+341.72=49158.42
+Less 496=48662.42
+B14=48662.42
+
+Month 14: B14=48662.42
+Interest=48662.42*0.007=340.63694 -> 340.64? 340.63694: hundredths=3, thousandths=6 -> round up to 340.64. So interest=340.64.
+Then 48662.42+340.64=49003.06
+Less 496=48507.06
+B15=48507.06
+
+Month 15: B15=48507.06
+Interest=48507.06*0.007=339.54942 -> 339.55? 339.54942: hundredths=4, thousandths=9 -> round up to 339.55. So interest=339.55.
+Then 48507.06+339.55=48846.61
+Less 496=48350.61
+B16=48350.61
+
+Month 16: B16=48350.61
+Interest=48350.61*0.007=338.45427 -> 338.45? 338.45427: hundredths=5, thousandths=4 -> round down? Actually 338.45427: hundredths=5, thousandths=4 => round down to 338.45. So interest=338.45.
+Then 48350.61+338.45=48689.06
+Less 496=48193.06
+B17=48193.06
+
+Month 17: B17=48193.06
+Interest=48193.06*0.007=337.35142 -> 337.35? 337.35142: hundredths=5, thousandths=1 -> round down to 337.35? Actually 337.35142: hundredths=5, thousandths=1 => round down to 337.35. So interest=337.35.
+Then 48193.06+337.35=48530.41
+Less 496=48034.41
+B18=48034.41
+
+Month 18: B18=48034.41
+Interest=48034.41*0.007=336.24087 -> 336.24? 336.24087: hundredths=4, thousandths=0 => 336.24. So interest=336.24.
+Then 48034.41+336.24=48370.65
+Less 496=47874.65
+B19=47874.65
+
+Month 19: B19=47874.65
+Interest=47874.65*0.007=335.12255 -> 335.12? 335.12255: hundredths=2, thousandths=2 => 335.12. So interest=335.12.
+Then 47874.65+335.12=48209.77
+Less 496=47713.77
+B20=47713.77
+
+Month 20: B20=47713.77
+Interest=47713.77*0.007=333.99639 -> 334.00? 333.99639: hundredths=9, thousandths=6 -> round up to 334.00? Actually 333.99639: hundredths=9, thousandths=6 => round up, so 334.00. So interest=334.00.
+Then 47713.77+334.00=48047.77
+Less 496=47551.77
+B21=47551.77
+
+Month 21: B21=47551.77
+Interest=47551.77*0.007=332.86239 -> 332.86? 332.86239: hundredths=6, thousandths=2 => 332.86. So interest=332.86.
+Then 47551.77+332.86=47884.63
+Less 496=47388.63
+B22=47388.63
+
+Month 22: B22=47388.63
+Interest=47388.63*0.007=331.72041 -> 331.72? 331.72041: hundredths=2, thousandths=0 => 331.72. So interest=331.72.
+Then 47388.63+331.72=47720.35
+Less 496=47224.35
+B23=47224.35
+
+Month 23: B23=47224.35 (start of month 23)
+Now month 23 has extra payment after regular. Rate still 0.007.
+Interest = 47224.35 * 0.007 = 330.57045 -> 330.57? 330.57045: hundredths=7, thousandths=0 => 330.57? Actually 330.57045: hundredths=7, thousandths=0, so round down to 330.57. So interest=330.57.
+Then after interest: 47224.35+330.57=47554.92
+Less regular: 47554.92-496=47058.92
+Now extra payment of $2366.00 at end of month 23: subtract 2366: 47058.92 - 2366 = 44692.92
+Thus B24 = 44692.92
+
+Month 24: B24=44692.92 (start month 24)
+Rate 0.007, no extra in month 24.
+Interest = 44692.92 * 0.007 = 312.85044 -> 312.85? 312.85044: hundredths=5, thousandths=0? Actually 312.85044: digits: 312.85 044, hundredths=5, thousandths=0? Wait: 312.85044, the hundredths digit is 5 (since 312.85...), thousandths is 0, so round down? But careful: 312.85044 actually is 312.85044, the thousandths place is 0 (because it's 312.85044, the digits after decimal: 8 (tenths), 5 (hundredths), 0 (thousandths), 4 (ten-thousandths)...). So rounding to cents: look at thousandths digit = 0, so round down, so 312.85. So interest=312.85.
+Then 44692.92+312.85=45005.77
+Less 496=44509.77
+B25=44509.77
+
+Month 25: B25=44509.77
+Interest=44509.77*0.007=311.56839 -> 311.57? 311.56839: hundredths=6, thousandths=8 => round up to 311.57. So interest=311.57.
+Then 44509.77+311.57=44821.34
+Less 496=44325.34
+B26=44325.34
+
+Month 26: B26=44325.34
+Interest=44325.34*0.007=310.27738 -> 310.28? 310.27738: hundredths=7, thousandths=7 -> round up to 310.28. So interest=310.28.
+Then 44325.34+310.28=44635.62
+Less 496=44139.62
+B27=44139.62
+
+Month 27: B27=44139.62
+Interest=44139.62*0.007=308.97734 -> 308.98? 308.97734: hundredths=7, thousandths=7 -> round up to 308.98. So interest=308.98.
+Then 44139.62+308.98=44448.60
+Less 496=43952.60
+B28=43952.60
+
+Month 28: B28=43952.60
+Interest=43952.60*0.007=307.6682 -> 307.67? 307.6682: hundredths=6, thousandths=8 -> round up to 307.67. So interest=307.67.
+Then 43952.60+307.67=44260.27
+Less 496=43764.27
+B29=43764.27
+
+Month 29: B29=43764.27
+Interest=43764.27*0.007=306.34989 -> 306.35? 306.34989: hundredths=4, thousandths=9 -> round up to 306.35. So interest=306.35.
+Then 43764.27+306.35=44070.62
+Less 496=43574.62
+B30=43574.62
+
+Month 30: B30=43574.62
+Interest=43574.62*0.007=305.02234 -> 305.02? 305.02234: hundredths=2, thousandths=2 -> round down to 305.02. So interest=305.02.
+Then 43574.62+305.02=43879.64
+Less 496=43383.64
+B31=43383.64
+
+Month 31: B31=43383.64
+Interest=43383.64*0.007=303.68548 -> 303.69? 303.68548: hundredths=8, thousandths=5? Actually 303.68548: hundredths=8, thousandths=5, and beyond digits>0 -> round up to 303.69. So interest=303.69.
+Then 43383.64+303.69=43687.33
+Less 496=43191.33
+B32=43191.33
+
+Month 32: B32=43191.33
+Interest=43191.33*0.007=302.33931 -> 302.34? 302.33931: hundredths=3, thousandths=9 -> round up to 302.34. So interest=302.34.
+Then 43191.33+302.34=43493.67
+Less 496=42997.67
+B33=42997.67
+
+Month 33: B33=42997.67
+Interest=42997.67*0.007=300.98369 -> 300.98? 300.98369: hundredths=8, thousandths=3 -> round down to 300.98. So interest=300.98.
+Then 42997.67+300.98=43298.65
+Less 496=42802.65
+B34=42802.65
+
+Month 34: B34=42802.65
+Interest=42802.65*0.007=299.61855 -> 299.62? 299.61855: hundredths=1, thousandths=8 -> round up to 299.62. So interest=299.62.
+Then 42802.65+299.62=43102.27
+Less 496=42606.27
+B35=42606.27
+
+Month 35: B35=42606.27
+Interest=42606.27*0.007=298.24389 -> 298.24? 298.24389: hundredths=4, thousandths=3 -> round down to 298.24. So interest=298.24.
+Then 42606.27+298.24=42904.51
+Less 496=42408.51
+B36=42408.51
+
+Month 36: B36=42408.51
+Interest=42408.51*0.007=296.85957 -> 296.86? 296.85957: hundredths=5, thousandths=9 -> round up to 296.86. So interest=296.86.
+Then 42408.51+296.86=42705.37
+Less 496=42209.37
+B37=42209.37
+
+Now month 37: rate changes to 0.65% = 0.0065. So for month 37 interest = B37 * 0.0065.
+B37=42209.37
+Interest = 42209.37 * 0.0065 = 274.360905? Compute: 42209.37 * 0.0065 = 42209.37 * 65 / 10000 = (42209.37*65)/10000. 42209.37*60=2,532,562.2; *5=211,046.85; total=2,743,609.05? Wait that's off. Let's do: 42209.37 * 0.0065 = 42209.37 * (6.5/1000) = (42209.37*6.5)/1000 = (42209.37*13/2)/1000? Better: 42209.37 * 0.0065 = 42209.37 * 0.006 + 42209.37 * 0.0005 = 253.25622 + 21.104685 = 274.360905. So interest = 274.360905, round to nearest cent: 274.36? Because 274.360905, thousandths=0? Actually 274.360905: digits: 274.36 0905, hundredths=6, thousandths=0? Wait careful: 274.360905: the decimal part: .360905, so tenths=3, hundredths=6, thousandths=0, ten-thousandths=9... So thousandths = 0, so round down to 274.36. So interest = 274.36.
+Then after interest: 42209.37+274.36=42483.73
+Less regular: 42483.73-496=41987.73
+No extra in month 37, so B38=41987.73
+
+Month 38: B38=41987.73, rate 0.0065
+Interest = 41987.73 * 0.0065 = 272.920245? Compute: 41987.73*0.006 = 251.92638, + 41987.73*0.0005 = 20.993865, sum = 272.920245. Round: 272.920245: hundredths=2, thousandths=0? Actually 272.920245: .920245 => hundredths=2, thousandths=0? Wait: .92 0245: hundredths=2, thousandths=0, so round down to 272.92. So interest=272.92.
+Then 41987.73+272.92=42260.65
+Less 496=41764.65
+B39=41764.65
+
+Month 39: B39=41764.65
+Interest = 41764.65 * 0.0065 = 271.470225? Compute: 41764.65*0.006=250.5879, + 41764.65*0.0005=20.882325, sum=271.470225. Round: 271.470225: hundredths=7, thousandths=0 => 271.47? Actually .470225: hundredths=7, thousandths=0 (since .470225: digits: 4,7,0,2,...), so round down to 271.47. So interest=271.47.
+Then 41764.65+271.47=42036.12
+Less 496=41540.12
+B40=41540.12
+
+Month 40: B40=41540.12
+Interest = 41540.12 * 0.0065 = 270.01078? Compute: 41540.12*0.006=249.24072, + 41540.12*0.0005=20.77006, sum=270.01078. Round: 270.01078: hundredths=1, thousandths=0 -> 270.01? Actually .01078: hundredths=1, thousandths=0 => round down to 270.01. So interest=270.01.
+Then 41540.12+270.01=41810.13
+Less 496=41314.13
+B41=41314.13
+
+Month 41: B41=41314.13 (start of month 41). This month has extra payment at end of month (after regular). Rate still 0.0065.
+Interest = 41314.13 * 0.0065 = 268.541845? Compute: 41314.13*0.006=247.88478, + 41314.13*0.0005=20.657065, sum=268.541845. Round: 268.541845: hundredths=4, thousandths=1? Actually .541845: hundredths=4, thousandths=1 => round down to 268.54. So interest=268.54.
+Then after interest: 41314.13+268.54=41582.67
+Less regular: 41582.67-496=41086.67
+Now extra payment $568.79: subtract: 41086.67 - 568.79 = 40517.88
+Thus B42 = 40517.88
+
+Month 42: B42=40517.88, rate 0.0065, no extra.
+Interest = 40517.88 * 0.0065 = 263.36622? Compute: 40517.88*0.006=243.10728, + 40517.88*0.0005=20.25894, sum=263.36622. Round: 263.36622: hundredths=6, thousandths=6? Actually .36622: hundredths=6, thousandths=6 => round up to 263.37? Wait: 263.36622, the hundredths digit is 6, thousandths is 6, so round up to 263.37. So interest=263.37.
+Then 40517.88+263.37=40781.25
+Less 496=40285.25
+B43=40285.25
+
+Month 43: B43=40285.25
+Interest = 40285.25 * 0.0065 = 261.854125? Compute: 40285.25*0.006=241.7115, + 40285.25*0.0005=20.142625, sum=261.854125. Round: 261.854125: hundredths=5, thousandths=4? Actually .854125: hundredths=5, thousandths=4 => round down to 261.85. So interest=261.85.
+Then 40285.25+261.85=40547.10
+Less 496=40051.10
+B44=40051.10
+
+Month 44: B44=40051.10
+Interest = 40051.10 * 0.0065 = 260.33215? Compute: 40051.10*0.006=240.3066, + 40051.10*0.0005=20.02555, sum=260.33215. Round: 260.33215: hundredths=3, thousandths=2 => 260.33? Actually .33215: hundredths=3, thousandths=2 => round down to 260.33. So interest=260.33.
+Then 40051.10+260.33=40311.43
+Less 496=39815.43
+B45=39815.43
+
+Month 45: B45=39815.43
+Interest = 39815.43 * 0.0065 = 258.800295? Compute: 39815.43*0.006=238.89258, + 39815.43*0.0005=19.907715, sum=258.800295. Round: 258.800295: hundredths=0, thousandths=0? Actually .800295: hundredths=0, thousandths=0? Wait: .800295: digits: 8 tenths, 0 hundredths, 0 thousandths, 2... So hundredths=0, thousandths=0, so round down to 258.80. So interest=258.80.
+Then 39815.43+258.80=40074.23
+Less 496=39578.23
+B46=39578.23
+
+Month 46: B46=39578.23
+Interest = 39578.23 * 0.0065 = 257.258495? Compute: 39578.23*0.006=237.46938, + 39578.23*0.0005=19.789115, sum=257.258495. Round: 257.258495: hundredths=5, thousandths=8? Actually .258495: hundredths=5, thousandths=8 -> round up to 257.26? Wait: 257.258495: the hundredths digit is 5, thousandths is 8, so round up to 257.26. So interest=257.26.
+Then 39578.23+257.26=39835.49
+Less 496=39339.49
+B47=39339.49
+
+Month 47: B47=39339.49
+Interest = 39339.49 * 0.0065 = 255.706685? Compute: 39339.49*0.006=236.03694, + 39339.49*0.0005=19.669745, sum=255.706685. Round: 255.706685: hundredths=0, thousandths=6? Actually .706685: hundredths=0, thousandths=6 -> round up to 255.71? Wait: .706685: digits: 7,0,6,... So hundredths=0, thousandths=6, so round up to 255.71. So interest=255.71.
+Then 39339.49+255.71=39595.20
+Less 496=39099.20
+B48=39099.20
+
+Month 48: B48=39099.20 (start month 48). This month has extra payment at end: $1198.94.
+Rate 0.0065.
+Interest = 39099.20 * 0.0065 = 254.1448? Compute: 39099.20*0.006=234.5952, + 39099.20*0.0005=19.5496, sum=254.1448. Round: 254.1448: hundredths=4, thousandths=4? Actually .1448: hundredths=4, thousandths=4 -> round down to 254.14? But careful: 254.1448, the thousandths digit is 4, so round down to 254.14. So interest=254.14.
+Then after interest: 39099.20+254.14=39353.34
+Less regular: 39353.34-496=38857.34
+Now extra: 1198.94, subtract: 38857.34 - 1198.94 = 37658.40
+Thus B49 = 37658.40
+
+Month 49: B49=37658.40 (start month 49). This month has extra payment at end: $1568.99.
+Rate 0.0065.
+Interest = 37658.40 * 0.0065 = 244.7796? Compute: 37658.40*0.006=225.9504, + 37658.40*0.0005=18.8292, sum=244.7796. Round: 244.7796: hundredths=7, thousandths=9? Actually .7796: hundredths=7, thousandths=9 -> round up to 244.78? Wait: .7796: digits: 7,7,9,... Actually .7796: tenths=7, hundredths=7, thousandths=9, so round up: hundredths 7 becomes 8? But we need to look: 244.7796, the hundredths digit is 7 (since 244.77...), thousandths is 9, so round up to 244.78. So interest=244.78.
+Then after interest: 37658.40+244.78=37903.18
+Less regular: 37903.18-496=37407.18
+Extra: 1568.99, subtract: 37407.18 - 1568.99 = 35838.19
+Thus B50 = 35838.19
+
+Month 50: B50=35838.19, rate 0.0065, no extra.
+Interest = 35838.19 * 0.0065 = 232.948235? Compute: 35838.19*0.006=215.02914, + 35838.19*0.0005=17.919095, sum=232.948235. Round: 232.948235: hundredths=4, thousandths=8? Actually .948235: hundredths=4, thousandths=8 -> round up to 232.95? Wait: .948235: digits: 9,4,8,... So hundredths=4, thousandths=8, so round up to 232.95. So interest=232.95.
+Then 35838.19+232.95=36071.14
+Less 496=35575.14
+B51=35575.14
+
+Month 51: B51=35575.14, rate 0.0065, no extra.
+Interest = 35575.14 * 0.0065 = 231.23841? Compute: 35575.14*0.006=213.45084, + 35575.14*0.0005=17.78757, sum=231.23841. Round: 231.23841: hundredths=3, thousandths=8? Actually .23841: hundredths=3, thousandths=8 -> round up to 231.24. So interest=231.24.
+Then 35575.14+231.24=35806.38
+Less 496=35310.38
+B52=35310.38
+
+Month 52: B52=35310.38 (start month 52). This month has extra payment at end: $1725.00.
+Rate 0.0065.
+Interest = 35310.38 * 0.0065 = 229.51747? Compute: 35310.38*0.006=211.86228, + 35310.38*0.0005=17.65519, sum=229.51747. Round: 229.51747: hundredths=1, thousandths=7? Actually .51747: hundredths=1, thousandths=7 -> round up to 229.52? Wait: .51747: hundredths=1, thousandths=7, so round up to 229.52. So interest=229.52.
+Then after interest: 35310.38+229.52=35539.90
+Less regular: 35539.90-496=35043.90
+Extra: 1725.00, subtract: 35043.90 - 1725.00 = 33318.90
+Thus B53 = 33318.90
+
+Now month 53: rate changes to 0.55% = 0.0055. So for month 53 rate = 0.0055. No extra in month 53.
+B53=33318.90
+Interest = 33318.90 * 0.0055 = 183.25395? Compute: 33318.90 * 0.005 = 166.5945, + 33318.90 * 0.0005 = 16.65945, sum = 183.25395. Round: 183.25395: hundredths=5, thousandths=3? Actually .25395: hundredths=5, thousandths=3 -> round down to 183.25? Wait careful: 183.25395: digits: 183.25 395, hundredths=5, thousandths=3, so round down to 183.25. So interest=183.25.
+Then after interest: 33318.90+183.25=33502.15
+Less regular: 33502.15-496=33006.15
+B54=33006.15
+
+Month 54: B54=33006.15, rate 0.0055
+Interest = 33006.15 * 0.0055 = 181.533825? Compute: 33006.15*0.005=165.03075, + 33006.15*0.0005=16.503075, sum=181.533825. Round: 181.533825: hundredths=3, thousandths=3? Actually .533825: hundredths=3, thousandths=3 -> round down to 181.53. So interest=181.53.
+Then 33006.15+181.53=33187.68
+Less 496=32691.68
+B55=32691.68
+
+Month 55: B55=32691.68, rate 0.0055
+Interest = 32691.68 * 0.0055 = 179.80424? Compute: 32691.68*0.005=163.4584, + 32691.68*0.0005=16.34584, sum=179.80424. Round: 179.80424: hundredths=0, thousandths=4? Actually .80424: hundredths=0, thousandths=4 -> round down to 179.80. So interest=179.80.
+Then 32691.68+179.80=32871.48
+Less 496=32375.48
+B56=32375.48
+
+Month 56: B56=32375.48, rate 0.0055
+Interest = 32375.48 * 0.0055 = 178.06514? Compute: 32375.48*0.005=161.8774, + 32375.48*0.0005=16.18774, sum=178.06514. Round: 178.06514: hundredths=6, thousandths=5? Actually .06514: hundredths=6, thousandths=5 -> round up? Wait: .06514: digits: 0,6,5,... So hundredths=6, thousandths=5 -> round up to 178.07? Because 178.06514: hundredths digit is 6, thousandths is 5, and there are further digits >0, so round up to 178.07. So interest=178.07.
+Then 32375.48+178.07=32553.55
+Less 496=32057.55
+B57=32057.55
+
+Now month 57: rate changes to 0.65% = 0.0065. (Starting month 57, so month 57 uses 0.0065). No extra.
+B57=32057.55
+Interest = 32057.55 * 0.0065 = 208.374075? Compute: 32057.55*0.006=192.3453, + 32057.55*0.0005=16.028775, sum=208.374075. Round: 208.374075: hundredths=7, thousandths=4? Actually .374075: hundredths=7, thousandths=4 -> round down to 208.37. So interest=208.37.
+Then after interest: 32057.55+208.37=32265.92
+Less 496=31769.92
+B58=31769.92
+
+Month 58: B58=31769.92, rate 0.0065
+Interest = 31769.92 * 0.0065 = 206.50448? Compute: 31769.92*0.006=190.61952, + 31769.92*0.0005=15.88496, sum=206.50448. Round: 206.50448: hundredths=0, thousandths=4? Actually .50448: hundredths=0, thousandths=4 -> round down to 206.50. So interest=206.50.
+Then 31769.92+206.50=31976.42
+Less 496=31480.42
+B59=31480.42
+
+Month 59: B59=31480.42, rate 0.0065
+Interest = 31480.42 * 0.0065 = 204.62273? Compute: 31480.42*0.006=188.88252, + 31480.42*0.0005=15.74021, sum=204.62273. Round: 204.62273: hundredths=2, thousandths=2? Actually .62273: hundredths=2, thousandths=2 -> round down to 204.62. So interest=204.62.
+Then 31480.42+204.62=31685.04
+Less 496=31189.04
+B60=31189.04
+
+Month 60: B60=31189.04, rate 0.0065
+Interest = 31189.04 * 0.0065 = 202.72876? Compute: 31189.04*0.006=187.13424, + 31189.04*0.0005=15.59452, sum=202.72876. Round: 202.72876: hundredths=2, thousandths=8? Actually .72876: hundredths=2, thousandths=8 -> round up to 202.73. So interest=202.73.
+Then 31189.04+202.73=31391.77
+Less 496=30895.77
+B61=30895.77
+
+Now month 61: rate changes to 0.75% = 0.0075. So month 61 uses 0.0075. No extra.
+B61=30895.77
+Interest = 30895.77 * 0.0075 = 231.718275? Compute: 30895.77 * 0.007 = 216.27039, + 30895.77 * 0.0005 = 15.447885, sum = 231.718275. Actually 0.0075 = 0.007 + 0.0005 or directly *75/10000. So 30895.77 * 0.0075 = 231.718275. Round: 231.718275: hundredths=1, thousandths=8? Actually .718275: hundredths=1, thousandths=8 -> round up to 231.72. So interest=231.72.
+Then after interest: 30895.77+231.72=31127.49
+Less 496=30631.49
+B62=30631.49
+
+Month 62: B62=30631.49, rate 0.0075
+Interest = 30631.49 * 0.0075 = 229.736175? Compute: 30631.49*0.007=214.42043, + 30631.49*0.0005=15.315745, sum=229.736175. Round: 229.736175: hundredths=3, thousandths=6? Actually .736175: hundredths=3, thousandths=6 -> round up to 229.74? Wait: .736175: hundredths=3, thousandths=6, so round up to 229.74. So interest=229.74.
+Then 30631.49+229.74=30861.23
+Less 496=30365.23
+B63=30365.23
+
+Month 63: B63=30365.23, rate 0.0075
+Interest = 30365.23 * 0.0075 = 227.739225? Compute: 30365.23*0.007=212.55661, + 30365.23*0.0005=15.182615, sum=227.739225. Round: 227.739225: hundredths=3, thousandths=9? Actually .739225: hundredths=3, thousandths=9 -> round up to 227.74. So interest=227.74.
+Then 30365.23+227.74=30592.97
+Less 496=30096.97
+B64=30096.97
+
+Month 64: B64=30096.97, rate 0.0075
+Interest = 30096.97 * 0.0075 = 225.727275? Compute: 30096.97*0.007=210.67879, + 30096.97*0.0005=15.048485, sum=225.727275. Round: 225.727275: hundredths=2, thousandths=7? Actually .727275: hundredths=2, thousandths=7 -> round up to 225.73. So interest=225.73.
+Then 30096.97+225.73=30322.70
+Less 496=29826.70
+B65=29826.70
+
+Month 65: B65=29826.70, rate 0.0075
+Interest = 29826.70 * 0.0075 = 223.70025? Compute: 29826.70*0.007=208.7869, + 29826.70*0.0005=14.91335, sum=223.70025. Round: 223.70025: hundredths=0, thousandths=0? Actually .70025: hundredths=0, thousandths=0? Wait: .70025: digits: 7,0,0,2,5. So hundredths=0, thousandths=0, so round down to 223.70. So interest=223.70.
+Then 29826.70+223.70=30050.40
+Less 496=29554.40
+B66=29554.40
+
+Month 66: B66=29554.40, rate 0.0075
+Interest = 29554.40 * 0.0075 = 221.658? Compute: 29554.40*0.007=206.8808, + 29554.40*0.0005=14.7772, sum=221.658. Exactly 221.658? So 221.658, round: 221.658: hundredths=5, thousandths=8 -> round up to 221.66. So interest=221.66.
+Then 29554.40+221.66=29776.06
+Less 496=29280.06
+B67=29280.06
+
+Month 67: B67=29280.06, rate 0.0075
+Interest = 29280.06 * 0.0075 = 219.60045? Compute: 29280.06*0.007=204.96042, + 29280.06*0.0005=14.64003, sum=219.60045. Round: 219.60045: hundredths=0, thousandths=0? .60045: hundredths=0, thousandths=0? Actually .60045: digits: 6,0,0,... So hundredths=0, thousandths=0, so round down to 219.60. So interest=219.60.
+Then 29280.06+219.60=29499.66
+Less 496=29003.66
+B68=29003.66
+
+Month 68: B68=29003.66, rate 0.0075
+Interest = 29003.66 * 0.0075 = 217.52745? Compute: 29003.66*0.007=203.02562, + 29003.66*0.0005=14.50183, sum=217.52745. Round: 217.52745: hundredths=2, thousandths=7? .52745: hundredths=2, thousandths=7 -> round up to 217.53. So interest=217.53.
+Then 29003.66+217.53=29221.19
+Less 496=28725.19
+B69=28725.19
+
+Month 69: B69=28725.19, rate 0.0075
+Interest = 28725.19 * 0.0075 = 215.438925? Compute: 28725.19*0.007=201.07633, + 28725.19*0.0005=14.362595, sum=215.438925. Round: 215.438925: hundredths=3, thousandths=8? .438925: hundredths=3, thousandths=8 -> round up to 215.44. So interest=215.44.
+Then 28725.19+215.44=28940.63
+Less 496=28444.63
+B70=28444.63
+
+Month 70: B70=28444.63, rate 0.0075
+Interest = 28444.63 * 0.0075 = 213.334725? Compute: 28444.63*0.007=199.11241, + 28444.63*0.0005=14.222315, sum=213.334725. Round: 213.334725: hundredths=3, thousandths=4? .334725: hundredths=3, thousandths=4 -> round down to 213.33. So interest=213.33.
+Then 28444.63+213.33=28657.96
+Less 496=28161.96
+B71=28161.96
+
+Month 71: B71=28161.96, rate 0.0075
+Interest = 28161.96 * 0.0075 = 211.2147? Compute: 28161.96*0.007=197.13372, + 28161.96*0.0005=14.08098, sum=211.2147. Round: 211.2147: hundredths=1, thousandths=4? .2147: hundredths=1, thousandths=4 -> round down to 211.21. So interest=211.21.
+Then 28161.96+211.21=28373.17
+Less 496=27877.17
+B72=27877.17
+
+Month 72: B72=27877.17 (start month 72). This month has extra payment at end: $2273.41. Rate still 0.0075 (since month 72 is still in 0.75% period, as month 75 changes).
+Interest = 27877.17 * 0.0075 = 209.078775? Compute: 27877.17*0.007=195.14019, + 27877.17*0.0005=13.938585, sum=209.078775. Round: 209.078775: hundredths=7, thousandths=8? .078775: hundredths=7, thousandths=8? Actually .078775: digits: 0,7,8,... So hundredths=7, thousandths=8 -> round up to 209.08? Wait: 209.078775, the hundredths digit is 7, thousandths is 8, so round up to 209.08. So interest=209.08.
+Then after interest: 27877.17+209.08=28086.25
+Less regular: 28086.25-496=27590.25
+Extra: 2273.41, subtract: 27590.25 - 2273.41 = 25316.84
+Thus B73 = 25316.84
+
+Month 73: B73=25316.84 (start month 73). This month has extra payment at end: $688.00. Rate still 0.0075 (since month 73 is before month 75).
+Interest = 25316.84 * 0.0075 = 189.8763? Compute: 25316.84*0.007=177.21788, + 25316.84*0.0005=12.65842, sum=189.8763. Round: 189.8763: hundredths=7, thousandths=6? .8763: hundredths=7, thousandths=6 -> round up to 189.88? Because .8763: digits: 8,7,6,... So hundredths=7, thousandths=6, so round up to 189.88. So interest=189.88.
+Then after interest: 25316.84+189.88=25506.72
+Less regular: 25506.72-496=25010.72
+Extra: 688.00, subtract: 25010.72 - 688.00 = 24322.72
+Thus B74 = 24322.72
+
+Month 74: B74=24322.72 (start month 74). No extra in month 74. Rate still 0.0075 (since month 74 is before month 75 change, but month 75 changes to 0.65%, so month 74 uses 0.75%).
+Interest = 24322.72 * 0.0075 = 182.4204? Compute: 24322.72*0.007=170.25904, + 24322.72*0.0005=12.16136, sum=182.4204. Round: 182.4204: hundredths=2, thousandths=0? Actually .4204: hundredths=2, thousandths=0 -> round down to 182.42. So interest=182.42.
+Then 24322.72+182.42=24505.14
+Less 496=24009.14
+B75=24009.14
+
+Now month 75: rate changes to 0.65% = 0.0065. So month 75 uses 0.0065. No extra.
+B75=24009.14
+Interest = 24009.14 * 0.0065 = 156.05941? Compute: 24009.14*0.006=144.05484, + 24009.14*0.0005=12.00457, sum=156.05941. Round: 156.05941: hundredths=5, thousandths=9? Actually .05941: hundredths=5, thousandths=9 -> round up to 156.06. So interest=156.06.
+Then after interest: 24009.14+156.06=24165.20
+Less 496=23669.20
+B76=23669.20
+
+Now month 76: rate changes to 0.75% = 0.0075. So month 76 uses 0.0075. No extra.
+B76=23669.20
+Interest = 23669.20 * 0.0075 = 177.519? Compute: 23669.20*0.007=165.6844, + 23669.20*0.0005=11.8346, sum=177.519. Exactly 177.519. Round: 177.519: hundredths=1, thousandths=9? .519: hundredths=1, thousandths=9 -> round up to 177.52. So interest=177.52.
+Then 23669.20+177.52=23846.72
+Less 496=23350.72
+B77=23350.72
+
+Month 77: B77=23350.72, rate 0.0075
+Interest = 23350.72 * 0.0075 = 175.1304? Compute: 23350.72*0.007=163.45504, + 23350.72*0.0005=11.67536, sum=175.1304. Round: 175.1304: hundredths=3, thousandths=0? .1304: hundredths=3, thousandths=0 -> round down to 175.13. So interest=175.13.
+Then 23350.72+175.13=23525.85
+Less 496=23029.85
+B78=23029.85
+
+Month 78: B78=23029.85, rate 0.0075
+Interest = 23029.85 * 0.0075 = 172.723875? Compute: 23029.85*0.007=161.20895, + 23029.85*0.0005=11.514925, sum=172.723875. Round: 172.723875: hundredths=2, thousandths=3? .723875: hundredths=2, thousandths=3 -> round down to 172.72. So interest=172.72.
+Then 23029.85+172.72=23202.57
+Less 496=22706.57
+B79=22706.57
+
+Month 79: B79=22706.57, rate 0.0075
+Interest = 22706.57 * 0.0075 = 170.299275? Compute: 22706.57*0.007=158.94599, + 22706.57*0.0005=11.353285, sum=170.299275. Round: 170.299275: hundredths=9, thousandths=9? .299275: hundredths=9, thousandths=9 -> round up to 170.30. So interest=170.30.
+Then 22706.57+170.30=22876.87
+Less 496=22380.87
+B80=22380.87
+
+Month 80: B80=22380.87, rate 0.0075
+Interest = 22380.87 * 0.0075 = 167.856525? Compute: 22380.87*0.007=156.66609, + 22380.87*0.0005=11.190435, sum=167.856525. Round: 167.856525: hundredths=5, thousandths=6? .856525: hundredths=5, thousandths=6 -> round up to 167.86. So interest=167.86.
+Then 22380.87+167.86=22548.73
+Less 496=22052.73
+B81=22052.73
+
+Month 81: B81=22052.73, rate 0.0075
+Interest = 22052.73 * 0.0075 = 165.395475? Compute: 22052.73*0.007=154.36911, + 22052.73*0.0005=11.026365, sum=165.395475. Round: 165.395475: hundredths=9, thousandths=5? .395475: hundredths=9, thousandths=5 -> round up to 165.40? Actually .395475: hundredths=9, thousandths=5, and beyond digits>0, so round up to 165.40. So interest=165.40.
+Then 22052.73+165.40=22218.13
+Less 496=21722.13
+B82=21722.13
+
+Month 82: B82=21722.13 (start month 82). This month has extra payment at end: $1784.00. Rate still 0.0075 (since month 82 is after month 76, rate 0.75% continues through month 84? Actually month 76 onward is 0.75%, no further change until end, so month 82 rate 0.0075).
+Interest = 21722.13 * 0.0075 = 162.915975? Compute: 21722.13*0.007=152.05491, + 21722.13*0.0005=10.861065, sum=162.915975. Round: 162.915975: hundredths=1, thousandths=5? .915975: hundredths=1, thousandths=5 -> round up to 162.92? Wait: .915975: digits: 9,1,5,... So hundredths=1, thousandths=5, and further digits>0, so round up to 162.92. So interest=162.92.
+Then after interest: 21722.13+162.92=21885.05
+Less regular: 21885.05-496=21389.05
+Extra: 1784.00, subtract: 21389.05 - 1784.00 = 19605.05
+Thus B83 = 19605.05
+
+Month 83: B83=19605.05, rate 0.0075, no extra.
+Interest = 19605.05 * 0.0075 = 147.037875? Compute: 19605.05*0.007=137.23535, + 19605.05*0.0005=9.802525, sum=147.037875. Round: 147.037875: hundredths=3, thousandths=7? .037875: hundredths=3, thousandths=7 -> round up to 147.04. So interest=147.04.
+Then 19605.05+147.04=19752.09
+Less 496=19256.09
+B84=19256.09
+
+Month 84: B84=19256.09, rate 0.0075, no extra? The problem asks for outstanding balance at the end of month 84 (after all steps of month 84). So we need to process month 84 as well. So we compute interest for month 84, add, subtract regular payment, and then no extra (since no extra scheduled at month 84). Then we get balance at end of month 84, which is the start of month 85. So we need to compute that.
+Month 84: B_start = 19256.09
+Interest = 19256.09 * 0.0075 = 144.420675? Compute: 19256.09*0.007=134.79263, + 19256.09*0.0005=9.628045, sum=144.420675. Round: 144.420675: hundredths=2, thousandths=0? .420675: hundredths=2, thousandths=0 -> round down to 144.42. So interest=144.42.
+Then balance after interest: 19256.09+144.42=19400.51
+Less regular: 19400.51-496=18904.51
+No extra, so end-of-month 84 balance = 18904.51.
+Thus answer should be 18904.51.
+
+But we need to ensure we didn't miss any extra payments or rate changes. Let's verify the event list:
+
+- End of month 23: extra $2366.00 (done)
+- Starting month 37: rate 0.65% (done)
+- End of month 41: extra $568.79 (done)
+- End of month 48: extra $1198.94 (done)
+- End of month 49: extra $1568.99 (done)
+- End of month 52: extra $1725.00 (done)
+- Starting month 53: rate 0.55% (done)
+- Starting month 57: rate 0.65% (done)
+- Starting month 61: rate 0.75% (done)
+- End of month 72: extra $2273.41 (done)
+- End of month 73: extra $688.00 (done)
+- Starting month 75: rate 0.65% (done)
+- Starting month 76: rate 0.75% (done)
+- End of month 82: extra $1784.00 (done)
+
+All accounted for. We also processed month 84 correctly. So final balance = 18904.51.
+
+But we should double-check some calculations for possible rounding errors. Especially for months with many steps, we should verify a few.
+
+Let's check month 23: B23=47224.35, interest=47224.35*0.007=330.57045, rounded to 330.57? Actually 330.57045, thousandths digit is 0? Wait: 330.57045: the decimal part: .57045, so hundredths=7, thousandths=0, so round down to 330.57. Yes. Then 47224.35+330.57=47554.92, -496=47058.92, -2366=44692.92. That seems okay.
+
+Month 36: B36=42408.51, interest=296.85957, round to 296.86? Because .85957: hundredths=5, thousandths=9 -> round up, so 296.86, then 42408.51+296.86=42705.37, -496=42209.37. Good.
+
+Month 37: B37=42209.37, interest=274.360905, round to 274.36, okay.
+
+Month 41: B41=41314.13, interest=268.541845, round to 268.54? .541845: hundredths=4, thousandths=1? Actually .541845: digits: 5,4,1,... So hundredths=4, thousandths=1 -> round down to 268.54. Yes. Then after interest: 41582.67, -496=41086.67, -568.79=40517.88. Good.
+
+Month 48: B48=39099.20, interest=254.1448, round to 254.14? .1448: hundredths=4, thousandths=4 -> 254.14, then 39353.34, -496=38857.34, -1198.94=37658.40, ok.
+
+Month 49: B49=37658.40, interest=244.7796, round to 244.78? .7796: hundredths=7, thousandths=9 -> round up to 244.78, then 37903.18, -496=37407.18, -1568.99=35838.19, ok.
+
+Month 52: B52=35310.38, interest=229.51747, round to 229.52? .51747: hundredths=1, thousandths=7 -> round up to 229.52, then 35539.90, -496=35043.90, -1725=33318.90, ok.
+
+Month 53: B53=33318.90, interest=183.25395, round to 183.25? .25395: hundredths=5, thousandths=3 -> round down to 183.25, then 33502.15, -496=33006.15, ok.
+
+Month 56: B56=32375.48, interest=178.06514, round to 178.07? .06514: hundredths=6, thousandths=5 -> round up to 178.07, then 32553.55, -496=32057.55, ok.
+
+Month 57: B57=32057.55, interest=208.374075, round to 208.37? .374075: hundredths=7, thousandths=4 -> round down to 208.37, then 32265.92, -496=31769.92, ok.
+
+Month 61: B61=30895.77, interest=231.718275, round to 231.72? .718275: hundredths=1, thousandths=8 -> round up to 231.72, then 31127.49, -496=30631.49, ok.
+
+Month 72: B72=27877.17, interest=209.078775, round to 209.08? .078775: hundredths=7, thousandths=8 -> round up to 209.08, then 28086.25, -496=27590.25, -2273.41=25316.84, ok.
+
+Month 73: B73=25316.84, interest=189.8763, round to 189.88? .8763: hundredths=7, thousandths=6 -> round up to 189.88, then 25506.72, -496=25010.72, -688=24322.72, ok.
+
+Month 74: B74=24322.72, interest=182.4204, round to 182.42? .4204: hundredths=2, thousandths=0 -> 182.42, then 24505.14, -496=24009.14, ok.
+
+Month 75: B75=24009.14, interest=156.05941, round to 156.06? .05941: hundredths=5, thousandths=9 -> round up to 156.06, then 24165.20, -496=23669.20, ok.
+
+Month 76: B76=23669.20, interest=177.519, round to 177.52, then 23846.72, -496=23350.72, ok.
+
+Month 82: B82=21722.13, interest=162.915975, round to 162.92? .915975: hundredths=1, thousandths=5 -> round up to 162.92, then 21885.05, -496=21389.05, -1784=19605.05, ok.
+
+Month 83: B83=19605.05, interest=147.037875, round to 147.04? .037875: hundredths=3, thousandths=7 -> round up to 147.04, then 19752.09, -496=19256.09, ok.
+
+Month 84: B84=19256.09, interest=144.420675, round to 144.42? .420675: hundredths=2, thousandths=0 -> 144.42, then 19400.51, -496=18904.51.
+
+So final answer is 18904.51.
+
+Thus the outstanding balance at end of month 84 is $18,904.51.
+
+Now produce answer in the required format: ANSWER: 18904.51

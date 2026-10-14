@@ -66,11 +66,29 @@ CLRS-Text не устанавливался (тянет jax/tensorflow): кра�
 
 Флаг заученности: средняя попарная косинусная схожесть решений одной задачи. Вектор решения — среднее
 центрированных векторов окон (Qwen3-Embedding-4B через OpenRouter, окна 2048/1024, центрирование по всем окнам всех
-кандидатов — схема `vectorize.py`). Флаг — выше медианы ступени + 3·MAD.
+кандидатов — схема `vectorize.py`). Флаг — выше медианы ступени + 3·MAD. Ограничение: на ступенях 1–3 этот порог
+оказался выше 1 (медианы схожести 0,90–0,96 при большом разбросе), то есть флаг там недостижим и проверка
+неинформативна; реально она работает только на ступени 4. Прямая проверка знакомства с задачей — по CoT, раздел 6а.
 
 {stats_sum}
 
 {stats_table}
+
+## 6а. Знакома ли модель с задачей: проверка по рассуждению (CoT)
+
+Цель — понять, не входила ли задача в предобучение. Структурно: 39 из 40 итоговых задач — новые экземпляры,
+созданные генераторами со случайными параметрами, и в предобучении быть не могли; из публичного датасета
+(TheoremQA, 2023) только пачка механики на ступени 2. По рассуждениям всех прогонов (`cot_check.py`):
+фразы узнавания («I recall», «well-known problem», «answer key» …) и место первого появления эталонного ответа
+в CoT (доля длины; ответ, известный заранее, появляется до вычислений).
+
+{cot_table}
+
+Разбор контекстов: в сгенерированных задачах «I recall» — вспоминание фактов («Jan 1, 2014 was a Wednesday»,
+«123² = 15129») или своих же промежуточных подсчётов, а не узнавание задачи; у определителей ответ появляется
+к середине CoT, потому что дальше модель перепроверяет его вторым способом. В пачке TheoremQA есть прямое
+узнавание: «I recall a similar problem: "A carnival ride moves in a circle of radius 5.0 m, period 4.0 s…" answer
+often is 12.3». Эта задача (ступень 2, mechanics) — единственная с признаками знакомства по предобучению.
 
 ## 7. Расходы
 
@@ -107,5 +125,7 @@ uv run embedding_eval/gen_runs.py --provider cloudru --items bench/ladder/candid
     --out embedding_eval/runs/ladder/deepseek-v4-flash/main --ledger embedding_eval/runs/ladder/deepseek-v4-flash/spend.jsonl \
     --run-id 1 2 3 4 5 --temperature 1.0 --max-tokens 60000 --budget N --answer-fallback
 python bench/ladder/select_tasks.py stats | borderline | embed | final
+python bench/ladder/cot_check.py --md bench/ladder/cot_check.md
+python bench/ladder/export_tasks.py      # bench/ladder/tasks/: файл на задачу, README с деревом
 python bench/ladder/report.py
 ```

@@ -1,0 +1,449 @@
+We are asked to compute the Smith normal form of a 6x6 integer matrix A. The Smith normal form is a diagonal matrix with non-negative integers d1,...,dn such that d_i divides d_{i+1} (or zeros at the end). We need to compute the invariant factors.
+
+The matrix A is:
+
+Row1: -5, -4, -3, -4, 3, -6
+Row2: -3, 0, -5, -5, 4, -1
+Row3: 1, -1, 4, 5, -4, -3
+Row4: -3, -3, -3, -5, 4, -1
+Row5: -5, -5, 0, 0, -1, -8
+Row6: -1, -1, 0, 0, -1, 0
+
+We need to compute Smith normal form over Z. We can do row and column operations (unimodular transformations) to reduce it to diagonal form.
+
+Let's denote the matrix.
+
+We proceed step by step.
+
+We can compute the gcd of all entries, then reduce the matrix to have the gcd in the (1,1) position, then clear first row and column, then proceed to submatrix, etc.
+
+But careful: The Smith normal form algorithm: find the smallest non-zero entry (in absolute value) and bring it to top-left by row/col swaps; then use it to eliminate other entries in the first row and first column via integer row/col operations (like Euclidean algorithm). After first row and column are all zeros except the (1,1) entry, we have d1 = that entry; then recurse on the submatrix.
+
+But sometimes we need to ensure that d1 divides all entries of the matrix; we may need to adjust if not. Actually the algorithm ensures that after we have a top-left entry that divides all entries in the first row and column, we then clear them; but we also need to ensure that it divides all entries in the matrix (so that after elimination we can proceed). The usual method: after bringing the smallest nonzero to (1,1), we use it to reduce other entries in the first row: for each j>1, we perform column operations to replace column j by col_j - q*col_1 where q = round(a1j/a11) so that the new a1j becomes a1j mod a11; then we do similarly for rows. We then check if any entry in the first row or column is not zero; if not zero, we might need to bring that entry to (1,1) and repeat. Ultimately we get a11 that divides all entries in the first row and column; then we set those to zero. Then we proceed to the submatrix.
+
+Given the size, we can compute systematically.
+
+Let me write down the matrix:
+
+A = 
+[ -5, -4, -3, -4,  3, -6 ]
+[ -3,  0, -5, -5,  4, -1 ]
+[  1, -1,  4,  5, -4, -3 ]
+[ -3, -3, -3, -5,  4, -1 ]
+[ -5, -5,  0,  0, -1, -8 ]
+[ -1, -1,  0,  0, -1,  0 ]
+
+We can start by perhaps simplifying with gcd of all entries. Let's compute gcd of all entries? Might be 1. Let's check: there is a 1 in (3,1). So gcd is 1. So d1=1 eventually.
+
+We can bring that 1 to top-left. Swap rows: row3 with row1. So new matrix after row swap:
+
+Row1: [1, -1, 4, 5, -4, -3]
+Row2: [-3, 0, -5, -5, 4, -1] (original row2)
+Row3: [-5, -4, -3, -4, 3, -6] (original row1)
+Row4: [-3, -3, -3, -5, 4, -1]
+Row5: [-5, -5, 0, 0, -1, -8]
+Row6: [-1, -1, 0, 0, -1, 0]
+
+Now use the 1 to clear first column and first row.
+
+First, we can do row operations: subtract multiples of row1 from other rows to zero out column1 entries.
+
+For row2: entry -3. Since row1(1,1)=1, we can do row2 = row2 + 3*row1: new row2 = (-3+3*1, 0+3*(-1), -5+3*4, -5+3*5, 4+3*(-4), -1+3*(-3)) = (0, -3, -5+12=7, -5+15=10, 4-12=-8, -1-9=-10). So row2: [0, -3, 7, 10, -8, -10].
+
+Row3: -5, so row3 = row3 + 5*row1: row3 = (-5+5*1, -4+5*(-1), -3+5*4, -4+5*5, 3+5*(-4), -6+5*(-3)) = (0, -4-5=-9? Wait compute: -4+5*(-1) = -4-5 = -9; -3+20=17; -4+25=21; 3-20=-17; -6-15=-21). So row3: [0, -9, 17, 21, -17, -21].
+
+Row4: -3, so row4 = row4 + 3*row1: row4 = (-3+3, -3+3*(-1), -3+3*4, -5+3*5, 4+3*(-4), -1+3*(-3)) = (0, -3-3=-6? Actually -3 + (-3) = -6? Wait row4(2) is -3, row1(2) = -1, so -3 + 3*(-1)= -3 -3 = -6; row4(3): -3+12=9; row4(4): -5+15=10; row4(5): 4-12=-8; row4(6): -1-9=-10). So row4: [0, -6, 9, 10, -8, -10].
+
+Row5: -5, so row5 = row5 + 5*row1: row5 = (-5+5, -5+5*(-1), 0+5*4, 0+5*5, -1+5*(-4), -8+5*(-3)) = (0, -5-5=-10, 0+20=20, 0+25=25, -1-20=-21, -8-15=-23). So row5: [0, -10, 20, 25, -21, -23].
+
+Row6: -1, so row6 = row6 + 1*row1: row6 = (-1+1, -1+(-1), 0+4, 0+5, -1+(-4), 0+(-3)) = (0, -2, 4, 5, -5, -3). So row6: [0, -2, 4, 5, -5, -3].
+
+Now column1 is cleared (zeros except top-left 1). Now we also want to clear first row except (1,1). Currently first row: [1, -1, 4, 5, -4, -3]. We can use column operations: subtract appropriate multiples of column1 from other columns to zero out row1 entries. Since we have 1 at (1,1), we can do: For col2: new col2 = col2 + 1*col1? Because a12 = -1. To make it 0: col2 = col2 + col1? Actually we want to perform column operations: subtract a12 times col1 from col2? Let's be systematic: We can replace column j by column j - a1j * column1 (since a11=1). Then a1j becomes 0. For j=2: a12=-1, so col2 = col2 - (-1)*col1 = col2 + col1. That will make (1,2) = -1 + 1 = 0. But careful: when we do column operations, we modify all rows. So we need to apply to the whole matrix.
+
+Let's denote the current matrix after row operations. We'll list columns.
+
+Current matrix (after row ops) with rows:
+
+R1: [1, -1, 4, 5, -4, -3]
+R2: [0, -3, 7, 10, -8, -10]
+R3: [0, -9, 17, 21, -17, -21]
+R4: [0, -6, 9, 10, -8, -10]
+R5: [0, -10, 20, 25, -21, -23]
+R6: [0, -2, 4, 5, -5, -3]
+
+Now column ops: For j=2 to 6, do col_j = col_j - a1j * col1. Since a1j = entries in row1.
+
+- For col2: a12 = -1, so col2 = col2 - (-1)*col1 = col2 + col1. So new col2 = col2 + col1. Compute new col2 entries: For each row i, new value = old col2 + col1. col1 is [1,0,0,0,0,0]^T currently. So rows: R1: -1+1=0; R2: -3+0=-3; R3: -9+0=-9; R4: -6+0=-6; R5: -10+0=-10; R6: -2+0=-2. So col2 becomes [0, -3, -9, -6, -10, -2]^T. Note this is same as before except row1 becomes 0.
+
+- For col3: a13=4, so col3 = col3 - 4*col1. col1: [1,0,0,0,0,0]^T. So new col3: R1: 4 - 4*1 = 0; R2: 7 - 4*0 = 7; R3: 17 - 0 = 17; R4: 9 - 0 = 9; R5: 20 - 0 = 20; R6: 4 - 0 = 4. So col3 becomes [0,7,17,9,20,4]^T.
+
+- For col4: a14=5, so col4 = col4 - 5*col1: R1: 5-5=0; R2:10-0=10; R3:21-0=21; R4:10-0=10; R5:25-0=25; R6:5-0=5. So col4: [0,10,21,10,25,5].
+
+- For col5: a15=-4, so col5 = col5 - (-4)*col1 = col5 + 4*col1: R1: -4 +4=0; R2: -8+0=-8; R3: -17+0=-17; R4: -8+0=-8; R5: -21+0=-21; R6: -5+0=-5. So col5: [0,-8,-17,-8,-21,-5].
+
+- For col6: a16=-3, so col6 = col6 + 3*col1: R1: -3+3=0; R2: -10+0=-10; R3: -21+0=-21; R4: -10+0=-10; R5: -23+0=-23; R6: -3+0=-3. So col6: [0,-10,-21,-10,-23,-3].
+
+Thus after column operations, the matrix becomes:
+
+Row1: [1, 0, 0, 0, 0, 0]
+Row2: [0, -3, 7, 10, -8, -10]
+Row3: [0, -9, 17, 21, -17, -21]
+Row4: [0, -6, 9, 10, -8, -10]
+Row5: [0, -10, 20, 25, -21, -23]
+Row6: [0, -2, 4, 5, -5, -3]
+
+Now we have d1 = 1. We proceed to the submatrix formed by rows 2-6, cols 2-6. That submatrix is:
+
+B = 
+[ -3, 7, 10, -8, -10 ]
+[ -9, 17, 21, -17, -21 ]
+[ -6, 9, 10, -8, -10 ]
+[ -10, 20, 25, -21, -23 ]
+[ -2, 4, 5, -5, -3 ]
+
+Now we want to compute the Smith normal form of B, then d2 would be the first invariant factor of B (or rather, the gcd of all entries of B and then after elimination, etc). But the invariant factors of A will be: d1=1, then d2,...,d6 are the invariant factors of B (since we have already removed the first row/col). However note that the Smith normal form of A is diag(1, d2', d3', ...) where d2' is the gcd of all entries of B? Actually careful: In the algorithm, after we have d1=1 that divides all entries, we then clear first row and column, and then we compute the Smith normal form of the submatrix; the resulting invariant factors are the remaining ones. But we need to ensure that d1 divides all entries in B? Since d1=1, it does divide everything, so fine.
+
+Now we compute SNF of B. B is 5x5.
+
+Let's denote B = 
+[ -3, 7, 10, -8, -10 ]
+[ -9, 17, 21, -17, -21 ]
+[ -6, 9, 10, -8, -10 ]
+[ -10, 20, 25, -21, -23 ]
+[ -2, 4, 5, -5, -3 ]
+
+We can reduce mod signs, but we can work with positive values.
+
+We can start by finding the gcd of all entries of B. Compute: look at the smallest absolute values: -2, -3, etc. gcd of 2 and 3 is 1, so likely gcd=1. But we need to compute systematically.
+
+Let's compute gcd of all entries. Possibly 1, because there is a 2? Actually we have entries like -2, -3, 4,5, etc. gcd of 2 and 3 is 1. So d2 = 1 as well? But we need to check if we can get a 1 in the submatrix by row/col ops. Since there is a 2 and 3, gcd is 1, so d2 = 1. But we should confirm that after reducing the submatrix we might get d2=1. But we need to compute the full SNF, so d2 might be 1, then d3, etc. Possibly all invariant factors might be 1 until some later ones. However the matrix might have rank less than 6; we need to check the determinant? The matrix might be singular? Let's compute determinant or rank. But the Smith normal form will have zeros at the end if rank < 6. The problem asks for d1,...,d6; if the matrix is full rank, then all d_i are positive and d6 is the determinant up to sign (since product of d_i = |det|). If not full rank, some d_i=0.
+
+We need to compute SNF accurately. Let's proceed.
+
+B is 5x5. We can compute its SNF similarly. We can bring a smallest nonzero to top-left, etc. Since the gcd of the entries is 1, we should be able to make d2=1. Then we will clear first row and column of B, then the remaining submatrix will be 4x4, and so on.
+
+But we must be careful: we need to ensure that when we perform operations on B, they correspond to row and column operations on the original matrix A (which are allowed). Since we are only using the submatrix but the operations on rows/cols of B also affect the whole matrix? Actually after we have eliminated first row and column of A, any row operations on rows 2..6 and column operations on cols 2..6 do not affect the first row/col (since first row and col are zeros except 1). So we can treat B independently for further reduction. So we can reduce B to its SNF.
+
+So let's compute SNF of B.
+
+Write B clearly:
+
+Row2 (original index 2): [-3, 7, 10, -8, -10]
+Row3: [-9, 17, 21, -17, -21]
+Row4: [-6, 9, 10, -8, -10]
+Row5: [-10, 20, 25, -21, -23]
+Row6: [-2, 4, 5, -5, -3]
+
+We can simplify by taking gcd of first column: entries: -3, -9, -6, -10, -2. gcd(3,9,6,10,2) = 1? gcd(2,3)=1, so 1. So we can get a 1 in first column. The smallest absolute entry is 2 (row6). We could bring that to top-left. Let's bring the row with -2 to top row of B. So swap row6 (which is the last row of B) with row1 of B. But careful: B rows correspond to original rows 2-6. Let's denote them as rows 1..5 of B. So we can reorder rows. So we can swap row5 (original row6) with row1 of B. So let's do that.
+
+So B after row swap: new B row1 = [-2, 4, 5, -5, -3]; row2 = [-3, 7, 10, -8, -10]; row3 = [-9, 17, 21, -17, -21]; row4 = [-6, 9, 10, -8, -10]; row5 = [-10, 20, 25, -21, -23] (original row5). But we can also keep track of original indices.
+
+Now we have top-left entry -2. We can make it positive by multiplying row1 by -1 (which is a unimodular row operation). So row1 = -row1: becomes [2, -4, -5, 5, 3]. But careful: multiplying a row by -1 is allowed (determinant -1). So do that.
+
+Now B:
+Row1: [2, -4, -5, 5, 3]
+Row2: [-3, 7, 10, -8, -10]
+Row3: [-9, 17, 21, -17, -21]
+Row4: [-6, 9, 10, -8, -10]
+Row5: [-10, 20, 25, -21, -23]
+
+Now we have 2 at (1,1). We want to use it to reduce other entries in first row and first column. First, we want to make sure that 2 divides all entries in the first row and first column? Not necessarily; but we can perform operations to reduce them mod 2. Since 2 does not necessarily divide all entries; e.g., row1 col2 is -4, divisible by 2; col3 -5 not divisible by 2; col4 5 not divisible; col5 3 not divisible. So we need to use the Euclidean algorithm to bring the gcd of first row and first column to the top-left. The standard approach: while there is an entry in the first row or column not divisible by a11, we can combine rows or columns to bring a smaller gcd. For instance, if a1j mod a11 != 0, we can add a suitable multiple of column1 to column j to reduce a1j modulo a11, then bring that entry to (1,1) by swapping columns? Actually typical algorithm: At each step, we consider the set of all entries in the first row and first column. If there exists an entry that is not divisible by a11, we can perform an operation to replace a11 with the gcd of a11 and that entry. For example, if a1j is not divisible by a11, we can compute gcd(a11, a1j) and using column operations (like add appropriate multiples) we can reduce a11 to that gcd. More concretely: we can do column operation: col1 = col1 - q*colj where q = floor(a11/a1j) or something? Actually we want to replace a11 with gcd(a11, a1j). We can use the Euclidean algorithm: Suppose we have a11=2 and a1j=5. Since 5 mod 2 =1, we can subtract 2*col1 from colj? Let's think: We have entry a1j=5. If we do colj = colj - 2*col1, then new a1j = 5 - 2*2 = 1. Then we can swap colj with col1 to bring 1 to (1,1). That gives d1=1. So it's easy.
+
+Since we have many entries not divisible by 2, we can get a 1. Let's do it systematically.
+
+Option: Focus on first row: entries: -4, -5, 5, 3. The smallest absolute value among these and 2 is 1? Actually gcd(2,3)=1, gcd(2,5)=1, etc. So we can get 1. Let's use a1j=3 (col5). Since 3 mod 2 =1. Do column operation: col5 = col5 - 1*col1? That would give a15 = 3 - 1*2 = 1. But careful: we need to subtract integer multiple. Since 2*1=2, 3-2=1, so we need to subtract floor(3/2)=1 times col1? Actually col5 = col5 - 1*col1 gives new a15 = 3 - 2 = 1. So do that. Then we swap col5 with col1? That would bring 1 to (1,1). Then we can proceed.
+
+Let's try: Perform column operation: col5 = col5 - col1. Compute new entries for col5. But we need to update the whole matrix. We'll do column operations on B. B is 5x5. We'll denote columns 1-5 of B.
+
+Current B:
+Row1: [2, -4, -5, 5, 3]
+Row2: [-3, 7, 10, -8, -10]
+Row3: [-9, 17, 21, -17, -21]
+Row4: [-6, 9, 10, -8, -10]
+Row5: [-10, 20, 25, -21, -23]
+
+Do col5 = col5 - col1:
+Compute new col5:
+R1: 3 - 2 = 1
+R2: -10 - (-3) = -10+3 = -7? Wait R2 col5 = -10, col1 = -3, so -10 - (-3) = -10+3 = -7
+R3: -21 - (-9) = -21+9 = -12
+R4: -10 - (-6) = -10+6 = -4
+R5: -23 - (-10) = -23+10 = -13
+So new col5 becomes [1, -7, -12, -4, -13]^T.
+
+Now swap col5 with col1 to bring 1 to top-left. So swap columns 1 and 5. After swapping, the top-left becomes 1 (from old col5). Also col1 becomes old col5? Actually we need to swap entire columns. So the matrix after swapping col1 and col5:
+
+Now columns: new col1 = old col5 = [1, -7, -12, -4, -13]^T
+new col5 = old col1 = [2, -3, -9, -6, -10]^T? Wait old col1 was [2, -3, -9, -6, -10]^T. Yes.
+Other columns remain: col2 = [-4, 7, 17, 9, 20]^T? Actually careful: current col2 is still [-4, 7, 17, 9, 20]^T? Let's check: row1 col2 = -4, row2 col2 = 7, row3 col2 = 17, row4 col2 = 9, row5 col2 = 20. But after we did column operation col5 = col5 - col1, we didn't change col2. So col2 remains as before. col3 = [-5,10,21,10,25]^T; col4 = [5, -8, -17, -8, -21]^T? Wait we need to recompute accurately: Actually after the column operation, col4 remains: row1 col4 = 5, row2 col4 = -8, row3 col4 = -17, row4 col4 = -8, row5 col4 = -21. Yes.
+
+But note: after swapping col1 and col5, the first column becomes the old col5, which we computed as [1, -7, -12, -4, -13]^T. And the new col5 becomes old col1 = [2, -3, -9, -6, -10]. So the matrix now:
+
+Row1: [1, -4, -5, 5, 2]? Because row1 after col swap: new col1=1, col2=-4, col3=-5, col4=5, col5=2 (old col1). So row1: [1, -4, -5, 5, 2]
+Row2: [-7, 7, 10, -8, -3] (since row2 col1 = -7, col2=7, col3=10, col4=-8, col5=-3)
+Row3: [-12, 17, 21, -17, -9]
+Row4: [-4, 9, 10, -8, -6]
+Row5: [-13, 20, 25, -21, -10]
+
+Now we have d2 = 1 (since top-left is 1). We can now clear first row and first column using this 1.
+
+First, clear first row by column operations: for j=2..5, do col_j = col_j - a1j * col1. Since a1j are: row1 col2=-4, col3=-5, col4=5, col5=2. So:
+
+col2 = col2 - (-4)*col1 = col2 + 4*col1
+col3 = col3 - (-5)*col1 = col3 + 5*col1
+col4 = col4 - 5*col1 = col4 - 5*col1
+col5 = col5 - 2*col1 = col5 - 2*col1
+
+We'll compute new columns.
+
+First, col1 is [1, -7, -12, -4, -13]^T.
+
+Compute new col2: old col2 = [-4,7,17,9,20]^T. Add 4*col1: 4*col1 = [4, -28, -48, -16, -52]. So new col2 = [-4+4=0, 7-28=-21, 17-48=-31, 9-16=-7, 20-52=-32]. So col2 = [0, -21, -31, -7, -32]^T.
+
+New col3: old col3 = [-5,10,21,10,25]^T. Add 5*col1: 5*col1 = [5, -35, -60, -20, -65]. So new col3 = [-5+5=0, 10-35=-25, 21-60=-39, 10-20=-10, 25-65=-40]. So col3 = [0, -25, -39, -10, -40]^T.
+
+New col4: old col4 = [5, -8, -17, -8, -21]^T. Subtract 5*col1: 5*col1 = [5, -35, -60, -20, -65]. So new col4 = [5-5=0, -8 - (-35) = -8+35=27? Wait careful: col4 = col4 - 5*col1, so subtract: new = old - 5*col1. So for row2: -8 - (-35) = -8+35=27; row3: -17 - (-60) = -17+60=43; row4: -8 - (-20) = -8+20=12; row5: -21 - (-65) = -21+65=44. So col4 = [0, 27, 43, 12, 44]^T.
+
+New col5: old col5 = [2, -3, -9, -6, -10]^T. Subtract 2*col1: 2*col1 = [2, -14, -24, -8, -26]. So new col5 = [2-2=0, -3 - (-14)= -3+14=11, -9 - (-24)= -9+24=15, -6 - (-8)= -6+8=2, -10 - (-26)= -10+26=16]. So col5 = [0, 11, 15, 2, 16]^T.
+
+Now first row becomes [1,0,0,0,0]. So after these column operations, the matrix is:
+
+Row1: [1,0,0,0,0]
+Row2: [-7, -21, -25, 27, 11]
+Row3: [-12, -31, -39, 43, 15]
+Row4: [-4, -7, -10, 12, 2]
+Row5: [-13, -32, -40, 44, 16]
+
+Now we need to clear first column using row operations (since top-left is 1). For i=2..5, do row_i = row_i - a_i1 * row1. Since a_i1 are: row2: -7, row3: -12, row4: -4, row5: -13. So:
+
+row2 = row2 - (-7)*row1 = row2 + 7*row1. row1 = [1,0,0,0,0]. So row2 becomes: [-7+7*1=0, -21+7*0=-21, -25+0=-25, 27+0=27, 11+0=11].
+row3 = row3 + 12*row1: [-12+12=0, -31, -39, 43, 15].
+row4 = row4 + 4*row1: [-4+4=0, -7, -10, 12, 2].
+row5 = row5 + 13*row1: [-13+13=0, -32, -40, 44, 16].
+
+So after row operations, we have:
+
+Row1: [1,0,0,0,0]
+Row2: [0, -21, -25, 27, 11]
+Row3: [0, -31, -39, 43, 15]
+Row4: [0, -7, -10, 12, 2]
+Row5: [0, -32, -40, 44, 16]
+
+Now we have d2 = 1. The submatrix now is rows2-5, cols2-5: a 4x4 matrix C:
+
+C = 
+[ -21, -25, 27, 11 ]
+[ -31, -39, 43, 15 ]
+[ -7, -10, 12, 2 ]
+[ -32, -40, 44, 16 ]
+
+We need to compute SNF of C, which will give d3, d4, d5, d6? Since A is 6x6, we have so far d1=1, d2=1, and then we have a 4x4 submatrix that will yield d3, d4, d5, d6 (possibly with zeros if rank <4). So we need to reduce C.
+
+Now C is 4x4. Let's examine.
+
+C = 
+R2: [-21, -25, 27, 11]
+R3: [-31, -39, 43, 15]
+R4: [-7, -10, 12, 2]
+R5: [-32, -40, 44, 16]
+
+We can simplify by taking common factors? Look at row4: [-7,-10,12,2] maybe gcd of row? 7,10,12,2 -> gcd=1. Row5: [-32,-40,44,16] all divisible by 4? gcd(32,40,44,16)=4? Actually 32,40,44,16 have gcd 4? 32/4=8,40/4=10,44/4=11,16/4=4; but there is also sign, but we can factor 4 out? But row operations cannot just factor out a scalar; but we can use gcd with other rows to reduce. However we can note that the matrix might have rank less than 4; we need to compute invariants.
+
+Let's compute gcd of all entries in C: entries: -21, -25,27,11, -31,-39,43,15, -7,-10,12,2, -32,-40,44,16. The absolute values: 2 appears, so gcd likely 1? But we need to check if any common factor >1 divides all entries. Look at parity: many odd, 2 appears but 2 does not divide odd numbers like -21, -25, etc. So gcd=1. So d3 = 1.
+
+But we need to be systematic. Let's reduce C similarly.
+
+We can bring a small entry to top-left. Look at row4 col4? Actually the smallest absolute entry is 2 (row4 col4). So we can bring that to (1,1) by row and column swaps. Let's do that.
+
+C rows: Let's label as rows 1-4 of C (original rows 2-5 of B). So row1 = [-21, -25, 27, 11]; row2 = [-31, -39, 43, 15]; row3 = [-7, -10, 12, 2]; row4 = [-32, -40, 44, 16].
+
+We can swap row3 (which has small entry 2) to first row. So swap rows 1 and 3? Or bring row3 to top. So after swapping row1 and row3:
+
+New C row1 = [-7, -10, 12, 2]
+row2 = [-21, -25, 27, 11] (original row1)
+row3 = [-31, -39, 43, 15] (original row2)
+row4 = [-32, -40, 44, 16] (original row4)
+
+Now we have entry at (1,4) = 2 maybe better to bring to (1,1). We can also swap columns to bring the 2 to top-left. Currently row1 = [-7, -10, 12, 2]. The entry 2 is in column 4. So swap column1 and column4? That would put 2 at (1,1). Let's do that.
+
+So swap col1 and col4. After swap, columns: new col1 = old col4 = [2, 11, 15, 16]^T? Wait each row: row1 col4=2, row2 col4=11, row3 col4=15, row4 col4=16. new col4 = old col1 = [-7, -21, -31, -32]^T. Other columns: col2 remains [-10, -25, -39, -40]^T? Actually careful: old col2 = [-10, -25, -39, -40]^T? Let's set up the matrix after row swap:
+
+Current C (after row swap):
+Row1: [-7, -10, 12, 2]
+Row2: [-21, -25, 27, 11]
+Row3: [-31, -39, 43, 15]
+Row4: [-32, -40, 44, 16]
+
+Now swap col1 and col4:
+
+New col1 = old col4: values: row1:2, row2:11, row3:15, row4:16.
+New col4 = old col1: row1:-7, row2:-21, row3:-31, row4:-32.
+col2 and col3 unchanged: col2 = [-10, -25, -39, -40]; col3 = [12, 27, 43, 44].
+
+So new matrix C':
+
+Row1: [2, -10, 12, -7] (since row1 col1=2, col2=-10, col3=12, col4=-7)
+Row2: [11, -25, 27, -21]
+Row3: [15, -39, 43, -31]
+Row4: [16, -40, 44, -32]
+
+Now we have top-left 2. We can use it to reduce other entries in first row and column. However, 2 does not divide all entries; for instance, row1 col2 = -10 is divisible by 2, col3=12 divisible, col4=-7 not divisible. So we can bring a smaller gcd. We can aim to get 1.
+
+Look at row1 col4 = -7. Since 7 mod 2 = 1, we can get 1. Use column operation: col4 = col4 + 3*col1? Because -7 + 3*2 = -7+6 = -1? Actually we want to get 1 or -1. If we add 4*col1: -7+8=1. So do col4 = col4 + 4*col1 gives new a14 = -7+4*2=1. Or we could subtract appropriate multiple. Let's do col4 = col4 + 4*col1. Then we will get a 1 at (1,4). Then we can swap col4 with col1 to bring 1 to top-left.
+
+Let's do that.
+
+Compute col4 = col4 + 4*col1.
+
+Current col1 = [2,11,15,16]^T. col4 = [-7, -21, -31, -32]^T.
+4*col1 = [8,44,60,64].
+New col4 = [-7+8=1, -21+44=23, -31+60=29, -32+64=32].
+
+So now matrix becomes:
+
+Row1: [2, -10, 12, 1]
+Row2: [11, -25, 27, 23]
+Row3: [15, -39, 43, 29]
+Row4: [16, -40, 44, 32]
+
+Now swap col1 and col4 to bring the 1 to (1,1). So swap columns 1 and 4:
+
+New col1 = old col4 = [1,23,29,32]^T.
+New col4 = old col1 = [2,11,15,16]^T.
+col2 and col3 unchanged: col2 = [-10,-25,-39,-40]; col3 = [12,27,43,44].
+
+Thus new matrix:
+
+Row1: [1, -10, 12, 2] (since row1 col1=1, col2=-10, col3=12, col4=2)
+Row2: [23, -25, 27, 11]
+Row3: [29, -39, 43, 15]
+Row4: [32, -40, 44, 16]
+
+Now we have d3 = 1 (since top-left 1). Then we can clear first row and column.
+
+Clear first row by column operations: for j=2..4, do col_j = col_j - a1j * col1. a1j: a12=-10, a13=12, a14=2.
+
+col2 = col2 - (-10)*col1 = col2 + 10*col1.
+col3 = col3 - 12*col1 = col3 - 12*col1.
+col4 = col4 - 2*col1 = col4 - 2*col1.
+
+Compute these.
+
+col1 = [1,23,29,32]^T.
+
+col2: old col2 = [-10,-25,-39,-40]^T. Add 10*col1 = [10,230,290,320]. New col2 = [0, -25+230=205, -39+290=251, -40+320=280]. So col2 = [0,205,251,280]^T.
+
+col3: old col3 = [12,27,43,44]^T. Subtract 12*col1: 12*col1 = [12,276,348,384]. New col3 = [0, 27-276=-249, 43-348=-305, 44-384=-340]. So col3 = [0, -249, -305, -340]^T.
+
+col4: old col4 = [2,11,15,16]^T. Subtract 2*col1: 2*col1 = [2,46,58,64]. New col4 = [0, 11-46=-35, 15-58=-43, 16-64=-48]. So col4 = [0, -35, -43, -48]^T.
+
+Now first row becomes [1,0,0,0].
+
+Now clear first column using row operations: for i=2..4, row_i = row_i - a_i1 * row1. a_i1: row2=23, row3=29, row4=32. Since row1 = [1,0,0,0], we do:
+
+row2 = row2 - 23*row1 = [23-23, -25-0, 27-0, 11-0] = [0, -25, 27, 11]? Wait careful: row2 after previous column operations already had its first column zero? Actually we haven't updated row2 entries for columns 2-4? But we must consider that after column ops, the matrix is:
+
+Row1: [1,0,0,0]
+Row2: [23,205,-249,-35]? Wait we need to recompute the full matrix after column ops. Let's recompute systematically.
+
+After column ops, we have:
+
+- Row1: col1=1, col2=0, col3=0, col4=0 (because we zeroed first row)
+- Row2: originally row2 had entries: col1=23, col2=-25, col3=27, col4=11. But after column ops, col2, col3, col4 changed. Specifically:
+   col2 new = old col2 + 10*col1 = -25 + 10*23 = -25+230=205? Wait careful: For row2, col2 new = old row2 col2 + 10*(row2 col1) = -25 + 10*23 = -25+230=205. Yes.
+   col3 new = old row2 col3 - 12*(row2 col1) = 27 - 12*23 = 27 - 276 = -249.
+   col4 new = old row2 col4 - 2*(row2 col1) = 11 - 2*23 = 11 - 46 = -35.
+   Also col1 remains 23 (since we didn't change col1). So row2 becomes: [23, 205, -249, -35].
+- Row3: originally [29, -39, 43, 15]. After column ops:
+   col2: -39 + 10*29 = -39+290=251.
+   col3: 43 - 12*29 = 43 - 348 = -305.
+   col4: 15 - 2*29 = 15 - 58 = -43.
+   col1=29. So row3: [29, 251, -305, -43].
+- Row4: originally [32, -40, 44, 16]. After column ops:
+   col2: -40 + 10*32 = -40+320=280.
+   col3: 44 - 12*32 = 44 - 384 = -340.
+   col4: 16 - 2*32 = 16 - 64 = -48.
+   col1=32. So row4: [32, 280, -340, -48].
+
+Now we have first row [1,0,0,0]. Now we clear first column by row ops: row2 = row2 - 23*row1, row3 = row3 - 29*row1, row4 = row4 - 32*row1. Since row1 = [1,0,0,0], this simply sets the first column entries to 0 and leaves other entries unchanged. So new rows:
+
+row2: [0, 205, -249, -35]
+row3: [0, 251, -305, -43]
+row4: [0, 280, -340, -48]
+
+Thus the submatrix after clearing is rows 2-4, cols 2-4: a 3x3 matrix D:
+
+D = 
+[205, -249, -35]
+[251, -305, -43]
+[280, -340, -48]
+
+We have d3 = 1. Now we need to compute SNF of this 3x3 matrix D. This will give d4, d5, d6.
+
+So D:
+
+Row1: 205, -249, -35
+Row2: 251, -305, -43
+Row3: 280, -340, -48
+
+We can simplify by factoring common factors? Let's look at entries: 205, -249, -35, 251, -305, -43, 280, -340, -48.
+
+Compute gcd of all entries? Check if there is a common factor. 205=5*41, -249= -3*83, -35=-5*7. So not all divisible by 5 because 251 not divisible by 5, 305 divisible by 5? 305=5*61, but 251 not. So gcd likely 1. Might be 1 but we should check if there is any factor dividing all: 2? No, many odd. So d4 = 1? Possibly.
+
+But we need to compute the full SNF; maybe the matrix is singular? Let's compute its determinant. If determinant is non-zero, then all diagonals are positive and product = |det|. If determinant is zero, then we have zeros at end. Let's compute determinant and also track invariants.
+
+We can continue reduction.
+
+Let's work on D.
+
+D matrix:
+[205, -249, -35]
+[251, -305, -43]
+[280, -340, -48]
+
+We can bring a small entry to top-left. The smallest absolute entry is 35? Actually -35, -43, -48, 205, etc. So 35 is smallest. We can bring the column with -35 to first column? But -35 is at (1,3). So we could swap columns to bring it to (1,1). Or we can look for a smaller gcd by Euclidean algorithm.
+
+Alternatively, we can compute the gcd of the first row entries: gcd(205, 249, 35) =? 205 and 35: gcd(205,35)=5 (205=5*41, 35=5*7). Then gcd(5,249)=1 since 249 mod5=4. So gcd of first row is 1. So we can get a 1 by row operations on the first row. So we can likely reduce to get d4=1.
+
+Let's proceed systematically.
+
+We want to reduce D to its SNF. We start by trying to get a 1 in the top-left corner.
+
+First, we can bring a small entry. Since first row has entries 205, -249, -35. The smallest absolute is 35. We can swap columns to bring -35 to column1. So swap col3 and col1: that puts -35 at (1,1). Or we could also consider using Euclidean algorithm to reduce the top-left entry. Let's do column swap.
+
+Swap col1 and col3 of D. But careful: D is 3x3 with columns 1,2,3 (original columns 2,3,4 of previous). We'll define D as:
+
+col1 = [205,251,280]^T
+col2 = [-249,-305,-340]^T
+col3 = [-35,-43,-48]^T
+
+Swap col1 and col3:
+
+New D' = after swapping:
+col1 = [-35, -43, -48]^T
+col2 = [-249, -305, -340]^T
+col3 = [205, 251, 280]^T
+
+So D' = 
+Row1: [-35, -249, 205]
+Row2: [-43, -305, 251]
+Row3: [-48, -340, 280]
+
+We can multiply row1 by -1 to make top-left positive: row1 = -row1 => [35, 249, -205]. But we might also want to keep signs manageable.
+
+Let's do row1 = -row1: becomes [35, 249, -205]. Row2 and row3 unchanged: [-43, -305, 251]; [-48, -340, 280].
+
+Now D' looks:
+R1: [35, 249, -205]
+R2: [-43, -305, 251]
+R3: [-48, -340, 280]
+
+Now we have 35 at (1,1). Now we want to reduce first row and column. Since 35 does not necessarily divide all entries, we can use Euclidean algorithm to get a smaller gcd. For instance, look at R1C2=249. 249 mod 35 = 249 - 7*35 = 249-245=4. So we can reduce that by column operation: col2 = col2 - 7*col1? Because 249 - 7*35 = 4. So do column op: col2 = col2 - 7*col1. Then new a12 = 4. Then we can swap col2 with col1 to bring 4 to top-left, then continue. Or we could directly aim for gcd(35,249)=? gcd=1? Since 249 mod 35=4, 35 mod 4=3, 4 mod 3=1, so gcd=1. So we can get to 1 eventually.
+
+Let's do that.
+
+First, compute col2 = col2 - 7*col1.
+
+Current col1 = [35, -43, -48]^T? Wait careful: after row1 sign change, col1 = [35, -43, -48]^T? Actually row1 col1=35, row2 col1=-43, row3 col1=-48. col2 = [249, -305, -340]^T? Row1 col2=249, row2 col2=-305, row3 col2=-340.
+
+7*col1 = [245, -301, -336]^T. So new col2 = [249-245=4, -305 - (-301)= -305+301= -4, -340 - (-336)= -340+336= -4]. So col

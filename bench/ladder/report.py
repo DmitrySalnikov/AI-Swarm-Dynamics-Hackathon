@@ -64,6 +64,7 @@ def main():
     stats = run(str(LADDER / "select_tasks.py"), "stats")
     final = run(str(LADDER / "select_tasks.py"), "final")
     plan = (LADDER / "candidates" / "main_plan.md").read_text()
+    cot_table = run(str(LADDER / "cot_check.py"), "--md", str(LADDER / "cot_check.md")).strip()
     F = facts()
     stats_table = "\n".join(l for l in stats.splitlines() if l.startswith("|"))
     stats_sum = "\n".join(f"- {l}" for l in stats.splitlines() if l.startswith("ladder_rung_"))
@@ -75,7 +76,7 @@ def main():
         n_calib=F["n_calib"], n_main=F["n_main"], over=F["over"], over_max=f"{F['over_max']:,}".replace(",", " "),
         over_stop=F["over_stop"], no_answer=F["no_answer_line"], empty_visible=F["empty_visible"],
         tok_s=round(F["tok_s"]), final=final.strip(), stats_sum=stats_sum, stats_table=stats_table,
-        plan=plan.strip(), calib_table=calib_table.strip(), selftest=selftest)
+        plan=plan.strip(), calib_table=calib_table.strip(), selftest=selftest, cot_table=cot_table)
     (LADDER / "REPORT_ladder.md").write_text(text)
     print(f"-> {(LADDER / 'REPORT_ladder.md').relative_to(ROOT)}")
 

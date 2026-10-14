@@ -1,0 +1,464 @@
+We are given a melody of 61 notes. The first note is C5 tuned to 528 Hz. Then each subsequent note is tuned relative to the previous note using just-intonation ratios based on the interval in semitones between them. The intervals are measured in semitones, with the given ratios for each semitone interval. We need to find the frequency of the last note as a reduced fraction.
+
+We need to parse the melody: "C5 A4 C5 D5 A4 C5 D5 F5 B4 G4 F4 G4 G5 C5 F5 D5 D5 G4 G5 E5 C5 F4 D4 D5 E5 E4 G4 B4 C5 C4 D4 G3 A3 A3 E4 D4 E4 D4 E4 G4 B4 B3 A3 D4 A4 B4 E5 F5 C5 A4 E4 E4 A4 G4 C4 G4 E4 C4 B3 D4 D5"
+
+We need to list the notes and their octave numbers. The first note is C5. The tuning is relative to the previous note. So we need to compute the frequency step by step, multiplying by the ratio when going up, dividing when going down, and keeping same for repeated notes. The ratio depends on the interval in semitones. But note: The intervals are measured in semitones, and the given ratios are for ascending intervals? The problem says: "multiply by the ratio when the melody goes up, divide when it goes down". So the ratio is applied accordingly. For a descending interval, we divide by the ratio (or multiply by the reciprocal). So effectively, the frequency change factor is ratio^(direction) where direction is +1 for up, -1 for down.
+
+We need to determine the interval in semitones between successive notes. The problem gives a mapping from semitone difference to just-intonation ratio. But careful: The semitone differences are based on standard chromatic scale? The problem defines intervals in semitones: within an octave, C–D, D–E, F–G, G–A, A–B are 2 semitones and E–F, B–C are 1 semitone; the octave number increases from B to C. So essentially, it's the standard 12-tone equal temperament? Actually, it's just the standard semitone count between notes: C to D is 2 semitones (whole step), D to E is 2, E to F is 1, F to G is 2, G to A is 2, A to B is 2, B to C is 1. And octave numbers increase when going from B to C (e.g., B3 to C4 is 1 semitone, but octave number increments). So we can compute the interval in semitones between two notes by considering their note names and octave numbers. The interval is the number of semitones from the first note to the second, considering the octave. So we need to compute the pitch difference.
+
+We have a list of notes with octave numbers. Let's write them in order:
+
+1. C5 (first, frequency 528 Hz)
+2. A4
+3. C5
+4. D5
+5. A4
+6. C5
+7. D5
+8. F5
+9. B4
+10. G4
+11. F4
+12. G4
+13. G5
+14. C5
+15. F5
+16. D5
+17. D5
+18. G4
+19. G5
+20. E5
+21. C5
+22. F4
+23. D4
+24. D5
+25. E5
+26. E4
+27. G4
+28. B4
+29. C5
+30. C4
+31. D4
+32. G3
+33. A3
+34. A3
+35. E4
+36. D4
+37. E4
+38. D4
+39. E4
+40. G4
+41. B4
+42. B3
+43. A3
+44. D4
+45. A4
+46. B4
+47. E5
+48. F5
+49. C5
+50. A4
+51. E4
+52. E4
+53. A4
+54. G4
+55. C4
+56. G4
+57. E4
+58. C4
+59. B3
+60. D4
+61. D5 (last note)
+
+We need to compute frequencies step by step. Since there are 60 transitions, we could compute the cumulative product of ratios. But careful: The ratios are for intervals, and we need to know the direction. Also note that repeated notes have ratio 1/1 (0 semitones). So we can compute the frequency of the last note relative to the first: f_last = f_first * (product over intervals of (ratio)^(direction) ), where direction is +1 for ascending, -1 for descending.
+
+Alternatively, we can compute the overall multiplicative factor from the first note to the last note by summing the intervals in terms of the just-intonation ratios. But since the ratios are not simple powers of a constant, we need to compute the product of fractions. It may be simpler to iteratively compute using fractions, keeping numerator and denominator as integers. Since the numbers might become large, but we can reduce at each step or at the end.
+
+We need to compute the semitone interval between consecutive notes. Let's assign a numeric value to each note in terms of semitones relative to some reference. For example, we can assign a pitch class number and octave number to compute total semitones. Let's define a mapping: Note names to semitone offset within octave, with C=0, C#=1, D=2, D#=3, E=4, F=5, F#=6, G=7, G#=8, A=9, A#=10, B=11. But careful: The problem's definition of semitones is standard: C to D is 2, D to E is 2, E to F is 1, etc. So indeed it's the standard chromatic scale. So we can assign numbers: C=0, D=2, E=4, F=5, G=7, A=9, B=11. That's for natural notes; we don't have accidentals. So we can compute the semitone difference between two notes as: (pitch class of second) - (pitch class of first) + 12*(octave2 - octave1). Then the interval in semitones is that difference, which could be positive (up) or negative (down). The magnitude gives the ratio. For example, C5 to A4: C5 pitch class 0, octave5; A4 pitch class 9, octave4. Difference = 9 - 0 + 12*(4-5) = 9 - 12 = -3 semitones. So descending 3 semitones. Ratio for 3 semitones is 6/5, and since descending, we divide by that ratio (or multiply by 5/6). Similarly, A4 to C5: A4 to C5: difference = 0 - 9 + 12*(5-4) = -9+12=3 semitones ascending. So ratio 6/5, multiply.
+
+We need to compute all 60 intervals. But note: The melody has many repeats and steps. Instead of doing all manually, we can compute the cumulative factor by tracking the product of ratios. Since the fractions might simplify, we can do it systematically.
+
+Let's list the notes with their pitch numbers (semitone offset from C0 or something). For convenience, we can compute a numeric value representing the total semitones from some reference, but we don't need that for the ratio product because ratios depend on the interval size, not the absolute pitch. However, we need to know the exact interval in semitones (absolute difference) to pick the correct ratio. So we can compute the semitone difference for each successive pair.
+
+Let's assign each note a "chromatic index" that includes octave. Let's define a base: C4 = 0? But then we have notes from G3 to G5. Let's define a simple integer: semitones above C0? But easier: assign each note a number: For note X, let n = pitch class (C=0, D=2, E=4, F=5, G=7, A=9, B=11) + 12*octave. For example, C5 = 0 + 12*5 = 60. A4 = 9 + 12*4 = 57. D5 = 2+12*5=62. etc. Then the interval in semitones from note A to note B is n(B) - n(A). So we can compute that for each pair.
+
+Let's compute the list of n for all notes:
+
+We'll go through the sequence. I'll list index and note string, then compute n.
+
+1. C5: 0+12*5=60
+2. A4: 9+12*4=57
+3. C5: 60
+4. D5: 2+12*5=62
+5. A4: 57
+6. C5: 60
+7. D5: 62
+8. F5: 5+12*5=65
+9. B4: 11+12*4=59
+10. G4: 7+12*4=55
+11. F4: 5+12*4=53
+12. G4: 55
+13. G5: 7+12*5=67
+14. C5: 60
+15. F5: 65
+16. D5: 62
+17. D5: 62
+18. G4: 55
+19. G5: 67
+20. E5: 4+12*5=64
+21. C5: 60
+22. F4: 5+12*4=53
+23. D4: 2+12*4=50
+24. D5: 62
+25. E5: 64
+26. E4: 4+12*4=52
+27. G4: 55
+28. B4: 59
+29. C5: 60
+30. C4: 0+12*4=48
+31. D4: 50
+32. G3: 7+12*3=43
+33. A3: 9+12*3=45
+34. A3: 45
+35. E4: 52
+36. D4: 50
+37. E4: 52
+38. D4: 50
+39. E4: 52
+40. G4: 55
+41. B4: 59
+42. B3: 11+12*3=47
+43. A3: 45
+44. D4: 50
+45. A4: 57
+46. B4: 59
+47. E5: 64
+48. F5: 65
+49. C5: 60
+50. A4: 57
+51. E4: 52
+52. E4: 52
+53. A4: 57
+54. G4: 55
+55. C4: 48
+56. G4: 55
+57. E4: 52
+58. C4: 48
+59. B3: 47
+60. D4: 50
+61. D5: 62
+
+Now, we have the list of n values. We'll compute differences d = n(i+1) - n(i) for i=1 to 60. Then the interval in semitones is |d|? Actually, the interval is the absolute number of semitones, but the direction is given by sign. So for each transition, we need the ratio corresponding to the absolute semitone difference, and then multiply by that ratio if d>0 (ascending) or divide if d<0 (descending). If d=0, ratio is 1.
+
+Let's compute all differences:
+
+We'll list in order:
+
+1: n1=60, n2=57 => d = -3 (descending 3 semitones)
+2: n2=57, n3=60 => d = +3
+3: n3=60, n4=62 => d = +2
+4: n4=62, n5=57 => d = -5
+5: n5=57, n6=60 => d = +3
+6: n6=60, n7=62 => d = +2
+7: n7=62, n8=65 => d = +3
+8: n8=65, n9=59 => d = -6
+9: n9=59, n10=55 => d = -4
+10: n10=55, n11=53 => d = -2
+11: n11=53, n12=55 => d = +2
+12: n12=55, n13=67 => d = +12 (ascending an octave)
+13: n13=67, n14=60 => d = -7
+14: n14=60, n15=65 => d = +5
+15: n15=65, n16=62 => d = -3
+16: n16=62, n17=62 => d = 0
+17: n17=62, n18=55 => d = -7
+18: n18=55, n19=67 => d = +12
+19: n19=67, n20=64 => d = -3
+20: n20=64, n21=60 => d = -4
+21: n21=60, n22=53 => d = -7
+22: n22=53, n23=50 => d = -3
+23: n23=50, n24=62 => d = +12
+24: n24=62, n25=64 => d = +2
+25: n25=64, n26=52 => d = -12? Wait: 64 to 52 = -12 (descending octave)
+26: n26=52, n27=55 => d = +3
+27: n27=55, n28=59 => d = +4
+28: n28=59, n29=60 => d = +1
+29: n29=60, n30=48 => d = -12
+30: n30=48, n31=50 => d = +2
+31: n31=50, n32=43 => d = -7
+32: n32=43, n33=45 => d = +2
+33: n33=45, n34=45 => d = 0
+34: n34=45, n35=52 => d = +7
+35: n35=52, n36=50 => d = -2
+36: n36=50, n37=52 => d = +2
+37: n37=52, n38=50 => d = -2
+38: n38=50, n39=52 => d = +2
+39: n39=52, n40=55 => d = +3
+40: n40=55, n41=59 => d = +4
+41: n41=59, n42=47 => d = -12
+42: n42=47, n43=45 => d = -2
+43: n43=45, n44=50 => d = +5
+44: n44=50, n45=57 => d = +7
+45: n45=57, n46=59 => d = +2
+46: n46=59, n47=64 => d = +5
+47: n47=64, n48=65 => d = +1
+48: n48=65, n49=60 => d = -5
+49: n49=60, n50=57 => d = -3
+50: n50=57, n51=52 => d = -5
+51: n51=52, n52=52 => d = 0
+52: n52=52, n53=57 => d = +5
+53: n53=57, n54=55 => d = -2
+54: n54=55, n55=48 => d = -7
+55: n55=48, n56=55 => d = +7
+56: n56=55, n57=52 => d = -3
+57: n57=52, n58=48 => d = -4
+58: n58=48, n59=47 => d = -1
+59: n59=47, n60=50 => d = +3
+60: n60=50, n61=62 => d = +12
+
+Now we have all intervals. We need the corresponding ratios. Let's list the ratios for semitone intervals from 0 to 12:
+
+0: 1/1
+1: 16/15
+2: 9/8
+3: 6/5
+4: 5/4
+5: 4/3
+6: 45/32
+7: 3/2
+8: 8/5
+9: 5/3
+10: 16/9
+11: 15/8
+12: 2/1
+
+We'll apply each interval: if d positive, multiply by ratio; if d negative, multiply by reciprocal (i.e., divide by ratio). So the factor for each step is ratio^(sign(d)). For d=0, factor = 1.
+
+We need to compute the overall factor from first note to last: f_last = 528 * product over steps (ratio_factor).
+
+We can compute the product as a fraction. Since many steps, we can combine numerators and denominators, reduce along the way.
+
+Let's list each step with its absolute interval and direction, and the factor (as a fraction) to multiply.
+
+We'll denote factor = (ratio) if ascending, or (1/ratio) if descending. So for descending, factor = denominator/ numerator.
+
+We'll compute step by step, keep a running product as a fraction, and reduce to simplest terms.
+
+We'll start with f = 528 = 528/1.
+
+We'll process each step:
+
+Step1: d=-3, descending 3 semitones. Ratio for 3 is 6/5, so factor = 5/6.
+Multiply: 528 * 5/6 = (528/6)*5 = 88*5 = 440. So f = 440/1? Actually 440 exactly. So f = 440.
+
+Step2: d=+3, ascending 3 semitones. Ratio = 6/5. Multiply: 440 * 6/5 = (440/5)*6 = 88*6 = 528. So back to 528.
+
+Step3: d=+2, ascending 2 semitones. Ratio = 9/8. Multiply: 528 * 9/8 = (528/8)*9 = 66*9 = 594. So f=594.
+
+Step4: d=-5, descending 5 semitones. Ratio for 5 is 4/3, so factor = 3/4. Multiply: 594 * 3/4 = (594/4)*3 = 148.5? That's not integer. Better to do fraction: 594 * 3/4 = 1782/4 = 891/2 = 445.5. But we want exact fraction. So f = 891/2? Actually 594 * 3/4 = 1782/4 = 891/2 = 445.5. So keep as fraction.
+
+But we should keep integer numerator and denominator, reduce later. Let's keep as fraction: 891/2.
+
+Step5: d=+3, ascending 3 semitones. Ratio=6/5. Multiply: (891/2) * 6/5 = (891*6)/(2*5) = 5346/10 = 2673/5? Simplify: divide numerator and denominator by 2? 5346/10 = 2673/5. So f=2673/5 = 534.6.
+
+Step6: d=+2, ascending 2 semitones. Ratio=9/8. Multiply: (2673/5)*(9/8)= (2673*9)/(5*8)=24057/40. So f=24057/40 = 601.425.
+
+Step7: d=+3, ascending 3 semitones. Ratio=6/5. Multiply: (24057/40)*(6/5)= (24057*6)/(40*5)=144342/200 = simplify divide by 2: 72171/100. So f=72171/100 = 721.71.
+
+Step8: d=-6, descending 6 semitones. Ratio for 6 is 45/32, so factor = 32/45. Multiply: (72171/100)*(32/45)= (72171*32)/(100*45). Compute numerator: 72171*32 = 72171*30 + 72171*2 = 2,165,130 + 144,342 = 2,309,472. Denominator: 100*45=4500. So f=2,309,472/4500. Simplify: divide numerator and denominator by common factors. Both divisible by 12? 4500/12=375, but 2,309,472/12 = 192,456? Let's do stepwise: Divide by 2: 1,154,736/2250; by 2 again: 577,368/1125; by 3: 577,368/3=192,456, 1125/3=375; so 192,456/375. Further simplify? Both divisible by 3? 192,456/3=64,152, 375/3=125 => 64,152/125. 64,152 and 125 share no common factors (125=5^3, 64,152 not divisible by 5). So f=64,152/125 = 513.216.
+
+Step9: d=-4, descending 4 semitones. Ratio for 4 is 5/4, so factor = 4/5. Multiply: (64,152/125)*(4/5)= (64,152*4)/(125*5)=256,608/625. So f=256,608/625 = 410.5728? Actually 256608/625 = 410.5728 exactly? Maybe simplify? 256608 and 625 share no common factor (625=5^4, 256608 ends with 8, not divisible by 5). So f=256608/625.
+
+Step10: d=-2, descending 2 semitones. Ratio for 2 is 9/8, so factor = 8/9. Multiply: (256,608/625)*(8/9)= (256,608*8)/(625*9)= 2,052,864/(5625). Simplify: divide numerator and denominator by 3? 2,052,864/3=684,288, 5625/3=1875 => 684,288/1875. Further divide by 3? 684,288/3=228,096, 1875/3=625 => 228,096/625. 228,096 and 625: 625=5^4, 228,096 ends with 96, not divisible by 5, so no further. So f=228,096/625 = 364.9536.
+
+Step11: d=+2, ascending 2 semitones. Ratio=9/8. Multiply: (228,096/625)*(9/8)= (228,096*9)/(625*8)= 2,052,864/5000. Simplify: divide numerator and denominator by 8? Actually 5000/8=625, but better: 2,052,864/5000 = reduce by dividing numerator and denominator by 8? 2,052,864/8=256,608, 5000/8=625 → 256,608/625. That is exactly the previous value before step10? Actually step9 gave 256,608/625, then step10 gave 228,096/625, now step11 gives back 256,608/625. So f=256,608/625.
+
+Step12: d=+12, ascending octave. Ratio=2/1. Multiply: (256,608/625)*2 = 513,216/625. So f=513,216/625 = 821.1456.
+
+Step13: d=-7, descending 7 semitones. Ratio for 7 is 3/2, so factor = 2/3. Multiply: (513,216/625)*(2/3)= (513,216*2)/(625*3)=1,026,432/1875. Simplify: divide numerator and denominator by 3? 1,026,432/3=342,144, 1875/3=625 => 342,144/625. So f=342,144/625 = 547.4304.
+
+Step14: d=+5, ascending 5 semitones. Ratio=4/3. Multiply: (342,144/625)*(4/3)= (342,144*4)/(625*3)=1,368,576/1875. Simplify: divide numerator and denominator by 3? 1,368,576/3=456,192, 1875/3=625 => 456,192/625. So f=456,192/625 = 729.9072.
+
+Step15: d=-3, descending 3 semitones. Ratio=6/5, factor=5/6. Multiply: (456,192/625)*(5/6)= (456,192*5)/(625*6)= 2,280,960/3750. Simplify: divide numerator and denominator by 30? Or stepwise: divide numerator and denominator by 10: 228,096/375; then divide by 3: 228,096/3=76,032, 375/3=125 => 76,032/125. So f=76,032/125 = 608.256.
+
+Step16: d=0, factor=1. So f remains 76,032/125.
+
+Step17: d=-7, descending 7 semitones, factor=2/3. Multiply: (76,032/125)*(2/3)= (76,032*2)/(125*3)=152,064/375. Simplify: divide numerator and denominator by 3? 152,064/3=50,688, 375/3=125 => 50,688/125. So f=50,688/125 = 405.504.
+
+Step18: d=+12, ascending octave, factor=2. Multiply: (50,688/125)*2 = 101,376/125. So f=101,376/125 = 811.008.
+
+Step19: d=-3, descending 3 semitones, factor=5/6. Multiply: (101,376/125)*(5/6)= (101,376*5)/(125*6)=506,880/750. Simplify: divide numerator and denominator by 30? 506,880/30=16,896, 750/30=25 => 16,896/25? Let's do: 506,880/750 = divide by 10: 50,688/75; divide by 3: 50,688/3=16,896, 75/3=25 => 16,896/25. So f=16,896/25 = 675.84.
+
+Step20: d=-4, descending 4 semitones, factor=4/5. Multiply: (16,896/25)*(4/5)= (16,896*4)/(25*5)=67,584/125. So f=67,584/125 = 540.672.
+
+Step21: d=-7, descending 7 semitones, factor=2/3. Multiply: (67,584/125)*(2/3)= (67,584*2)/(125*3)=135,168/375. Simplify: divide numerator and denominator by 3? 135,168/3=45,056, 375/3=125 => 45,056/125. So f=45,056/125 = 360.448.
+
+Step22: d=-3, descending 3 semitones, factor=5/6. Multiply: (45,056/125)*(5/6)= (45,056*5)/(125*6)=225,280/750. Simplify: divide by 10: 22,528/75; divide by? 22,528/75 = ? 75*300=22,500, remainder 28, so not integer. Simplify by dividing numerator and denominator by 3? 22,528 not divisible by 3 (2+2+5+2+8=19, not multiple of 3). So perhaps we can simplify by dividing by 5? 22,528/5 not integer. Actually 225,280/750 = reduce by dividing by 10: 22,528/75. Check gcd of 22,528 and 75. 75=3*5^2. 22,528 mod 3 = 22,528 - 3*7,509=22,528-22,527=1, so not divisible by 3. mod 5: last digit 8, not divisible by 5. So gcd=1. So f=22,528/75? But wait, we divided by 10, but we could also divide numerator and denominator by 2? 225,280 and 750 are both even, so divide by 2: 112,640/375; then by 5? 112,640/5=22,528, 375/5=75, so 22,528/75. So that's simplified. So f=22,528/75 = 300.37333... Actually 22,528/75 = 300.37333... But we'll keep as fraction.
+
+But note: 22,528/75 is not further reducible? Check gcd(22528,75). 75=3*5^2, 22528 mod 3 = 1, mod 5 = 3, so no. So f=22,528/75.
+
+Step23: d=+12, ascending octave, factor=2. Multiply: (22,528/75)*2 = 45,056/75. So f=45,056/75 = 600.74666...
+
+Step24: d=+2, ascending 2 semitones, ratio=9/8. Multiply: (45,056/75)*(9/8)= (45,056*9)/(75*8)=405,504/600. Simplify: divide numerator and denominator by 24? Or stepwise: divide by 8: 405,504/8=50,688, 600/8=75 => 50,688/75. Then reduce: 50,688 and 75, divide by 3? 50,688/3=16,896, 75/3=25 => 16,896/25. So f=16,896/25 = 675.84. (Note: This is same as after step19? Actually step19 gave 16,896/25, yes.)
+
+Step25: d=-12, descending octave, factor=1/2. Multiply: (16,896/25)*(1/2)= 16,896/50 = 8,448/25. So f=8,448/25 = 337.92.
+
+Step26: d=+3, ascending 3 semitones, ratio=6/5. Multiply: (8,448/25)*(6/5)= (8,448*6)/(25*5)=50,688/125. So f=50,688/125 = 405.504.
+
+Step27: d=+4, ascending 4 semitones, ratio=5/4. Multiply: (50,688/125)*(5/4)= (50,688*5)/(125*4)=253,440/500 = simplify: divide by 20? Actually 253,440/500 = 25344/50 = 12672/25? Let's do: 253,440 ÷ 10 = 25,344/50; divide by 2: 12,672/25. So f=12,672/25 = 506.88.
+
+Step28: d=+1, ascending 1 semitone, ratio=16/15. Multiply: (12,672/25)*(16/15)= (12,672*16)/(25*15)=202,752/375. Simplify: divide numerator and denominator by 3? 202,752/3=67,584, 375/3=125 => 67,584/125. So f=67,584/125 = 540.672.
+
+Step29: d=-12, descending octave, factor=1/2. Multiply: (67,584/125)*(1/2)= 67,584/250 = 33,792/125. So f=33,792/125 = 270.336.
+
+Step30: d=+2, ascending 2 semitones, ratio=9/8. Multiply: (33,792/125)*(9/8)= (33,792*9)/(125*8)=304,128/1000 = simplify: divide by 8? 304,128/8=38,016, 1000/8=125 => 38,016/125? Actually 304,128/1000 = 38,016/125? 38,016*8=304,128, yes 38,016/125. But check: 304,128/1000 divide by 8 gives 38,016/125, but 1000/8=125 correct. So f=38,016/125 = 304.128.
+
+Step31: d=-7, descending 7 semitones, factor=2/3. Multiply: (38,016/125)*(2/3)= (38,016*2)/(125*3)=76,032/375. Simplify: divide by 3? 76,032/3=25,344, 375/3=125 => 25,344/125. So f=25,344/125 = 202.752.
+
+Step32: d=+2, ascending 2 semitones, ratio=9/8. Multiply: (25,344/125)*(9/8)= (25,344*9)/(125*8)=228,096/1000 = simplify: divide by 8? 228,096/8=28,512, 1000/8=125 => 28,512/125. So f=28,512/125 = 228.096.
+
+Step33: d=0, factor=1. So f remains 28,512/125.
+
+Step34: d=+7, ascending 7 semitones, ratio=3/2. Multiply: (28,512/125)*(3/2)= (28,512*3)/(125*2)=85,536/250 = simplify: divide by 2: 42,768/125. So f=42,768/125 = 342.144.
+
+Step35: d=-2, descending 2 semitones, factor=8/9. Multiply: (42,768/125)*(8/9)= (42,768*8)/(125*9)=342,144/1125. Simplify: divide numerator and denominator by 3? 342,144/3=114,048, 1125/3=375 => 114,048/375; divide by 3 again? 114,048/3=38,016, 375/3=125 => 38,016/125. So f=38,016/125 = 304.128.
+
+Step36: d=+2, ascending 2 semitones, ratio=9/8. Multiply: (38,016/125)*(9/8)= (38,016*9)/(125*8)=342,144/1000 = 342,144/1000 = simplify divide by 8: 42,768/125? Wait 342,144/8=42,768, 1000/8=125, so 42,768/125. So f=42,768/125 = 342.144.
+
+Step37: d=-2, descending 2 semitones, factor=8/9. Multiply: (42,768/125)*(8/9)= (42,768*8)/(125*9)=342,144/1125 = simplify as before: 38,016/125. So f=38,016/125.
+
+Step38: d=+2, ascending 2 semitones, ratio=9/8. Multiply: (38,016/125)*(9/8)= 42,768/125. So f=42,768/125.
+
+Step39: d=+3, ascending 3 semitones, ratio=6/5. Multiply: (42,768/125)*(6/5)= (42,768*6)/(125*5)=256,608/625. So f=256,608/625 = 410.5728.
+
+Step40: d=+4, ascending 4 semitones, ratio=5/4. Multiply: (256,608/625)*(5/4)= (256,608*5)/(625*4)=1,283,040/2500. Simplify: divide numerator and denominator by 20? 1,283,040/20=64,152, 2500/20=125 => 64,152/125. So f=64,152/125 = 513.216.
+
+Step41: d=-12, descending octave, factor=1/2. Multiply: (64,152/125)*(1/2)= 64,152/250 = 32,076/125. So f=32,076/125 = 256.608.
+
+Step42: d=-2, descending 2 semitones, factor=8/9. Multiply: (32,076/125)*(8/9)= (32,076*8)/(125*9)=256,608/1125. Simplify: divide numerator and denominator by 3? 256,608/3=85,536, 1125/3=375 => 85,536/375; divide by 3 again? 85,536/3=28,512, 375/3=125 => 28,512/125. So f=28,512/125 = 228.096.
+
+Step43: d=+5, ascending 5 semitones, ratio=4/3. Multiply: (28,512/125)*(4/3)= (28,512*4)/(125*3)=114,048/375. Simplify: divide by 3? 114,048/3=38,016, 375/3=125 => 38,016/125. So f=38,016/125 = 304.128.
+
+Step44: d=+7, ascending 7 semitones, ratio=3/2. Multiply: (38,016/125)*(3/2)= (38,016*3)/(125*2)=114,048/250 = 57,024/125? Actually 114,048/250 = divide by 2: 57,024/125. So f=57,024/125 = 456.192.
+
+Step45: d=+2, ascending 2 semitones, ratio=9/8. Multiply: (57,024/125)*(9/8)= (57,024*9)/(125*8)=513,216/1000 = simplify divide by 8: 64,152/125? 513,216/8=64,152, 1000/8=125, so 64,152/125. So f=64,152/125 = 513.216.
+
+Step46: d=+5, ascending 5 semitones, ratio=4/3. Multiply: (64,152/125)*(4/3)= (64,152*4)/(125*3)=256,608/375. Simplify: divide by 3? 256,608/3=85,536, 375/3=125 => 85,536/125. So f=85,536/125 = 684.288.
+
+Step47: d=+1, ascending 1 semitone, ratio=16/15. Multiply: (85,536/125)*(16/15)= (85,536*16)/(125*15)=1,368,576/1875. Simplify: divide numerator and denominator by 3? 1,368,576/3=456,192, 1875/3=625 => 456,192/625. So f=456,192/625 = 729.9072.
+
+Step48: d=-5, descending 5 semitones, factor=3/4. Multiply: (456,192/625)*(3/4)= (456,192*3)/(625*4)=1,368,576/2500 = simplify: divide numerator and denominator by 4? 1,368,576/4=342,144, 2500/4=625 => 342,144/625. So f=342,144/625 = 547.4304.
+
+Step49: d=-3, descending 3 semitones, factor=5/6. Multiply: (342,144/625)*(5/6)= (342,144*5)/(625*6)=1,710,720/3750. Simplify: divide by 30? 1,710,720/30=57,024, 3750/30=125 => 57,024/125. So f=57,024/125 = 456.192.
+
+Step50: d=-5, descending 5 semitones, factor=3/4. Multiply: (57,024/125)*(3/4)= (57,024*3)/(125*4)=171,072/500 = simplify: divide by 4? 171,072/4=42,768, 500/4=125 => 42,768/125. So f=42,768/125 = 342.144.
+
+Step51: d=0, factor=1. So f=42,768/125.
+
+Step52: d=+5, ascending 5 semitones, ratio=4/3. Multiply: (42,768/125)*(4/3)= (42,768*4)/(125*3)=171,072/375 = simplify: divide by 3? 171,072/3=57,024, 375/3=125 => 57,024/125. So f=57,024/125 = 456.192.
+
+Step53: d=-2, descending 2 semitones, factor=8/9. Multiply: (57,024/125)*(8/9)= (57,024*8)/(125*9)=456,192/1125. Simplify: divide numerator and denominator by 3? 456,192/3=152,064, 1125/3=375 => 152,064/375; divide by 3 again? 152,064/3=50,688, 375/3=125 => 50,688/125. So f=50,688/125 = 405.504.
+
+Step54: d=-7, descending 7 semitones, factor=2/3. Multiply: (50,688/125)*(2/3)= (50,688*2)/(125*3)=101,376/375. Simplify: divide by 3? 101,376/3=33,792, 375/3=125 => 33,792/125. So f=33,792/125 = 270.336.
+
+Step55: d=+7, ascending 7 semitones, ratio=3/2. Multiply: (33,792/125)*(3/2)= (33,792*3)/(125*2)=101,376/250 = 50,688/125. So f=50,688/125 = 405.504.
+
+Step56: d=-3, descending 3 semitones, factor=5/6. Multiply: (50,688/125)*(5/6)= (50,688*5)/(125*6)=253,440/750 = simplify: divide by 30? 253,440/30=8,448, 750/30=25 => 8,448/25? Actually 253,440/750 = divide by 10: 25,344/75; then divide by 3: 25,344/3=8,448, 75/3=25 => 8,448/25. So f=8,448/25 = 337.92.
+
+Step57: d=-4, descending 4 semitones, factor=4/5. Multiply: (8,448/25)*(4/5)= (8,448*4)/(25*5)=33,792/125. So f=33,792/125 = 270.336.
+
+Step58: d=-1, descending 1 semitone, factor=15/16? Wait: ratio for 1 semitone is 16/15, so descending factor = 15/16. Multiply: (33,792/125)*(15/16)= (33,792*15)/(125*16)=506,880/2000 = simplify: divide by 80? 506,880/80=6,336, 2000/80=25 => 6,336/25? Actually 506,880/2000 = divide by 10: 50,688/200; divide by 8: 50,688/8=6,336, 200/8=25 => 6,336/25. So f=6,336/25 = 253.44.
+
+Step59: d=+3, ascending 3 semitones, ratio=6/5. Multiply: (6,336/25)*(6/5)= (6,336*6)/(25*5)=38,016/125. So f=38,016/125 = 304.128.
+
+Step60: d=+12, ascending octave, factor=2. Multiply: (38,016/125)*2 = 76,032/125. So f=76,032/125 = 608.256.
+
+Thus the frequency of the last note (D5) is 76,032/125 Hz. But we need to give it as a reduced fraction a/b. 76,032 and 125 share any common factors? 125=5^3. 76,032 ends with 32, so not divisible by 5. So it is reduced. So answer: 76032/125? But note that 76,032/125 = 608.256, which is plausible. However, we should double-check if we made any arithmetic mistakes. Given the complexity, it's easy to make errors. Let's verify some steps by doing an alternative method: compute overall factor by summing the intervals in terms of ratios? Actually, we can compute the product of all factors as a single fraction. Since we have many steps, we could compute the cumulative factor as a product of ratios raised to powers. But we need to ensure accuracy.
+
+We could also compute the net interval in semitones from first note to last note, but careful: Because just intonation ratios are not consistent with equal temperament; the product of ratios is not equal to the ratio for the total semitone interval because the ratios are not powers of the same constant. So we cannot simply add semitones. So we must do stepwise.
+
+We can possibly reduce the amount of computation by noticing that many steps cancel or simplify. For example, we saw that some steps brought us back to previous values. We can also compute the overall factor by grouping intervals. But we have already done it stepwise, and we got a final fraction. Let's double-check some key transitions to ensure no calculation errors.
+
+We'll recalc from step1 to step60 using perhaps a systematic approach with a fraction object. I'll do it again in a more organized manner, keeping track of numerator and denominator and reducing at each step. I'll use a table of steps with the factor and then compute.
+
+We'll start with f = 528 = 528/1.
+
+We'll list each step with its factor (as a fraction) and multiply.
+
+I'll denote f as a fraction num/den.
+
+Step1: d=-3, factor=5/6. f = 528 * 5/6 = 440 = 440/1.
+Step2: d=+3, factor=6/5. f = 440 * 6/5 = 528. So f=528/1.
+Step3: d=+2, factor=9/8. f = 528 * 9/8 = 594 = 594/1.
+Step4: d=-5, factor=3/4. f = 594 * 3/4 = 1782/4 = 891/2.
+Step5: d=+3, factor=6/5. f = (891/2)*(6/5)= (891*6)/(2*5)=5346/10=2673/5.
+Step6: d=+2, factor=9/8. f = (2673/5)*(9/8)= (2673*9)/(40)=24057/40.
+Step7: d=+3, factor=6/5. f = (24057/40)*(6/5)= (24057*6)/(200)=144342/200=72171/100. (Yes)
+Step8: d=-6, factor=32/45. f = (72171/100)*(32/45)= (72171*32)/(4500)=2,309,472/4500. Simplify: divide by 12? 4500/12=375, 2,309,472/12=192,456? Let's compute: 2,309,472 ÷ 12 = 192,456 (since 12*192,456=2,309,472). So 192,456/375. Then divide by 3: 192,456÷3=64,152, 375÷3=125, so 64,152/125. OK.
+Step9: d=-4, factor=4/5. f = (64,152/125)*(4/5)= 256,608/625. OK.
+Step10: d=-2, factor=8/9. f = (256,608/625)*(8/9)= 2,052,864/5,625. Simplify: divide by 3: 2,052,864÷3=684,288, 5,625÷3=1,875 → 684,288/1,875; divide by 3 again: 684,288÷3=228,096, 1,875÷3=625 → 228,096/625. OK.
+Step11: d=+2, factor=9/8. f = (228,096/625)*(9/8)= 2,052,864/5,000. Simplify: divide numerator and denominator by 8: 2,052,864÷8=256,608, 5,000÷8=625 → 256,608/625. OK.
+Step12: d=+12, factor=2. f = (256,608/625)*2 = 513,216/625. OK.
+Step13: d=-7, factor=2/3. f = (513,216/625)*(2/3)= 1,026,432/1,875. Simplify: divide by 3: 1,026,432÷3=342,144, 1,875÷3=625 → 342,144/625. OK.
+Step14: d=+5, factor=4/3. f = (342,144/625)*(4/3)= 1,368,576/1,875. Simplify: divide by 3: 1,368,576÷3=456,192, 1,875÷3=625 → 456,192/625. OK.
+Step15: d=-3, factor=5/6. f = (456,192/625)*(5/6)= 2,280,960/3,750. Simplify: divide by 10: 228,096/375; divide by 3: 228,096÷3=76,032, 375÷3=125 → 76,032/125. OK.
+Step16: d=0, factor=1. f=76,032/125.
+Step17: d=-7, factor=2/3. f = (76,032/125)*(2/3)= 152,064/375. Simplify: divide by 3: 152,064÷3=50,688, 375÷3=125 → 50,688/125. OK.
+Step18: d=+12, factor=2. f = (50,688/125)*2 = 101,376/125. OK.
+Step19: d=-3, factor=5/6. f = (101,376/125)*(5/6)= 506,880/750. Simplify: divide by 10: 50,688/75; divide by 3: 50,688÷3=16,896, 75÷3=25 → 16,896/25. OK.
+Step20: d=-4, factor=4/5. f = (16,896/25)*(4/5)= 67,584/125. OK.
+Step21: d=-7, factor=2/3. f = (67,584/125)*(2/3)= 135,168/375. Simplify: divide by 3: 135,168÷3=45,056, 375÷3=125 → 45,056/125. OK.
+Step22: d=-3, factor=5/6. f = (45,056/125)*(5/6)= 225,280/750. Simplify: divide by 10: 22,528/75; then check gcd: 22,528 and 75, 75=3*5^2, 22,528 mod 3 = 22,528-3*7,509=22,528-22,527=1, mod5=3, so no simplification, so f=22,528/75. OK.
+Step23: d=+12, factor=2. f = (22,528/75)*2 = 45,056/75. OK.
+Step24: d=+2, factor=9/8. f = (45,056/75)*(9/8)= 405,504/600. Simplify: divide by 8: 405,504÷8=50,688, 600÷8=75 → 50,688/75; divide by 3: 50,688÷3=16,896, 75÷3=25 → 16,896/25. OK.
+Step25: d=-12, factor=1/2. f = (16,896/25)*(1/2)= 16,896/50 = 8,448/25. OK.
+Step26: d=+3, factor=6/5. f = (8,448/25)*(6/5)= 50,688/125. OK.
+Step27: d=+4, factor=5/4. f = (50,688/125)*(5/4)= 253,440/500 = 25,344/50 = 12,672/25? Actually 253,440/500 = divide by 20: 12,672/25. Yes. So f=12,672/25.
+Step28: d=+1, factor=16/15. f = (12,672/25)*(16/15)= 202,752/375. Simplify: divide by 3: 202,752÷3=67,584, 375÷3=125 → 67,584/125. OK.
+Step29: d=-12, factor=1/2. f = (67,584/125)*(1/2)= 67,584/250 = 33,792/125. OK.
+Step30: d=+2, factor=9/8. f = (33,792/125)*(9/8)= 304,128/1000 = 38,016/125? Actually 304,128/1000 divide by 8: 38,016/125. Yes.
+Step31: d=-7, factor=2/3. f = (38,016/125)*(2/3)= 76,032/375. Simplify: divide by 3: 76,032÷3=25,344, 375÷3=125 → 25,344/125. OK.
+Step32: d=+2, factor=9/8. f = (25,344/125)*(9/8)= 228,096/1000 = 28,512/125 (since 228,096/8=28,512, 1000/8=125). OK.
+Step33: d=0, factor=1. f=28,512/125.
+Step34: d=+7, factor=3/2. f = (28,512/125)*(3/2)= 85,536/250 = 42,768/125. OK.
+Step35: d=-2, factor=8/9. f = (42,768/125)*(8/9)= 342,144/1125. Simplify: divide by 3: 342,144÷3=114,048, 1125÷3=375 → 114,048/375; divide by 3: 114,048÷3=38,016, 375÷3=125 → 38,016/125. OK.
+Step36: d=+2, factor=9/8. f = (38,016/125)*(9/8)= 342,144/1000 = 42,768/125 (since 342,144/8=42,768, 1000/8=125). OK.
+Step37: d=-2, factor=8/9. f = (42,768/125)*(8/9)= 342,144/1125 = 38,016/125 (as before). OK.
+Step38: d=+2, factor=9/8. f = (38,016/125)*(9/8)= 42,768/125. OK.
+Step39: d=+3, factor=6/5. f = (42,768/125)*(6/5)= 256,608/625. OK.
+Step40: d=+4, factor=5/4. f = (256,608/625)*(5/4)= 1,283,040/2,500 = 64,152/125? Simplify: divide numerator and denominator by 20: 1,283,040/20=64,152, 2,500/20=125 → 64,152/125. OK.
+Step41: d=-12, factor=1/2. f = (64,152/125)*(1/2)= 32,076/125. OK.
+Step42: d=-2, factor=8/9. f = (32,076/125)*(8/9)= 256,608/1,125. Simplify: divide by 3: 256,608÷3=85,536, 1,125÷3=375 → 85,536/375; divide by 3: 85,536÷3=28,512, 375÷3=125 → 28,512/125. OK.
+Step43: d=+5, factor=4/3. f = (28,512/125)*(4/3)= 114,048/375 = 38,016/125? Actually 114,048/375 divide by 3: 38,016/125. Yes.
+Step44: d=+7, factor=3/2. f = (38,016/125)*(3/2)= 114,048/250 = 57,024/125. OK.
+Step45: d=+2, factor=9/8. f = (57,024/125)*(9/8)= 513,216/1000 = 64,152/125. OK.
+Step46: d=+5, factor=4/3. f = (64,152/125)*(4/3)= 256,608/375 = 85,536/125? Because 256,608/375 divide by 3: 85,536/125. Yes.
+Step47: d=+1, factor=16/15. f = (85,536/125)*(16/15)= 1,368,576/1,875. Simplify: divide by 3: 1,368,576÷3=456,192, 1,875÷3=625 → 456,192/625. OK.
+Step48: d=-5, factor=3/4. f = (456,192/625)*(3/4)= 1,368,576/2,500 = simplify: divide by 4: 1,368,576÷4=342,144, 2,500÷4=625 → 342,144/625. OK.
+Step49: d=-3, factor=5/6. f = (342,144/625)*(5/6)= 1,710,720/3,750 = simplify: divide by 30: 1,710,720÷30=57,024, 3,750÷30=125 → 57,024/125. OK.
+Step50: d=-5, factor=3/4. f = (57,024/125)*(3/4)= 171,072/500 = simplify: divide by 4: 171,072÷4=42,768, 500÷4=125 → 42,768/125. OK.
+Step51: d=0, factor=1. f=42,768/125.
+Step52: d=+5, factor=4/3. f = (42,768/125)*(4/3)= 171,072/375 = simplify: divide by 3: 171,072÷3=57,024, 375÷3=125 → 57,024/125. OK.
+Step53: d=-2, factor=8/9. f = (57,024/125)*(8/9)= 456,192/1,125 = simplify: divide by 3: 456,192÷3=152,064, 1,125÷3=375 → 152,064/375; divide by 3: 152,064÷3=50,688, 375÷3=125 → 50,688/125. OK.
+Step54: d=-7, factor=2/3. f = (50,688/125)*(2/3)= 101,376/375 = simplify: divide by 3: 101,376÷3=33,792, 375÷3=125 → 33,792/125. OK.
+Step55: d=+7, factor=3/2. f = (33,792/125)*(3/2)= 101,376/250 = 50,688/125. OK.
+Step56: d=-3, factor=5/6. f = (50,688/125)*(5/6)= 253,440/750 = simplify: divide by 10: 25,344/75; divide by 3: 25,344÷3=8,448, 75÷3=25 → 8,448/25. OK.
+Step57: d=-4, factor=4/5. f = (8,448/25)*(4/5)= 33,792/125. OK.
+Step58: d=-1, factor=15/16. f = (33,792/125)*(15/16)= 506,880/2,000 = simplify: divide by 80? 506,880÷80=6,336, 2,000÷80=25 → 6,336/25. Actually 506,880/2000 = divide by 10: 50,688/200; divide by 8: 50,688/8=6,336, 200/8=25 → 6,336/25. Yes.
+Step59: d=+3, factor=6/5. f = (6,336/25)*(6/5)= 38,016/125. OK.
+Step60: d=+12, factor=2. f = (38,016/125)*2 = 76,032/125.
+
+Thus final fraction is 76032/125. That seems consistent.
+
+We should also consider if the initial frequency is exactly 528 Hz? Yes, C5 tuned to 528 Hz. So the last note is D5. So answer is 76032/125 Hz. But we need to present it as a reduced fraction. Since 76032 and 125 have no common factor (125=5^3, 76032 mod 5 = 2), it's reduced. So answer: 76032/125.
+
+However, sometimes they might want it as a mixed number? But the problem says "Give it as a reduced fraction a/b in Hz (or an integer if b = 1)." So 76032/125 is fine.
+
+We can also write as 608.256 Hz, but fraction is required.
+
+Thus final answer: 76032/125.
+
+But let's double-check if any step might have been misinterpreted: The intervals are measured in semitones, and the ratios are given for ascending intervals. For descending, we divide. That is what we did.
+
+Also, note that the first note is C5 tuned to 528 Hz. That is given. So we are correct.
+
+Thus answer: \boxed{\dfrac{76032}{125}}.

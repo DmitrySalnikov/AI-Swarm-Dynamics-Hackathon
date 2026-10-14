@@ -1,0 +1,542 @@
+We are given a 6x6 integer matrix A. We need to compute its determinant.
+
+Matrix A:
+
+Row1: -4, -3, 2, 3, 3, 0
+Row2: 2, -1, -1, -1, -1, 0
+Row3: 1, 3, -3, -3, 4, 4
+Row4: 2, 2, -1, 1, 1, -1
+Row5: 1, -1, -4, -3, 4, 1
+Row6: 3, -2, -1, -3, -2, 4
+
+We'll compute determinant by performing row operations to simplify, or use expansion. Since it's integer, we could aim to reduce to upper triangular form using integer row operations that preserve determinant (with possible sign changes if we swap rows). Or we could compute via LU decomposition or direct expansion. Given it's 6x6, we could use systematic elimination.
+
+Better approach: Use Gaussian elimination with row operations that do not change determinant (like adding multiple of one row to another). But note: if we multiply a row by a scalar, determinant gets multiplied by that scalar; we avoid that. So only operations: swap rows (flip sign), add multiple of one row to another (no change). We'll aim to get upper triangular and then product of diagonal entries.
+
+Let's denote rows as R1 to R6.
+
+We can start by pivoting on first column. Look for a nonzero entry in column 1. R1 has -4, R2 has 2, R3 has 1, R4 has 2, R5 has 1, R6 has 3. We can choose R1 as pivot, but might want to avoid fractions. Since we are doing integer operations, we can use integer elimination by using row combinations that produce zeros without fractions; but if pivot is not 1, we might need to use integer combinations that could change determinant if we multiply rows? Actually, standard Gaussian elimination using integer arithmetic often involves swapping rows to get a pivot that divides other entries to keep integers, but with fractions allowed we can still compute determinant using floating point? But we need exact integer answer, so we must avoid fractions or manage them carefully. Alternatively, we can compute determinant by performing row operations that preserve determinant exactly, but we can multiply rows by constants and then compensate later; but it's simpler to do elimination with fractions (rational numbers) and then compute product; but we need exact integer result, so fractions are okay as long as we keep track exactly (like rational numbers). Since we are humans, we can do exact fraction arithmetic.
+
+Alternatively, we can compute determinant using expansion by minors, but that's a lot of work for 6x6.
+
+Another approach: Use row operations that keep determinant unchanged except possibly sign, and aim for upper triangular with integer diagonal entries. We can use the following technique: For each column, we can use row operations to eliminate below pivot, but we might get large numbers; that's fine as long as we keep integers. We can do elimination by using the pivot row to eliminate other rows: For each row below, we compute factor = (entry in pivot column) / pivot, but if pivot does not divide, we get fractions. To avoid fractions, we can use integer elimination: For example, if pivot is a, and we want to eliminate entry b in another row, we can replace that row by (a * row - b * pivot row) which will create a zero in that column, but this operation multiplies the determinant by a (since we multiplied the row by a). Actually, if we do R_i -> a * R_i - b * R_j, that's a combination of scaling and adding; the determinant scales by a because we multiplied R_i by a. So we would need to keep track of the scaling factor. So maybe easier to just do rational elimination, using fractions, and then at the end multiply the diagonal entries to get determinant. Since we are doing exact arithmetic, we can keep fractions as reduced fractions. The determinant will be an integer, so the product of diagonal entries after elimination (with no row scaling) will be exactly the determinant (if we use only adding multiples of rows). But adding multiples means we use factor = b/a; this is rational, but the resulting entries are rational. However, the determinant is unchanged if we add a multiple of one row to another, even if the multiple is rational? Actually, adding a scalar multiple of one row to another is an elementary row operation that does not change determinant, regardless of the scalar being rational or integer. So we can use rational factors. That's fine. So we can perform Gaussian elimination using rational numbers (fractions) to get an upper triangular matrix, then multiply the diagonal entries; the result will be the determinant, because we never swapped rows (or if we swapped, we multiply by -1). So we can proceed.
+
+We need to be careful with arithmetic to avoid mistakes. Let's do step-by-step elimination.
+
+Matrix A:
+
+R1: [-4, -3, 2, 3, 3, 0]
+R2: [2, -1, -1, -1, -1, 0]
+R3: [1, 3, -3, -3, 4, 4]
+R4: [2, 2, -1, 1, 1, -1]
+R5: [1, -1, -4, -3, 4, 1]
+R6: [3, -2, -1, -3, -2, 4]
+
+We can optionally swap rows to get a pivot of 1 or -1 to avoid fractions. R3 has 1 in column 1? Actually R3: [1,3,-3,-3,4,4] first entry is 1. So we could swap R1 and R3 to have pivot 1. Swapping rows changes sign of determinant. So we can do that: swap R1 and R3. Then determinant becomes -det(original). So we'll keep track: after swap, determinant sign flips. Let's do that:
+
+New matrix after swapping R1 and R3:
+
+R1: [1, 3, -3, -3, 4, 4]
+R2: [2, -1, -1, -1, -1, 0]
+R3: [-4, -3, 2, 3, 3, 0]
+R4: [2, 2, -1, 1, 1, -1]
+R5: [1, -1, -4, -3, 4, 1]
+R6: [3, -2, -1, -3, -2, 4]
+
+Now determinant of this matrix = -det(original). So det(original) = -det(this). So we'll compute det of this matrix and then multiply by -1.
+
+Now we have pivot = 1 at (1,1). Use it to eliminate below in column 1.
+
+For R2: factor = 2/1 = 2. R2 -> R2 - 2*R1.
+Compute: R2: [2, -1, -1, -1, -1, 0] - 2*[1,3,-3,-3,4,4] = [2-2, -1-6, -1+6, -1+6, -1-8, 0-8] = [0, -7, 5, 5, -9, -8].
+
+For R3: factor = -4/1 = -4. R3 -> R3 - (-4)*R1? Actually to eliminate, we do R3 -> R3 - (-4)*R1? Wait: we want new R3 = R3 - (entry/R1[1]) * R1 = R3 - (-4/1)*R1 = R3 +4*R1. So R3 = [-4, -3, 2, 3, 3, 0] +4*[1,3,-3,-3,4,4] = [-4+4, -3+12, 2-12, 3-12, 3+16, 0+16] = [0, 9, -10, -9, 19, 16].
+
+For R4: factor = 2/1 = 2. R4 -> R4 - 2*R1 = [2,2,-1,1,1,-1] -2*[1,3,-3,-3,4,4] = [2-2, 2-6, -1+6, 1+6, 1-8, -1-8] = [0, -4, 5, 7, -7, -9].
+
+For R5: factor = 1/1 = 1. R5 -> R5 - 1*R1 = [1,-1,-4,-3,4,1] - [1,3,-3,-3,4,4] = [0, -4, -1, 0, 0, -3].
+
+For R6: factor = 3/1 = 3. R6 -> R6 - 3*R1 = [3,-2,-1,-3,-2,4] -3*[1,3,-3,-3,4,4] = [3-3, -2-9, -1+9, -3+9, -2-12, 4-12] = [0, -11, 8, 6, -14, -8].
+
+Now matrix after first elimination:
+
+R1: [1, 3, -3, -3, 4, 4]
+R2: [0, -7, 5, 5, -9, -8]
+R3: [0, 9, -10, -9, 19, 16]
+R4: [0, -4, 5, 7, -7, -9]
+R5: [0, -4, -1, 0, 0, -3]
+R6: [0, -11, 8, 6, -14, -8]
+
+Now we focus on the 5x5 submatrix from rows 2-6, columns 2-6.
+
+We need to eliminate below the pivot in column 2. Choose pivot in row2 col2 = -7. We could also consider swapping rows to get a smaller pivot like -4? But swapping might cause sign changes. Let's keep -7 as pivot. We'll eliminate rows 3-6 using row operations with factor = (entry in col2) / pivot. Since pivot is -7, we'll have rational factors. That's fine.
+
+Set R2 as pivot row. We'll compute new rows:
+
+For R3: factor = 9 / (-7) = -9/7? Actually to eliminate: new R3 = R3 - (9/(-7))*R2? Wait: R3[2] = 9, pivot = -7. So we want new R3 = R3 - (9/(-7)) * R2 = R3 + (9/7) R2. Multiply by 7 to avoid fractions? But we can keep fractions. Let's compute using fractions.
+
+We'll do rational arithmetic. But we can also do integer elimination by scaling rows, but then we need to track determinant scaling. Might be easier to use fractions. Let's compute step by step.
+
+We have pivot = -7.
+
+R2: [-7, 5, 5, -9, -8]
+R3: [9, -10, -9, 19, 16]
+R4: [-4, 5, 7, -7, -9]
+R5: [-4, -1, 0, 0, -3]
+R6: [-11, 8, 6, -14, -8]
+
+We'll compute new rows after elimination:
+
+R3' = R3 - (9/(-7)) * R2 = R3 + (9/7)*R2.
+Compute (9/7)*R2 = (9/7)*[-7,5,5,-9,-8] = [9*( -7)/7, 9*5/7, 9*5/7, 9*(-9)/7, 9*(-8)/7] = [-9, 45/7, 45/7, -81/7, -72/7].
+Then R3' = [9, -10, -9, 19, 16] + [-9, 45/7, 45/7, -81/7, -72/7] = [0, -10 + 45/7, -9 + 45/7, 19 - 81/7, 16 - 72/7].
+Compute -10 = -70/7, so -70/7+45/7 = -25/7. -9 = -63/7, so -63/7+45/7 = -18/7. 19 = 133/7, so 133/7-81/7=52/7. 16=112/7, so 112/7-72/7=40/7.
+Thus R3' = [0, -25/7, -18/7, 52/7, 40/7].
+
+We can multiply entire row by 7 to clear denominators, but that would scale determinant by 7 if we do it to the row; but we are just computing the row values; we can keep as fractions. We'll proceed and later product of diagonal entries includes these fractions, and the overall product should be integer (since we haven't scaled rows). So OK.
+
+R4: factor = (-4)/(-7) = 4/7. So new R4 = R4 - (4/7)*R2.
+Compute (4/7)*R2 = [4*(-7)/7, 4*5/7, 4*5/7, 4*(-9)/7, 4*(-8)/7] = [-4, 20/7, 20/7, -36/7, -32/7].
+R4 = [-4, 5, 7, -7, -9]. Subtract: [-4 - (-4)? Actually careful: R4 - (4/7)*R2 = [-4,5,7,-7,-9] - [-4,20/7,20/7,-36/7,-32/7] = [-4+4, 5-20/7, 7-20/7, -7+36/7, -9+32/7] = [0, 5-20/7, 7-20/7, -7+36/7, -9+32/7].
+Compute fractions: 5=35/7, so 35/7-20/7=15/7. 7=49/7, so 49/7-20/7=29/7. -7=-49/7, so -49/7+36/7 = -13/7. -9=-63/7, so -63/7+32/7 = -31/7.
+Thus R4' = [0, 15/7, 29/7, -13/7, -31/7].
+
+R5: factor = (-4)/(-7) = 4/7. So new R5 = R5 - (4/7)*R2.
+R5 = [-4, -1, 0, 0, -3]. Subtract (4/7)*R2 = [-4,20/7,20/7,-36/7,-32/7]. So R5' = [-4 - (-4), -1 - 20/7, 0 - 20/7, 0 - (-36/7), -3 - (-32/7)] = [0, -1 -20/7, -20/7, 36/7, -3 + 32/7].
+Compute -1 = -7/7, so -7/7-20/7 = -27/7. -20/7 stays. 36/7. -3 = -21/7, so -21/7+32/7 = 11/7.
+Thus R5' = [0, -27/7, -20/7, 36/7, 11/7].
+
+R6: factor = (-11)/(-7) = 11/7. So new R6 = R6 - (11/7)*R2.
+R6 = [-11, 8, 6, -14, -8]. (11/7)*R2 = [11*(-7)/7, 11*5/7, 11*5/7, 11*(-9)/7, 11*(-8)/7] = [-11, 55/7, 55/7, -99/7, -88/7].
+Then R6' = [-11 - (-11), 8 - 55/7, 6 - 55/7, -14 - (-99/7), -8 - (-88/7)] = [0, 8-55/7, 6-55/7, -14+99/7, -8+88/7].
+Compute 8=56/7, so 56/7-55/7=1/7. 6=42/7, so 42/7-55/7 = -13/7. -14=-98/7, so -98/7+99/7=1/7. -8=-56/7, so -56/7+88/7=32/7.
+Thus R6' = [0, 1/7, -13/7, 1/7, 32/7].
+
+Now after elimination in column2, we have:
+
+R1: [1, 3, -3, -3, 4, 4]
+R2: [0, -7, 5, 5, -9, -8]
+R3: [0, 0, -18/7, 52/7, 40/7]? Wait, we need to include column indices: For rows 2-6, columns 2-6: R3 has entries for columns 2 to 6: we have R3' = [0, -25/7, -18/7, 52/7, 40/7] but note that we eliminated column2 so the first nonzero in R3 is at column3? Actually R3's first entry is column2: we got 0 for column2? Wait, we computed R3' as [0, -25/7, -18/7, 52/7, 40/7] where the first zero is column2? Let's label correctly.
+
+Our current matrix rows are (with columns 1-6):
+R1: [1, 3, -3, -3, 4, 4]
+R2: [0, -7, 5, 5, -9, -8]
+R3: originally had [0, 9, -10, -9, 19, 16] after first elimination; after elimination in column2, we set R3 to R3' = R3 - (9/(-7))*R2. We computed that gave R3' = [0, 0, -25/7, -18/7, 52/7, 40/7]? Wait, we need to include all columns: R3 after first elimination had entries: col1=0, col2=9, col3=-10, col4=-9, col5=19, col6=16. After elimination, we computed new values for col2,3,4,5,6. We got col2 becomes 0 (since we eliminated), col3 = -25/7, col4 = -18/7, col5 = 52/7, col6 = 40/7. So R3' = [0, 0, -25/7, -18/7, 52/7, 40/7]. Similarly, R4' = [0, 0, 15/7, 29/7, -13/7, -31/7]? Wait careful: R4 original after first elimination: [0, -4,5,7,-7,-9]. After elimination: col2 becomes 0, col3 = 15/7, col4 = 29/7, col5 = -13/7, col6 = -31/7. So R4' = [0,0,15/7,29/7,-13/7,-31/7]. R5' = [0,0, -27/7, -20/7, 36/7, 11/7]. R6' = [0,0, 1/7, -13/7, 1/7, 32/7].
+
+Thus current matrix:
+
+R1: [1, 3, -3, -3, 4, 4]
+R2: [0, -7, 5, 5, -9, -8]
+R3: [0, 0, -25/7, -18/7, 52/7, 40/7]
+R4: [0, 0, 15/7, 29/7, -13/7, -31/7]
+R5: [0, 0, -27/7, -20/7, 36/7, 11/7]
+R6: [0, 0, 1/7, -13/7, 1/7, 32/7]
+
+Now we proceed to column3. The pivot is at R3 col3 = -25/7. We'll eliminate below in rows 4,5,6. Use factor = (entry in col3) / pivot. Since we have fractions, we can compute using rational arithmetic.
+
+Let pivot = p = -25/7.
+
+We have rows (from R3 onward) with columns 3-6:
+
+R3: [-25/7, -18/7, 52/7, 40/7]
+R4: [15/7, 29/7, -13/7, -31/7]
+R5: [-27/7, -20/7, 36/7, 11/7]
+R6: [1/7, -13/7, 1/7, 32/7]
+
+We can multiply each row by 7 to clear denominators temporarily to make arithmetic easier, but careful: scaling a row multiplies determinant by that factor. However, if we scale all rows by 7, the determinant gets multiplied by 7^(number of rows scaled). Since we are not scaling the entire matrix uniformly? Actually we are only scaling these rows for the purpose of elimination? But we must keep track of any scaling we do that changes determinant. Alternatively, we can continue with fractions. Let's clear denominators by multiplying each row by 7, but note that this would scale the determinant of the submatrix? Actually if we multiply a row by a constant c, the determinant of the whole matrix is multiplied by c. So we cannot arbitrarily multiply rows without compensating. However, we can multiply a row by a constant and later divide the determinant by that constant. But it might be easier to just handle fractions.
+
+We can also do integer elimination by using the fact that we have fractions; we can multiply the pivot row by something to eliminate fractions. A common technique: For each step, we can use the pivot row (which is rational) and we can multiply the row we are eliminating by the denominator to avoid fractions, but we must track scaling. For simplicity, I'll continue with fractions exactly.
+
+Let's compute for R4: factor = (15/7) / (-25/7) = (15/7)*(7/-25) = 15/(-25) = -3/5? Actually 15/(-25) = -3/5. So factor = -3/5. So new R4 = R4 - factor * R3 = R4 - (-3/5)*R3 = R4 + (3/5)R3.
+
+Compute (3/5)*R3: multiply R3 entries by 3/5. R3: [-25/7, -18/7, 52/7, 40/7] * (3/5) = [(-25/7)*(3/5), (-18/7)*(3/5), (52/7)*(3/5), (40/7)*(3/5)] = [(-25*3)/(7*5), (-18*3)/(7*5), (52*3)/(7*5), (40*3)/(7*5)] = [(-75)/(35), (-54)/(35), (156)/(35), (120)/(35)]. Simplify fractions: -75/35 = -15/7, -54/35 stays, 156/35 stays, 120/35 = 24/7. Actually -75/35 = -15/7, yes. So (3/5)*R3 = [-15/7, -54/35, 156/35, 24/7]. But note we have R4 entries: [15/7, 29/7, -13/7, -31/7]. Convert them to 35 denominator for consistency? Or keep as fractions. Let's compute R4 + (3/5)R3:
+
+First entry: 15/7 + (-15/7) = 0. Good.
+Second entry: 29/7 + (-54/35). 29/7 = (29*5)/35 = 145/35. So 145/35 - 54/35 = 91/35 = 13/5? Because 91/35 = divide by 7: 13/5. So second entry = 13/5.
+Third entry: -13/7 + 156/35. -13/7 = -65/35. So -65/35 + 156/35 = 91/35 = 13/5.
+Fourth entry: -31/7 + 24/7? Wait, (3/5)*R3 fourth entry we had 24/7. So -31/7 + 24/7 = -7/7 = -1.
+Thus R4' = [0, 0, 0, 13/5, 13/5, -1]? Actually we have columns: after elimination, R4's column3 becomes 0, and we have entries for col4, col5, col6: second entry is col4? Let's map carefully. The row R4 originally had entries: col3=15/7, col4=29/7, col5=-13/7, col6=-31/7. After elimination, we computed new col3=0, new col4=13/5, new col5=13/5, new col6=-1. So R4' = [0,0,0,13/5,13/5,-1].
+
+Now R5: factor = (-27/7) / (-25/7) = (-27/7)*(7/-25) = 27/25? Actually (-27)/(-25)=27/25. So factor = 27/25? Let's compute: (-27/7) divided by (-25/7) = (-27/7)*(7/-25)=27/25. So factor = 27/25. Then new R5 = R5 - factor * R3 = R5 - (27/25)*R3.
+
+Compute (27/25)*R3: R3 = [-25/7, -18/7, 52/7, 40/7]. Multiply: [(-25/7)*(27/25), (-18/7)*(27/25), (52/7)*(27/25), (40/7)*(27/25)] = [(-25*27)/(7*25), (-18*27)/(7*25), (52*27)/(7*25), (40*27)/(7*25)] = [(-27)/7, (-486)/(175), (1404)/(175), (1080)/(175)]. Simplify: -27/7 = -27/7, but we might keep as fractions with common denominator later. However, R5 entries: R5 = [-27/7, -20/7, 36/7, 11/7]. So we compute R5 - (27/25)*R3:
+
+First entry: -27/7 - (-27/7) = -27/7 + 27/7 = 0. Good.
+
+Second entry: -20/7 - ( -486/175? Wait careful: (27/25)*R3 second entry = (-486)/(175). So subtract: -20/7 - ( (-486)/175 ) = -20/7 + 486/175. Convert -20/7 = -500/175? Since 20/7 = (20*25)/(7*25)=500/175, so -500/175. Then -500/175 + 486/175 = -14/175 = -2/25? Because 14/175 = 2/25? Actually 14/175 simplifies dividing by 7: 2/25, yes -14/175 = -2/25. So second entry = -2/25.
+
+Third entry: 36/7 - (1404/175). 36/7 = (36*25)/175 = 900/175. So 900/175 - 1404/175 = -504/175 = -504/175 simplify? Divide by 7: -72/25. So third entry = -72/25.
+
+Fourth entry: 11/7 - (1080/175). 11/7 = (11*25)/175 = 275/175. So 275/175 - 1080/175 = -805/175 = -805/175 simplify? Divide by 5: -161/35, further? 161/35 = 23/5? 23*7=161, 5*7=35, so -23/5. Actually -805/175 = divide numerator and denominator by 5: -161/35, divide by 7: -23/5. So fourth entry = -23/5.
+
+Thus R5' = [0,0,0, -2/25, -72/25, -23/5]? But careful: we have columns: R5 originally col3=-27/7, col4=-20/7, col5=36/7, col6=11/7. After elimination, we got col3=0, col4 = -2/25, col5 = -72/25, col6 = -23/5. So R5' = [0,0,0, -2/25, -72/25, -23/5].
+
+Now R6: factor = (1/7) / (-25/7) = (1/7)*(7/-25) = 1/(-25) = -1/25. So factor = -1/25. Then new R6 = R6 - factor * R3 = R6 - (-1/25)*R3 = R6 + (1/25)R3.
+
+Compute (1/25)*R3: R3 = [-25/7, -18/7, 52/7, 40/7] * (1/25) = [(-25/7)*(1/25), (-18/7)*(1/25), (52/7)*(1/25), (40/7)*(1/25)] = [(-1)/7, (-18)/(175), (52)/(175), (40)/(175)] = [-1/7, -18/175, 52/175, 40/175 = 8/35? 40/175 = 8/35 yes].
+
+R6 entries: R6 = [1/7, -13/7, 1/7, 32/7]? Actually R6 = [1/7, -13/7, 1/7, 32/7] from earlier? Wait, we had R6' = [0,0,1/7, -13/7, 1/7, 32/7]. So its col3=1/7, col4=-13/7, col5=1/7, col6=32/7.
+
+Now compute R6 + (1/25)*R3:
+
+First entry: 1/7 + (-1/7) = 0. Good.
+Second entry: -13/7 + (-18/175) = convert -13/7 = -325/175 (since 13/7 = 325/175? 13*25=325, yes). So -325/175 + (-18/175) = -343/175 = -343/175 simplify? 343=7^3? 7^3=343, 175=25*7, so -343/175 = -(49*7)/(25*7) = -49/25? Actually 343/175 = (7*49)/(7*25)=49/25, so -49/25. So second entry = -49/25.
+Third entry: 1/7 + 52/175 = 1/7 = 25/175, so 25/175+52/175=77/175 = 77/175 simplify? 77/175 = divide by 7: 11/25. So third entry = 11/25.
+Fourth entry: 32/7 + 8/35 = 32/7 = 160/35, plus 8/35 = 168/35 = 168/35 simplify: divide by 7: 24/5. So fourth entry = 24/5.
+
+Thus R6' = [0,0,0, -49/25, 11/25, 24/5]? Wait we have col4 = second entry, col5 = third, col6 = fourth: So R6' = [0,0,0, -49/25, 11/25, 24/5].
+
+Now, after elimination in column3, we have:
+
+R1: [1, 3, -3, -3, 4, 4]
+R2: [0, -7, 5, 5, -9, -8]
+R3: [0, 0, -25/7, -18/7, 52/7, 40/7]
+R4: [0, 0, 0, 13/5, 13/5, -1]
+R5: [0, 0, 0, -2/25, -72/25, -23/5]
+R6: [0, 0, 0, -49/25, 11/25, 24/5]
+
+Now we proceed to column4. The pivot is at R4 col4 = 13/5. Eliminate below in rows5 and 6.
+
+We have rows4-6 with columns4-6:
+
+R4: [13/5, 13/5, -1]
+R5: [-2/25, -72/25, -23/5]
+R6: [-49/25, 11/25, 24/5]
+
+Convert everything to common denominator perhaps. 13/5 = (13*5)/25 = 65/25. So we can work with denominator 25.
+
+Let's convert:
+
+R4: [65/25, 65/25, -1] but -1 = -25/25? Actually -1 = -25/25. So R4 = [65/25, 65/25, -25/25] = [65/25, 65/25, -25/25].
+R5: [-2/25, -72/25, -23/5] = -23/5 = -115/25. So R5 = [-2/25, -72/25, -115/25].
+R6: [-49/25, 11/25, 24/5] = 24/5 = 120/25. So R6 = [-49/25, 11/25, 120/25].
+
+Now we eliminate using pivot = 65/25. Factor for R5: entry = -2/25, so factor = (-2/25) / (65/25) = -2/65. Then new R5 = R5 - factor * R4 = R5 - (-2/65)*R4 = R5 + (2/65)R4.
+
+Compute (2/65)*R4: multiply R4 entries by 2/65. R4 = [65/25, 65/25, -25/25] = [65/25, 65/25, -25/25]. So (2/65)*R4 = [ (2/65)*(65/25), (2/65)*(65/25), (2/65)*(-25/25) ] = [ (2*65)/(65*25), (2*65)/(65*25), (2*(-25))/(65*25) ] = [2/25, 2/25, -50/(65*25) = -50/(1625) = simplify? -50/1625 = -2/65? Actually 50/1625 = divide by 25: 2/65, so -2/65. But careful: (2/65)*(-25/25) = -50/(65*25) = -2/(65)? Since 50/25=2, so -2/65. So (2/65)*R4 = [2/25, 2/25, -2/65].
+
+Now R5 = [-2/25, -72/25, -115/25] + [2/25, 2/25, -2/65]. But note the third component: -115/25 is not same denominator as -2/65. Let's convert everything to a common denominator for ease. We'll keep as rational numbers.
+
+Compute R5':
+
+First: -2/25 + 2/25 = 0.
+Second: -72/25 + 2/25 = -70/25 = -14/5 (since 70/25=14/5).
+Third: -115/25 + (-2/65) = -115/25 - 2/65. Compute common denominator: lcm of 25 and 65 is 325. -115/25 = -115*13/325 = -1495/325. -2/65 = -2*5/325 = -10/325. Sum = -1505/325 = simplify? Divide by 5: -301/65. So third component = -301/65. So R5' = [0, -14/5, -301/65]. But we want to keep as fractions; we can simplify further? -301/65 = -301/65, 301 = 7*43? 7*43=301, 65=5*13, no common factor.
+
+Now R6: factor = (-49/25) / (65/25) = -49/65. Then new R6 = R6 - factor * R4 = R6 - (-49/65)*R4 = R6 + (49/65)R4.
+
+Compute (49/65)*R4: R4 = [65/25, 65/25, -25/25] = [65/25, 65/25, -1]. So (49/65)*R4 = [ (49/65)*(65/25), (49/65)*(65/25), (49/65)*(-1) ] = [49/25, 49/25, -49/65].
+
+R6 = [-49/25, 11/25, 120/25] = [-49/25, 11/25, 120/25]. Then R6' = R6 + (49/65)*R4 = [ -49/25 + 49/25, 11/25 + 49/25, 120/25 + (-49/65) ] = [0, 60/25, 120/25 - 49/65]. Simplify: 60/25 = 12/5. 120/25 = 24/5 = 24/5. Now compute 24/5 - 49/65 = convert to /65: 24/5 = (24*13)/65 = 312/65. Then 312/65 - 49/65 = 263/65. So third component = 263/65.
+
+Thus R6' = [0, 12/5, 263/65].
+
+Now after elimination in column4, we have:
+
+R1: [1, 3, -3, -3, 4, 4]
+R2: [0, -7, 5, 5, -9, -8]
+R3: [0, 0, -25/7, -18/7, 52/7, 40/7]
+R4: [0, 0, 0, 13/5, 13/5, -1]
+R5: [0, 0, 0, 0, -14/5, -301/65]
+R6: [0, 0, 0, 0, 12/5, 263/65]
+
+Now proceed to column5. The pivot is at R5 col5 = -14/5. Eliminate below in R6.
+
+We have rows5-6 with columns5-6:
+
+R5: [-14/5, -301/65]
+R6: [12/5, 263/65]
+
+Compute factor for R6: (12/5) / (-14/5) = 12/5 * (5/-14) = 12/(-14) = -6/7. So factor = -6/7. Then new R6 = R6 - factor * R5 = R6 - (-6/7)*R5 = R6 + (6/7)R5.
+
+Compute (6/7)*R5: R5 = [-14/5, -301/65]. So (6/7)*(-14/5) = (6*(-14))/(7*5) = (-84)/(35) = -12/5? Because 84/35 = 12/5, so -12/5. And (6/7)*(-301/65) = (6*(-301))/(7*65) = (-1806)/(455). Simplify? 1806/455 = divide by? 1806 = 2*903 = 2*3*301 = 2*3*7*43? Actually 301=7*43, so 1806 = 2*3*7*43 = 42*43? 42*43=1806. 455=5*7*13. So 1806/455 = (42*43)/(5*7*13) = (6*7*43)/(5*7*13) = (6*43)/(5*13) = 258/65? Because 6*43=258, 5*13=65, so 258/65. So (-1806)/(455) = -258/65. So (6/7)*R5 = [-12/5, -258/65].
+
+Now R6 = [12/5, 263/65]. Then R6' = R6 + (6/7)*R5 = [12/5 + (-12/5), 263/65 + (-258/65)] = [0, 5/65] = [0, 1/13]. So R6' = [0, 0, 0, 0, 0, 1/13].
+
+Now we have an upper triangular matrix (since after elimination, all entries below diagonal are zero). The diagonal entries are:
+
+d1 = R1[1] = 1
+d2 = R2[2] = -7
+d3 = R3[3] = -25/7
+d4 = R4[4] = 13/5
+d5 = R5[5] = -14/5
+d6 = R6[6] = 1/13
+
+The determinant of this upper triangular matrix is the product of these diagonal entries, because we only used row operations of adding multiples of rows (which do not change determinant) and we swapped rows once at the beginning (swap R1 and R3) which multiplied determinant by -1. Also note that we never multiplied any row by a constant (except when we did elimination with fractions, but we did row replacement R_i = R_i - c R_j, which does not change determinant). So the determinant of the matrix after the row swap (call it B) is the product of the diagonals. Then det(original) = -det(B) because we swapped once? Wait: we swapped row1 and row3, so det(B) = -det(original). Actually original matrix A, we swapped rows 1 and 3 to get matrix B. So det(B) = (-1)^(number of swaps) det(A) = -det(A). So det(A) = -det(B). So if we compute det(B) = product of diagonals, then det(A) = - (product). But be careful: Did we do any other row swaps? No. So det(A) = - (d1*d2*d3*d4*d5*d6).
+
+Now compute product:
+
+d1 = 1
+d2 = -7
+d3 = -25/7
+d4 = 13/5
+d5 = -14/5
+d6 = 1/13
+
+Multiply stepwise:
+
+1 * (-7) = -7
+(-7) * (-25/7) = (-7)*(-25/7) = 25? Because -7 * -25/7 = 25 (since 7 cancels).
+Now 25 * (13/5) = 25 * 13 / 5 = 5 * 13 = 65.
+Now 65 * (-14/5) = 65 * (-14)/5 = (65/5)*(-14) = 13 * (-14) = -182.
+Now (-182) * (1/13) = -182/13 = -14? Because 13*14=182, so -14.
+
+So product = -14? Let's check: 1,-7, -25/7 gives 25, then 25*13/5=65, 65*(-14/5)= -182, -182*1/13= -14. So det(B) = -14. Then det(A) = - det(B) = -(-14) = 14.
+
+But wait, is that the determinant? We must double-check because we might have made arithmetic mistakes. Let's verify each step carefully, perhaps using alternative method or checking with smaller steps.
+
+We can verify by computing determinant using another approach, like using online mental calculation or using row operations with integer arithmetic and tracking scaling factors. Another way: we can compute determinant by performing elimination with integer arithmetic by scaling rows to avoid fractions, but then we need to compensate. Let's do that to verify.
+
+Alternative approach: Use integer row operations and keep track of determinant changes. Start with original matrix A (not swapped). We'll do elimination without swapping to avoid sign changes, but we may need to swap to get non-zero pivot. But we can also use integer elimination by using the fact that we can multiply rows by integers but then we need to divide the determinant by that integer at the end. This can be done by computing the determinant as (product of pivots after elimination) / (product of scaling factors) if we keep track. Alternatively, we can compute the determinant using the method of Gaussian elimination with rational numbers, which we already did, but we should double-check the arithmetic.
+
+Let's go through the elimination again but possibly with a different pivot order or using exact integer arithmetic by clearing denominators at each step. That might be more reliable.
+
+We have original A:
+
+A = 
+[ -4  -3   2   3   3   0 ]
+[  2  -1  -1  -1  -1   0 ]
+[  1   3  -3  -3   4   4 ]
+[  2   2  -1   1   1  -1 ]
+[  1  -1  -4  -3   4   1 ]
+[  3  -2  -1  -3  -2   4 ]
+
+We can try to compute determinant using Laplace expansion or by performing row operations that keep the determinant unchanged (like adding multiples of rows) but also we can swap rows. Let's try a different elimination strategy: use row3 as pivot (since it has 1) but we can also use row1 as pivot and work with fractions. But our previous method gave det = 14. Let's verify using a computational check: we can compute determinant using some systematic approach like using Python mentally? But we can do manual check by computing using smaller submatrix or using properties.
+
+Another approach: compute determinant by performing row operations that simplify matrix to integers. For instance, we can combine rows to get many zeros. Let's attempt to compute using integer elimination with scaling but keep track.
+
+We could also compute using the fact that the determinant is an integer, so our product gave -14, then det(A)=14. Let's attempt to compute directly using a different pivot ordering: start with original matrix, swap R1 and R3 to get pivot 1, we did that. Then we eliminated column1. That seemed fine. Then we had for column2 pivot -7. That step gave fractions but we handled. Then column3 pivot -25/7, etc. The arithmetic seemed consistent, but we need to verify each fraction reduction.
+
+Let's recompute the elimination steps more carefully, maybe using integer arithmetic by keeping rows multiplied by denominators, but then we can combine.
+
+Alternate method: Use the concept of determinant as a polynomial in entries, but there's also possibility to compute using block matrix or using row operations that produce zeros.
+
+Another idea: Use row operations to simplify the matrix before elimination. For instance, we can add multiples of rows to make numbers smaller. For example, we can add row2 to row1? Not sure.
+
+We can also compute determinant by performing row operations that keep everything integer but using the Euclidean algorithm to reduce the pivot size. For example, we can use the fact that we have a 1 in row3 col1 after swap; we can use that to eliminate other entries, which we did. Then for column2, we have pivot -7 and other entries: 9, -4, -4, -11. We could use row operations to reduce these numbers, maybe by adding multiples of rows to make the pivot smaller? But -7 is okay. Could we avoid fractions by using integer elimination: For R3, we want to eliminate 9. We can do R3 -> 7*R3 + 9*R2? But that would multiply row3 by 7, changing determinant. We could do combination: R3 -> 7*R3 - 9*R2? Actually if we do R3 -> a*R3 + b*R2, the determinant gets multiplied by a (since we are scaling row3). So we need to track. But we can do operations that keep determinant unchanged if we do R3 -> 7*R3 - 9*R2 and then later divide the determinant by 7 (because we multiplied row3 by 7). That is, we can perform integer elimination by scaling rows, compute the determinant of the scaled matrix, and then divide by the product of scaling factors. This is a common technique: to avoid fractions, we can multiply rows by appropriate integers to make elimination integer, then at the end we divide by those integers. So let's try that approach to verify.
+
+We'll start with the matrix after swapping rows (so we have B, with det(B) = -det(A)). Then we perform integer elimination, tracking scaling factors.
+
+Matrix B after swap:
+
+R1: [1, 3, -3, -3, 4, 4]
+R2: [2, -1, -1, -1, -1, 0]
+R3: [-4, -3, 2, 3, 3, 0]
+R4: [2, 2, -1, 1, 1, -1]
+R5: [1, -1, -4, -3, 4, 1]
+R6: [3, -2, -1, -3, -2, 4]
+
+We'll eliminate column1 using pivot 1 (no scaling needed). We already did that with integer operations (since pivot 1, we can subtract multiples). That gave integer results:
+
+R1: [1,3,-3,-3,4,4]
+R2: [0,-7,5,5,-9,-8]
+R3: [0,9,-10,-9,19,16]
+R4: [0,-4,5,7,-7,-9]
+R5: [0,-4,-1,0,0,-3]
+R6: [0,-11,8,6,-14,-8]
+
+All integers. Good.
+
+Now for column2, we want to eliminate rows 3-6 using pivot -7 in R2. To avoid fractions, we can perform integer elimination by scaling the row we are eliminating. For each row i, we can do: new R_i = pivot * R_i - entry_i * R2. Since pivot = -7, this operation multiplies row i by -7 (because we are replacing R_i with (-7)*R_i - entry_i*R2). Actually careful: If we do R_i -> p * R_i - e * R_j, where p is the pivot and e is the entry in column2 of R_i, then this operation scales row i by p, so determinant gets multiplied by p. But we can also do it without scaling by using combination: R_i -> R_i - (e/p) R_j, but that introduces fractions. So integer method: we'll do R_i -> p * R_i - e * R_j, and then later we will divide the determinant by p (since we multiplied row i by p). However, we need to do this for each row we eliminate, and the scaling factors multiply. At the end, the determinant of the transformed matrix (after all such eliminations) will be (product of scaling factors used) times determinant of the original matrix (since we also did no swaps? But we also swapped earlier). So we can compute determinant from that.
+
+Let's apply this method for column2.
+
+We have pivot p = -7 (from R2). For each row i=3,4,5,6, we compute new R_i = p * R_i - e_i * R2, where e_i is the entry in column2 of R_i. Then we replace R_i with this new row. This will make column2 entry zero because p * e_i - e_i * p = 0? Actually compute: new entry in column2 = p * e_i - e_i * p = 0. So good. But note that we scaled R_i by p. So the determinant of the matrix after these operations is multiplied by p for each row we transform. However, we are also adding multiples of R2, which doesn't change determinant. So overall, det(new) = p^k * det(old), where k is number of rows we transformed (here k=4). Since we are transforming rows 3,4,5,6, each gets multiplied by p = -7. So det(new) = (-7)^4 * det(current). Then we will continue elimination on the new matrix, which will have integers (since we used integer combinations). Then after we get an upper triangular matrix (likely with some scaling factors), we can compute its determinant as product of diagonal entries, then backtrack to original determinant.
+
+But careful: After we apply these operations, the rows are scaled, so the matrix is not necessarily upper triangular yet. We'll continue elimination on subsequent columns, and we might need to scale again. But we can keep track of cumulative scaling factors.
+
+Alternatively, we can apply this method to convert the matrix to an upper triangular form with all integer entries, and then the determinant of the original matrix is (determinant of the final triangular matrix) divided by the product of all scaling factors used. But we also have the row swap factor.
+
+Let's do that systematically.
+
+We start with matrix B (after swap). Let det(B) = D_B. We'll compute D_B by this integer elimination, then det(A) = -D_B.
+
+Current matrix:
+
+R1: [1,3,-3,-3,4,4]
+R2: [0,-7,5,5,-9,-8]  (pivot row)
+R3: [0,9,-10,-9,19,16]
+R4: [0,-4,5,7,-7,-9]
+R5: [0,-4,-1,0,0,-3]
+R6: [0,-11,8,6,-14,-8]
+
+We'll eliminate rows 3-6 in column2 using pivot p = -7.
+
+Define for i=3..6:
+new_Ri = p * Ri - e_i * R2, where e_i = Ri[2] (column2 value).
+Let's compute.
+
+First, p = -7.
+
+Compute R3: e3 = 9.
+New R3 = (-7)*R3 - 9*R2.
+Compute (-7)*R3: R3 = [0,9,-10,-9,19,16] => multiply by -7: [0, -63, 70, 63, -133, -112] (since -7*9=-63, -7*(-10)=70, -7*(-9)=63, -7*19=-133, -7*16=-112).
+Now compute 9*R2: R2 = [0,-7,5,5,-9,-8] => 9*R2 = [0, -63, 45, 45, -81, -72].
+Now new R3 = (-7*R3) - 9*R2 = [0-0, -63 - (-63)? Wait careful: new R3 = (-7)R3 - 9 R2 = [0-0, -63 - (-63)= -63+63=0, 70 - 45 = 25, 63 - 45 = 18, -133 - (-81) = -133+81 = -52, -112 - (-72) = -112+72 = -40]. So new R3 = [0,0,25,18,-52,-40]. (Note: we have signs: 25,18,-52,-40).
+
+Now R4: e4 = -4.
+New R4 = (-7)*R4 - (-4)*R2 = -7*R4 + 4*R2.
+Compute -7*R4: R4 = [0,-4,5,7,-7,-9] => -7*R4 = [0,28, -35, -49, 49, 63] (since -7*(-4)=28, -7*5=-35, -7*7=-49, -7*(-7)=49, -7*(-9)=63).
+Now 4*R2 = [0, -28, 20, 20, -36, -32].
+Add: new R4 = [0, 28+(-28)=0, -35+20 = -15, -49+20 = -29, 49+(-36)=13, 63+(-32)=31]. So new R4 = [0,0,-15,-29,13,31].
+
+R5: e5 = -4.
+New R5 = (-7)*R5 - (-4)*R2 = -7*R5 + 4*R2.
+Compute -7*R5: R5 = [0,-4,-1,0,0,-3] => -7*R5 = [0,28,7,0,0,21] (since -7*(-4)=28, -7*(-1)=7, -7*0=0, -7*0=0, -7*(-3)=21).
+4*R2 = [0,-28,20,20,-36,-32].
+Add: [0,28-28=0, 7+20=27, 0+20=20, 0+(-36)=-36, 21+(-32)=-11]. So new R5 = [0,0,27,20,-36,-11].
+
+R6: e6 = -11.
+New R6 = (-7)*R6 - (-11)*R2 = -7*R6 + 11*R2.
+Compute -7*R6: R6 = [0,-11,8,6,-14,-8] => -7*R6 = [0,77, -56, -42, 98, 56] (since -7*(-11)=77, -7*8=-56, -7*6=-42, -7*(-14)=98, -7*(-8)=56).
+11*R2 = [0,-77,55,55,-99,-88].
+Add: [0,77-77=0, -56+55 = -1, -42+55 = 13, 98+(-99)=-1, 56+(-88)=-32]. So new R6 = [0,0,-1,13,-1,-32].
+
+Now the matrix after column2 elimination (with scaling) is:
+
+R1: [1,3,-3,-3,4,4]
+R2: [0,-7,5,5,-9,-8]
+R3: [0,0,25,18,-52,-40]
+R4: [0,0,-15,-29,13,31]
+R5: [0,0,27,20,-36,-11]
+R6: [0,0,-1,13,-1,-32]
+
+Note that we have scaled rows 3,4,5,6 each by -7 (since we replaced them with (-7)*Ri - e_i*R2). So the determinant of this new matrix, call it M1, is: det(M1) = (-7)^4 * det(current matrix before elimination) = (-7)^4 * det(B) because we haven't changed rows 1 and 2. Actually we transformed rows 3-6, so determinant gets multiplied by (-7) for each row, so factor = (-7)^4 = 2401. So det(M1) = 2401 * det(B). Note: (-7)^4 = 2401 (since 7^4=2401, and (-7)^4=2401). So det(B) = det(M1) / 2401.
+
+Now we proceed to column3. The pivot is now at row3, column3 = 25. We'll use R3 as pivot row to eliminate below (rows 4,5,6). We'll apply similar integer elimination: for each row i=4,5,6, we compute new_Ri = pivot * Ri - e_i * R3, where pivot = 25, e_i = Ri[3] (the entry in column3). This will scale those rows by 25. So after elimination, determinant will be multiplied by 25^(number of rows) = 25^3 = 15625. So we'll compute new rows.
+
+Current rows (only relevant columns 3-6, but we need full rows):
+
+R3: [0,0,25,18,-52,-40] (pivot row)
+R4: [0,0,-15,-29,13,31]
+R5: [0,0,27,20,-36,-11]
+R6: [0,0,-1,13,-1,-32]
+
+Now compute new R4: e4 = -15. New R4 = 25*R4 - (-15)*R3 = 25*R4 + 15*R3.
+Compute 25*R4: R4 = [0,0,-15,-29,13,31] => 25*R4 = [0,0,-375, -725, 325, 775] (since -15*25 = -375, -29*25=-725, 13*25=325, 31*25=775).
+15*R3: R3 = [0,0,25,18,-52,-40] => 15*R3 = [0,0,375,270,-780,-600].
+Add: new R4 = [0,0,0, -725+270 = -455, 325-780 = -455, 775-600 = 175]. So new R4 = [0,0,0, -455, -455, 175].
+
+Now R5: e5 = 27. New R5 = 25*R5 - 27*R3.
+Compute 25*R5: R5 = [0,0,27,20,-36,-11] => 25*R5 = [0,0,675,500,-900,-275].
+27*R3: R3 = [0,0,25,18,-52,-40] => 27*R3 = [0,0,675,486,-1404,-1080].
+Now new R5 = 25*R5 - 27*R3 = [0,0,675-675=0, 500-486=14, -900 - (-1404) = -900+1404 = 504, -275 - (-1080) = -275+1080 = 805]. So new R5 = [0,0,0,14,504,805].
+
+Now R6: e6 = -1. New R6 = 25*R6 - (-1)*R3 = 25*R6 + 1*R3.
+Compute 25*R6: R6 = [0,0,-1,13,-1,-32] => 25*R6 = [0,0,-25,325,-25,-800].
+Add R3: [0,0,25,18,-52,-40] => new R6 = [0,0,0, 325+18=343, -25-52 = -77, -800-40 = -840]. So new R6 = [0,0,0,343,-77,-840].
+
+Now after column3 elimination, matrix M2:
+
+R1: [1,3,-3,-3,4,4]
+R2: [0,-7,5,5,-9,-8]
+R3: [0,0,25,18,-52,-40]
+R4: [0,0,0,-455,-455,175]
+R5: [0,0,0,14,504,805]
+R6: [0,0,0,343,-77,-840]
+
+Now we have scaled rows 4,5,6 by 25 each. So determinant of M2 = 25^3 * det(M1). Since we scaled rows 4,5,6 by 25, factor = 25^3 = 15625. So det(M2) = 15625 * det(M1) = 15625 * (2401 * det(B)) = 15625*2401 * det(B). So det(B) = det(M2) / (15625*2401).
+
+Now proceed to column4. Pivot is at row4, column4 = -455. We'll eliminate rows 5 and 6. Use pivot = -455. For each row i=5,6, compute new_Ri = pivot * Ri - e_i * R4, where e_i = Ri[4] (column4 entry). This will scale those rows by pivot = -455. So factor = (-455)^2 = 207025? Actually 455^2 = 207025, sign squared gives positive. So after elimination, determinant multiplied by (-455)^2 = 207025.
+
+We need to compute new rows.
+
+Rows relevant:
+
+R4: [0,0,0,-455,-455,175]
+R5: [0,0,0,14,504,805]
+R6: [0,0,0,343,-77,-840]
+
+First, compute new R5: e5 = 14. New R5 = (-455)*R5 - 14*R4.
+Compute (-455)*R5: R5 = [0,0,0,14,504,805] => multiply by -455: [0,0,0, -455*14 = -6370, -455*504 = -229320? Let's compute: 455*504 = 455*500 + 455*4 = 227500 + 1820 = 229320, so -229320, -455*805 = -455*800 -455*5 = -364000 -2275 = -366275]. So (-455)*R5 = [0,0,0, -6370, -229320, -366275].
+Now 14*R4: R4 = [0,0,0,-455,-455,175] => 14*R4 = [0,0,0, -6370, -6370, 2450].
+Now new R5 = (-455)*R5 - 14*R4 = [0,0,0, -6370 - (-6370) = -6370+6370=0, -229320 - (-6370) = -229320+6370 = -222950, -366275 - 2450 = -368725]. So new R5 = [0,0,0,0, -222950, -368725].
+
+Now new R6: e6 = 343. New R6 = (-455)*R6 - 343*R4.
+Compute (-455)*R6: R6 = [0,0,0,343,-77,-840] => multiply by -455: [0,0,0, -455*343, -455*(-77) = 455*77, -455*(-840)=455*840]. Compute:
+-455*343: 455*343 = 455*300=136500, 455*40=18200, 455*3=1365; sum = 136500+18200=154700, +1365=156065, so -156065.
+455*77 = 455*70=31850, 455*7=3185, total 35035. So second component = 35035.
+455*840 = 455*800=364000, 455*40=18200, total 382200. So third component = 382200.
+Thus (-455)*R6 = [0,0,0, -156065, 35035, 382200].
+Now 343*R4: R4 = [0,0,0,-455,-455,175] => 343*(-455) = -343*455 = - (343*455). Compute 343*455: 343*400=137200, 343*50=17150, 343*5=1715; sum=137200+17150=154350, +1715=156065. So -156065. 343*(-455) = -156065 also for second entry: -156065. 343*175 = 343*100=34300, 343*75=25725, total 60025. So 343*R4 = [0,0,0, -156065, -156065, 60025].
+Now new R6 = (-455)*R6 - 343*R4 = [0,0,0, -156065 - (-156065) = 0, 35035 - (-156065) = 35035+156065 = 191100, 382200 - 60025 = 322175]. So new R6 = [0,0,0,0, 191100, 322175].
+
+Now after column4 elimination, matrix M3:
+
+R1: [1,3,-3,-3,4,4]
+R2: [0,-7,5,5,-9,-8]
+R3: [0,0,25,18,-52,-40]
+R4: [0,0,0,-455,-455,175]
+R5: [0,0,0,0,-222950,-368725]
+R6: [0,0,0,0,191100,322175]
+
+Now we have scaled rows 5 and 6 by (-455) each. So determinant of M3 = (-455)^2 * det(M2) = 207025 * det(M2). So det(M2) = det(M3) / 207025.
+
+Now proceed to column5. Pivot is at row5, column5 = -222950. We'll eliminate row6. Use pivot = -222950. For row6, compute new_R6 = pivot * R6 - e6 * R5, where e6 = R6[5] = 191100. This will scale row6 by pivot, so factor = pivot = -222950. So det(M4) = (pivot) * det(M3) where M4 is after elimination.
+
+Compute new R6: New R6 = (-222950)*R6 - 191100*R5.
+First, we need R5 and R6 entries (only columns5 and 6; but we need full row, but only these columns matter now as others are zero). R5: [0,...,0, -222950, -368725] (col5=-222950, col6=-368725)
+R6: [0,...,0, 191100, 322175]
+
+Compute (-222950)*R6 = (-222950)*[191100, 322175] = [ -222950*191100, -222950*322175 ].
+Compute 191100*R5? Actually we need 191100*R5: 191100 * [-222950, -368725] = [191100*(-222950), 191100*(-368725)].
+Then new R6 = (-222950)*R6 - 191100*R5 = [ (-222950)*191100 - 191100*(-222950), (-222950)*322175 - 191100*(-368725) ].
+Notice the first component: (-222950)*191100 - 191100*(-222950) = (-222950*191100) + (191100*222950) = 0. So column5 becomes 0. Good.
+Second component: (-222950)*322175 - 191100*(-368725) = -222950*322175 + 191100*368725.
+Compute these numbers? We can factor maybe common factor. We'll compute the second component exactly, as it will be the final diagonal entry (column6). Then determinant of M4 (upper triangular) will be product of diagonal entries: d1=1, d2=-7, d3=25, d4=-455, d5=-222950, and d6 = that second component.
+
+But careful: After elimination, we have replaced R6 with new R6. But also note that we scaled R6 by pivot (-222950) when we did the operation? Actually the operation new_R6 = pivot * R6 - e6 * R5 scales R6 by pivot. So the determinant of the resulting matrix M4 is (pivot) times det(M3). So if we compute the product of diagonal entries of M4, that product equals det(M4). Then det(M3) = det(M4) / pivot. Since pivot = -222950. Then we can backtrack to det(B). But we need to compute det(M4) as product of diagonals. However, note that after elimination, the diagonal entries of M4 are: R1[1]=1, R2[2]=-7, R3[3]=25, R4[4]=-455, R5[5]=-222950, and R6[6] = the computed value (call it d6_new). So det(M4) = 1 * (-7) * 25 * (-455) * (-222950) * d6_new. Then det(M3) = det(M4) / (-222950). So det(M3) = (1 * (-7) * 25 * (-455) * (-222950) * d6_new) / (-222950) = 1 * (-7) * 25 * (-455) * d6_new. So the factor from scaling cancels nicely! That's a benefit: when we eliminate using this integer method, the scaling factor for the last step cancels with the pivot in the product, leaving a simpler expression. Indeed, we can see that after each elimination, we can compute the determinant from the product of the pivots times the final d6_new? Actually let's see the pattern: In our process, we scaled rows 3-6 by -7, then rows 4-6 by 25, then rows 5-6 by -455, then row6 by -222950. The final diagonal entries after all eliminations (including the scaled rows) are: 
+R3[3] = 25 (unchanged from after scaling? Actually after column2 elimination, R3[3] became 25, that's the pivot we used; then after column3 elimination, R3[3] remained 25; similar for R4[4] = -455; R5[5] = -222950; R6[6] = something. But note that these diagonal entries are exactly the pivots we used for elimination (except the first pivot 1 and second pivot -7 from original rows). And the scaling factors we used for elimination were those pivots themselves (e.g., we multiplied rows 3-6 by -7 to eliminate column2, then rows 4-6 by 25, then rows 5-6 by -455, then row6 by -222950). And the determinant of the final upper triangular matrix M4 is the product of all these diagonal entries. But the determinant of the matrix before any scaling (i.e., B) is not that product because we scaled rows. However, if we track carefully, we have:
+det(M1) = (-7)^4 * det(B)  (since we scaled rows 3-6 each by -7)
+det(M2) = 25^3 * det(M1) = 25^3 * (-7)^4 * det(B)
+det(M3) = (-455)^2 * det(M2) = (-455)^2 * 25^3 * (-7)^4 * det(B)
+det(M4) = (-222950)^1 * det(M3) = (-222950) * (-455)^2 * 25^3 * (-7)^4 * det(B)
+So det(B) = det(M4) / [ (-222950) * (-455)^2 * 25^3 * (-7)^4 ].
+But det(M4) = product of diagonal entries = 1 * (-7) * 25 * (-455) * (-222950) * d6_new. So det(M4) = (1 * (-7) * 25 * (-455) * (-222950) * d6_new). Then
+det(B) = (1 * (-7) * 25 * (-455) * (-222950) * d6_new) / [ (-222950) * (-455)^2 * 25^3 * (-7)^4 ].
+Simplify: Cancel (-222950) in numerator and denominator. Cancel one (-455) from numerator with one (-455)^2 in denominator, leaving (-455) in denominator. Cancel one 25 from numerator with 25^3 in denominator, leaving 25^2 in denominator. Cancel one (-7) from numerator with (-7)^4 in denominator, leaving (-7)^3 in denominator. So we get:
+det(B) = d6_new / [ (-455) * 25^2 * (-7)^3 ].
+Now (-7)^3 = -343, 25^2 = 625, (-455) is negative. So denominator = (-455) * 625 * (-343) = product of two negatives gives positive: 455 * 625 * 343? Actually (-455)*625*(-343) = (455*625*343) because (-455)*(-343) = 455*343 positive. So denominator = 455 * 625 * 343. Then det(B) = d6_new / (455 * 625 * 343). But we also have d6_new is the (6,6) entry after elimination. And we need to compute d6_new exactly. Let's compute d6_new from our earlier calculation: d6_new = second component of new R6 after column5 elimination, which we computed as: -222950*322175 + 191100*368725. Let's compute that value.
+
+Compute T = -222950*322175 + 191100*368725. We can factor out common factors? Compute each product.
+
+First, note that all numbers are multiples of 25? Let's see: 222950 = 222950, 322175, 191100, 368725. They likely have common factors. Let's compute using integer arithmetic.
+
+We can compute more systematically using factorization, or compute directly.
+
+Let's compute 222950 * 322175 and 191100 * 368725, then subtract.
+
+We can try to factor out 25 or 5: 222950 = 22295 * 10? Actually 222950 / 5 = 44590; /25 = 8918? Not integer? 222950/25=8918 exactly? 25*8918=222950, yes because 25*8900=222500, 25*18=450, total 222950. So 222950 = 25 * 8918. Similarly, 322175 / 25 = 12887? 25*12887=322175? 12887*25 = 12887*100/4 = 1,288,700/4 = 322,175, yes. So 322175 = 25 * 12887. So product 222950*322175 = (25*8918)*(25*12887) = 625 * (8918*12887). Similarly, 191100 / 25 = 7644? 25*7644=191100, yes. 368725 / 25 = 14749? 25*14749=368725? 14749*25=14749*100/4=1,474,900/4=368,725, yes. So 191100*368725 = (25*7644)*(25*14749) = 625*(7644*14749). So T = -625*(8918*12887) + 625*(7644*14749) = 625*(7644*14749 - 8918*12887). So d6_new = 625 * (7644*14749 - 8918*12887). So we need to compute that difference.
+
+Now compute A = 7644*14749 and B = 8918*12887.
+
+Compute these products. Use perhaps factorization.
+
+First, compute 7644 * 14749. 7644 = ? Maybe factor 7644 = 4*1911 = 4*3*637 = 12*637 = 12*7*91 = 12*7*7*13? Actually 637 = 7*91 = 7*7*13 = 49*13. So 7644 = 12*49*13 = 12*637 = 7644. But 12*49*13 = 12*637 = 7644. Alternatively, 7644 = 2^2 * 3 * 7^2 * 13? Let's check: 7644/4=1911, 1911=3*637=3*7*91=3*7*7*13=3*7^2*13. So yes, 7644 = 4*3*7^2*13 = 2^2 *3 *7^2 *13.
+
+14749? Let's see if it has factors. 14749 / 7 = 2107? 7*2107=14749? 7*2100=14700, 7*7=49, total 14749, yes. So 14749 = 7 * 2107. Now 2107, test divisibility: 2107/7=301? 7*301=2107, yes. So 2107=7*301. And 301=7*43? Actually 7*43=301. So 14749 = 7 * 7 * 7 * 43 = 7^3 * 43 = 343 * 43 = 14749. So 14749 = 343 * 43. So 14749 = 7^3 * 43.
+
+Thus 7644 * 14749 = (2^2 *3 *7^2 *13) * (7^3 *43) = 2^2 *3 *7^(2+3) *13 *43 = 4*3*7^5*13*43. 7^5 = 16807. So A = 4*3*16807*13*43 = 12 * 16807 * (13*43). 13*43 = 559. So A = 12 * 16807 * 559. Compute stepwise: 16807 * 559 = 16807 * (500 + 59) = 16807*500 = 8,403,500; 16807*59 = 16807*60 -16807 = 1,008,420 - 16,807 = 991,613. Sum = 8,403,500 + 991,613 = 9,395,113. Then A = 12 * 9,395,113 = 112,741,356. So A = 112,741,356.
+
+Now compute B = 8918 * 12887. Factor these.
+
+8918: 8918/2=4459, so 8918 = 2 * 4459. 4459, test divisibility: 4459/7 = 637? 7*637=4459, yes. 637 = 7*91=7*7*13=49*13. So 4459 = 7*7*7*13? Actually 7*637=4459, and 637=7*91, 91=7*13, so 4459 = 7*7*7*13 = 7^3 *13 = 343*13 = 4459. So 8918 = 2 * 7^3 * 13 = 2 * 343 * 13 = 2*4459 = 8918. So 8918 = 2 * 7^3 * 13.
+
+12887: factor. 12887 / 7 = 1841? 7*1841=12887? 7*1800=12600, 7*41=287, sum=12887, yes. So 12887 = 7 * 1841. Now 1841, test divisibility: 1841/7=263? 7*263=1841, yes. So 1841=7*263. So 12887 = 7*7*263 = 49*263. 263 is prime? Probably. So 12887 = 7^2 * 263. So B = (2 * 7^3 * 13) * (7^2 * 263) = 2 * 7^(3+2) *13 *263 = 2 * 7^5 *13 *263 = 2 * 16807 *13 *263. Compute 13*263 = 3419. So B = 2 * 16807 * 3419. Compute 16807 * 3419. 16807 * 3000 = 50,421,000; 16807*400 = 6,722,800; 16807*19 = 16807*20 -16807 = 336,140 -16,807 = 319,333. Sum = 50,421,000 + 6,722,800 = 57,143,800; +319,333 = 57,463,133. Then B = 2 * 57,463,133 = 114,926,266.
+
+So A = 112,741,356; B = 114,926,266. Then difference D = A - B = 112,741,356 - 114,926,266 = -2,184,910. So 7644*14749 - 8918*12887 = -2,184,910. Then d6_new = 625 * (-2,184,910) = -1,365,568,750? Let's compute: 2,184,910 * 625 = 2,184,910 * (5^4) = 2,184,910 * 625. Compute: 2,184,910 * 600 = 1,310,946,000; 2,184,910 * 25 = 54,622,750; sum = 1,365,568,750. So d6_new = -1,365,568,750.
+
+Thus the (6,6) entry after elimination is -1,365,568,750.
+
+Now earlier we had det(B) = d6_new / (455 * 625 * 343). Let's compute denominator: 455 * 625 * 343.
+
+Compute 455 * 625 = 455 * (5^4) = 455*625. 455*600=273,000; 455*25=11,375; sum=284,375. So 455*625 = 284,375.
+Then 284,375 * 343 = 284,375 * (343). Compute: 284,375 * 300 = 85,312,500; *40 = 11,375,000; *3 = 853,125; sum = 85,312,500 + 11,375,000 = 96,687,500; +853,125 = 97,540,625. So denominator = 97,540,625.
+
+Now d6_new = -1,365,568,750. So det(B) = (-1,365,568,750) / 97,540,625. Compute this division: 1,365,568,750 ÷ 97,540,625 = ? Let's do division. First, note that both numbers are divisible by 125? 97,540,625 / 125 = 780,325? Because 125*780,325 = 125*780,000=97,500,000; 125*325=40,625; sum=97,540,625. Yes. And 1,365,568,750 / 125 = 10,924,550? Since 125*10,924,550 = 125*10,000,000=1,250,000,000; 125*924,550=115,568,750; sum=1,365,568,750. So divide numerator and denominator by 125: numerator becomes 10,924,550; denominator becomes 780,325. So det(B) = -10,924,550 / 780,325. Simplify further? Check if divisible by 5: 10,924,550 ends with 50, divisible by 5; 780,325 ends with 25, divisible by 5. Divide by 5: numerator = 2,184,910; denominator = 156,065. So det(B) = -2,184,910 / 156,065. Now 2,184,910 and 156,065, see if divisible by 5 again? 2,184,910 ends with 10, divisible by 5; 156,065 ends with 5, divisible by 5. Divide: numerator = 436,982; denominator = 31,213. So det(B) = -436,982 / 31,213. Now check if divisible by any common factor. 31,213, what is it? Earlier we had 31,213? Possibly 31,213 = 7*4459? 7*4459=31,213, yes because 4459*7=31,213. And 436,982: divide by 7? 7*62,426 = 436,982? 7*62,426 = 437, - wait compute: 62,426*7 = 436,982? 62,426*7 = 436,982? 62,000*7=434,000; 426*7=2,982; total 436,982, yes. So 436,982 = 7 * 62,426. So numerator and denominator both divisible by 7. Divide: numerator = 62,426; denominator = 4,459. So det(B) = -62,426 / 4,459. Now 4,459 is 7*637? Actually 7*637=4,459, yes. 62,426 / 7 = 8,918? 7*8,918=62,426? 8,918*7=62,426, yes. So numerator = 8,918; denominator = 637. So det(B) = -8,918 / 637. Now 637 = 7*91 = 7*7*13 = 49*13 = 637. 8,918 / 7 = 1,274? 7*1,274 = 8,918? 1,274*7=8,918, yes. So det(B) = -1,274 / 91. Now 1,274 / 91 =? 91*14 = 1,274? 91*14 = 1,274 exactly (90*14=1260, 1*14=14, sum 1274). So det(B) = -14. So det(B) = -14. Then det(A) = -det(B) = -(-14) = 14. So the determinant is 14. This matches our earlier result.
+
+Thus the answer is 14.
+
+Now we should present the answer as integer.
+
+So final answer: 14.

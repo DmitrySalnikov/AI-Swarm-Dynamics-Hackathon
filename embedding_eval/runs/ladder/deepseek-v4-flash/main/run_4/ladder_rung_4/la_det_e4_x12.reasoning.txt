@@ -1,0 +1,567 @@
+We are asked to compute the determinant of a 6x6 integer matrix. We can compute using row reduction or expansion. Since it's integer, we can use Gaussian elimination with integer arithmetic (avoid fractions). Or compute using software but we need to do manually.
+
+Matrix A:
+
+Row1: -3, 4, -4, -1, 4, 1
+Row2: 2, 0, -4, 1, 3, -3
+Row3: -4, -2, -3, 3, -1, 4
+Row4: -2, -1, 2, 0, 2, -2
+Row5: -2, -1, 4, 4, 0, -3
+Row6: -3, -3, -4, 2, -4, -1
+
+We can compute determinant by performing row operations that preserve determinant up to sign (or track factor). Since it's integer, we can convert to upper triangular form using integer operations, tracking factor if we swap rows or multiply rows.
+
+Alternatively, compute by expansion or using block matrix methods? Let's attempt elimination.
+
+I'll denote matrix A.
+
+We can try to bring to row echelon form using operations: swap rows, add multiples of one row to another (which doesn't change determinant), but if we multiply a row by a constant, we need to compensate. So ideally use only row addition/subtraction with integer multipliers.
+
+We'll try to create zeros below pivot in first column.
+
+Pivot in row1 col1 = -3. We need to eliminate entries in rows 2-6 col1.
+
+Compute multipliers: For row2, we want to add (2/3)*row1? But that would introduce fractions. Instead we can use integer combinations by adding multiples of row1 to other rows with scaling factor that cancels the column. Since we want to keep determinant unchanged, we can do row operations of type: row_i = row_i + k * row1, where k is integer. For row2, col1 = 2. To eliminate, we need k such that 2 + k*(-3)=0 => k = 2/3 not integer. So we cannot directly eliminate with integer scalar without fractions. However we can swap rows to get better pivot? Perhaps pivot on a different row? But we can also do row operations that combine rows in a way that avoids fractions by using row swaps and maybe using row operations that multiply rows? Alternatively, we can compute determinant by performing elimination with rational numbers (fractions) but that's okay as long as we keep track and compute determinant exactly; we can do floating point but it's messy. Better to use integer elimination by using the fact that we can multiply rows by constants and then adjust determinant factor. But we can also compute via expansion or by using the fact that determinant is integer, so we can compute modulo some primes? However we need exact.
+
+Another approach: Use row operations that preserve determinant: swap rows (changes sign), add multiple of one row to another (no change). So we need to achieve triangular form using only those operations. But we may need to swap rows to get a pivot that divides the entries below? Not necessary, we can use the Euclidean algorithm to reduce numbers: we can use the pivot to eliminate other rows by integer combinations that reduce the absolute values, like in the computation of determinant using the Bareiss algorithm (fraction-free Gaussian elimination). The Bareiss algorithm uses exact division and keeps integers. That might be suitable.
+
+Alternatively, we can compute directly using expansion by minors? That would be huge.
+
+Let's attempt the Bareiss algorithm. The algorithm: for k from 1 to n-1, for i from k+1 to n, for j from k+1 to n, set a_{i,j} = (a_{i,j} * a_{k,k} - a_{i,k} * a_{k,j}) / a_{k-1,k-1} (with a_{0,0}=1). Then after all steps, the determinant is a_{n,n}. But we must be careful with signs? Actually Bareiss algorithm computes the determinant exactly without division by zero, but requires that the pivot a_{k,k} is nonzero; if zero we need to swap rows. It produces the determinant as the last pivot (the (n,n) entry after transformation). However we must note that if we perform row swaps, we need to track sign changes.
+
+So we can perform Bareiss elimination with integer arithmetic. Let's do it step by step.
+
+Initialize matrix as given. Let's denote matrix entries a_{i,j} for i=1..6, j=1..6.
+
+We'll use a_{0,0}=1 (the previous pivot). For step k=1: pivot = a_{1,1} = -3.
+
+We'll update all entries for i=2..6, j=2..6: new a_{i,j} = (a_{i,j} * a_{1,1} - a_{i,1} * a_{1,j}) / a_{0,0} where a_{0,0}=1. So basically new a_{i,j} = a_{i,j} * (-3) - a_{i,1} * a_{1,j}. But we also need to keep the first row and first column? Actually the algorithm updates the submatrix, and the first row and column remain unchanged? The Bareiss algorithm sets for k=1,...,n-1: for i=k+1..n, for j=k+1..n: a_{i,j} = (a_{i,j} * a_{k,k} - a_{i,k} * a_{k,j}) / a_{k-1,k-1} (where a_{0,0}=1). Then after completion, the determinant is a_{n,n}. The matrix entries outside the submatrix are not used later? They are not needed. So we only need to keep the updated submatrix. But we also may need to handle zero pivots by swapping rows or columns.
+
+We'll proceed.
+
+Let’s list original matrix as a 2D array:
+
+Row1: [-3, 4, -4, -1, 4, 1]
+Row2: [2, 0, -4, 1, 3, -3]
+Row3: [-4, -2, -3, 3, -1, 4]
+Row4: [-2, -1, 2, 0, 2, -2]
+Row5: [-2, -1, 4, 4, 0, -3]
+Row6: [-3, -3, -4, 2, -4, -1]
+
+We'll proceed with k=1:
+
+For i=2..6, j=2..6, compute:
+
+a_{i,j}^{(1)} = (a_{i,j} * a_{1,1} - a_{i,1} * a_{1,j}) / 1.
+
+Since denominator = 1, it's just integer.
+
+Let's compute for each i,j.
+
+First, compute a_{1,j} for j=2..6: a12=4, a13=-4, a14=-1, a15=4, a16=1.
+
+Also a_{i,1} for i=2..6: row2 col1=2; row3 col1=-4; row4 col1=-2; row5 col1=-2; row6 col1=-3.
+
+Now compute new matrix entries for submatrix rows 2-6, cols 2-6.
+
+Let's denote new matrix B with rows i=2..6, cols j=2..6. We'll compute systematically.
+
+We can compute each term:
+
+For i=2 (row2), j=2: a22=0, a21=2, a12=4 => new a22 = (0 * (-3) - 2 * 4) = -8. So B22 = -8.
+
+i=2, j=3: a23=-4, a12=4? Actually a1,3 = -4. So a23=-4, a21=2, a13=-4 => new = (-4)*(-3) - 2*(-4) = 12 - (-8) = 20? Wait careful: (a23 * a11 - a21 * a13) = (-4)*(-3) - (2)*(-4) = 12 - (-8) = 20. So B23 = 20.
+
+i=2, j=4: a24=1, a14=-1 => new = 1*(-3) - 2*(-1) = -3 - (-2) = -1? Actually -3 - (2*(-1))? Compute: 1*(-3) = -3; a21*a14 = 2*(-1) = -2; So -3 - (-2) = -1. So B24 = -1.
+
+i=2, j=5: a25=3, a15=4 => new = 3*(-3) - 2*4 = -9 - 8 = -17. B25 = -17.
+
+i=2, j=6: a26=-3, a16=1 => new = (-3)*(-3) - 2*1 = 9 - 2 = 7. B26 = 7.
+
+Now i=3 (row3): a31=-4.
+
+j=2: a32=-2, a12=4 => new = (-2)*(-3) - (-4)*4 = 6 - (-16) = 22? Actually compute: (-2)*(-3)=6; a31*a12 = (-4)*4 = -16; So 6 - (-16) = 22. B32 = 22.
+
+j=3: a33=-3, a13=-4 => new = (-3)*(-3) - (-4)*(-4) = 9 - (16) = -7? Wait: (-4)*(-4)=16; So 9 - 16 = -7. B33 = -7.
+
+j=4: a34=3, a14=-1 => new = 3*(-3) - (-4)*(-1) = -9 - (4) = -13? Because (-4)*(-1)=4; So -9 - 4 = -13. B34 = -13.
+
+j=5: a35=-1, a15=4 => new = (-1)*(-3) - (-4)*4 = 3 - (-16) = 19? Actually (-4)*4 = -16; So 3 - (-16)=19. B35 = 19.
+
+j=6: a36=4, a16=1 => new = 4*(-3) - (-4)*1 = -12 - (-4) = -8. B36 = -8.
+
+Now i=4 (row4): a41=-2.
+
+j=2: a42=-1, a12=4 => new = (-1)*(-3) - (-2)*4 = 3 - (-8) = 11? Compute: (-2)*4 = -8; So 3 - (-8) = 11. B42 = 11.
+
+j=3: a43=2, a13=-4 => new = 2*(-3) - (-2)*(-4) = -6 - (8) = -14? Because (-2)*(-4)=8; So -6 - 8 = -14. B43 = -14.
+
+j=4: a44=0, a14=-1 => new = 0*(-3) - (-2)*(-1) = 0 - (2) = -2? (-2)*(-1)=2; So -2. B44 = -2.
+
+j=5: a45=2, a15=4 => new = 2*(-3) - (-2)*4 = -6 - (-8) = 2. B45 = 2.
+
+j=6: a46=-2, a16=1 => new = (-2)*(-3) - (-2)*1 = 6 - (-2) = 8? Actually (-2)*1 = -2; So 6 - (-2) = 8. B46 = 8.
+
+Now i=5 (row5): a51=-2.
+
+j=2: a52=-1, a12=4 => new = (-1)*(-3) - (-2)*4 = 3 - (-8) = 11. B52 = 11.
+
+j=3: a53=4, a13=-4 => new = 4*(-3) - (-2)*(-4) = -12 - (8) = -20. B53 = -20.
+
+j=4: a54=4, a14=-1 => new = 4*(-3) - (-2)*(-1) = -12 - (2) = -14. B54 = -14.
+
+j=5: a55=0, a15=4 => new = 0*(-3) - (-2)*4 = 0 - (-8) = 8? Actually (-2)*4 = -8; So 0 - (-8) = 8. B55 = 8.
+
+j=6: a56=-3, a16=1 => new = (-3)*(-3) - (-2)*1 = 9 - (-2) = 11. B56 = 11.
+
+Now i=6 (row6): a61=-3.
+
+j=2: a62=-3, a12=4 => new = (-3)*(-3) - (-3)*4 = 9 - (-12) = 21. B62 = 21.
+
+j=3: a63=-4, a13=-4 => new = (-4)*(-3) - (-3)*(-4)= 12 - (12) = 0? Because (-3)*(-4)=12; So 12-12=0. B63 = 0.
+
+j=4: a64=2, a14=-1 => new = 2*(-3) - (-3)*(-1) = -6 - (3) = -9. B64 = -9.
+
+j=5: a65=-4, a15=4 => new = (-4)*(-3) - (-3)*4 = 12 - (-12) = 24. B65 = 24.
+
+j=6: a66=-1, a16=1 => new = (-1)*(-3) - (-3)*1 = 3 - (-3) = 6. B66 = 6.
+
+Now after k=1, we have the new submatrix (rows 2..6, cols 2..6) as:
+
+Row2: [-8, 20, -1, -17, 7]
+Row3: [22, -7, -13, 19, -8]
+Row4: [11, -14, -2, 2, 8]
+Row5: [11, -20, -14, 8, 11]
+Row6: [21, 0, -9, 24, 6]
+
+Note: This is a 5x5 matrix. The original first row and first column are not used further (except that the pivot a11 is used in next division). For k=2, we need the pivot a_{2,2} which is the (2,2) entry of the current matrix? Actually after step k=1, the matrix has been updated, and the pivot for next step is the element at position (2,2) in the new matrix (since we are now working on the submatrix starting from row2,col2). So pivot for k=2 is the first element of this submatrix: in our notation, it's B22 = -8. But careful: Bareiss algorithm uses the same indexing: at step k, pivot is a_{k,k} (the original matrix after previous updates). So after step 1, we have updated a_{i,j} for i,j>=2. So now a_{2,2} = -8. We'll use that pivot.
+
+Now we need to check if pivot is zero. It's -8, nonzero so fine.
+
+Now for k=2, we process rows i=3..6 and columns j=3..6. For each i,j, we compute:
+
+new a_{i,j} = (a_{i,j} * a_{2,2} - a_{i,2} * a_{2,j}) / a_{1,1} where a_{1,1} = -3 (the previous pivot). Note: Denominator is a_{1,1} = -3, which is the pivot from step 1. This division must be exact for integer result.
+
+So we need to compute the next submatrix (size 4x4). Let's denote current matrix (after step1) as M with rows indexed 1..6 but we only need rows 2..6 and cols 2..6, but we need explicit values for a_{i,2} and a_{2,j} for i=3..6, j=3..6. The a_{i,j} for i,j>=2 are as above. So we have:
+
+Row2 (index2): elements a_{2,2}= -8, a_{2,3}=20, a_{2,4}= -1, a_{2,5}= -17, a_{2,6}=7.
+Row3: a_{3,2}=22, a_{3,3}= -7, a_{3,4}= -13, a_{3,5}=19, a_{3,6}= -8.
+Row4: a_{4,2}=11, a_{4,3}= -14, a_{4,4}= -2, a_{4,5}=2, a_{4,6}=8.
+Row5: a_{5,2}=11, a_{5,3}= -20, a_{5,4}= -14, a_{5,5}=8, a_{5,6}=11.
+Row6: a_{6,2}=21, a_{6,3}=0, a_{6,4}= -9, a_{6,5}=24, a_{6,6}=6.
+
+Now for k=2, we compute for i=3..6, j=3..6:
+
+new a_{i,j} = (a_{i,j} * a_{2,2} - a_{i,2} * a_{2,j}) / a_{1,1}.
+
+a_{2,2}= -8; a_{1,1}= -3.
+
+Thus denominator = -3. Since division by -3, we need to compute numerator and then divide by -3, ensuring integer.
+
+Let's compute each entry.
+
+We'll compute for each (i,j):
+
+We'll start with i=3, j=3:
+
+a_{3,3}= -7, a_{3,2}=22, a_{2,3}=20. numerator = (-7)*(-8) - (22)*(20) = 56 - 440 = -384. Then divide by a_{1,1}= -3: -384 / -3 = 128. So new a_{3,3}=128.
+
+i=3, j=4: a_{3,4}= -13, a_{3,2}=22, a_{2,4}= -1. numerator = (-13)*(-8) - (22)*(-1) = 104 - (-22) = 126? Actually compute: 22*(-1)= -22; So 104 - (-22) = 126. Then divide by -3: 126 / -3 = -42. So new a_{3,4}= -42.
+
+i=3, j=5: a_{3,5}=19, a_{3,2}=22, a_{2,5}= -17. numerator = 19*(-8) - (22)*(-17) = -152 - (-374) = -152 + 374 = 222. Divide by -3: 222 / -3 = -74. So new a_{3,5}= -74.
+
+i=3, j=6: a_{3,6}= -8, a_{3,2}=22, a_{2,6}=7. numerator = (-8)*(-8) - (22)*7 = 64 - 154 = -90. Divide by -3: -90 / -3 = 30. So new a_{3,6}=30.
+
+Now i=4, j=3: a_{4,3}= -14, a_{4,2}=11, a_{2,3}=20. numerator = (-14)*(-8) - (11)*20 = 112 - 220 = -108. Divide by -3: -108 / -3 = 36. So new a_{4,3}=36.
+
+i=4, j=4: a_{4,4}= -2, a_{4,2}=11, a_{2,4}= -1. numerator = (-2)*(-8) - (11)*(-1) = 16 - (-11) = 27. Divide by -3: 27 / -3 = -9. So new a_{4,4}= -9.
+
+i=4, j=5: a_{4,5}=2, a_{4,2}=11, a_{2,5}= -17. numerator = 2*(-8) - (11)*(-17) = -16 - (-187) = -16+187 = 171. Divide by -3: 171 / -3 = -57. So new a_{4,5}= -57.
+
+i=4, j=6: a_{4,6}=8, a_{4,2}=11, a_{2,6}=7. numerator = 8*(-8) - (11)*7 = -64 - 77 = -141. Divide by -3: -141 / -3 = 47. So new a_{4,6}=47.
+
+Now i=5, j=3: a_{5,3}= -20, a_{5,2}=11, a_{2,3}=20. numerator = (-20)*(-8) - (11)*20 = 160 - 220 = -60. Divide by -3: -60 / -3 = 20. So new a_{5,3}=20.
+
+i=5, j=4: a_{5,4}= -14, a_{5,2}=11, a_{2,4}= -1. numerator = (-14)*(-8) - (11)*(-1) = 112 - (-11) = 123. Divide by -3: 123 / -3 = -41. So new a_{5,4}= -41.
+
+i=5, j=5: a_{5,5}=8, a_{5,2}=11, a_{2,5}= -17. numerator = 8*(-8) - (11)*(-17) = -64 - (-187) = 123. Divide by -3: 123 / -3 = -41. So new a_{5,5}= -41.
+
+i=5, j=6: a_{5,6}=11, a_{5,2}=11, a_{2,6}=7. numerator = 11*(-8) - (11)*7 = -88 - 77 = -165. Divide by -3: -165 / -3 = 55. So new a_{5,6}=55.
+
+Now i=6, j=3: a_{6,3}=0, a_{6,2}=21, a_{2,3}=20. numerator = 0*(-8) - (21)*20 = -420. Divide by -3: -420 / -3 = 140. So new a_{6,3}=140.
+
+i=6, j=4: a_{6,4}= -9, a_{6,2}=21, a_{2,4}= -1. numerator = (-9)*(-8) - (21)*(-1) = 72 - (-21) = 93. Divide by -3: 93 / -3 = -31. So new a_{6,4}= -31.
+
+i=6, j=5: a_{6,5}=24, a_{6,2}=21, a_{2,5}= -17. numerator = 24*(-8) - (21)*(-17) = -192 - (-357) = -192+357=165. Divide by -3: 165 / -3 = -55. So new a_{6,5}= -55.
+
+i=6, j=6: a_{6,6}=6, a_{6,2}=21, a_{2,6}=7. numerator = 6*(-8) - (21)*7 = -48 - 147 = -195. Divide by -3: -195 / -3 = 65. So new a_{6,6}=65.
+
+Now after k=2, we have updated submatrix for rows 3..6, cols 3..6:
+
+Row3: [128, -42, -74, 30]
+Row4: [36, -9, -57, 47]
+Row5: [20, -41, -41, 55]
+Row6: [140, -31, -55, 65]
+
+Now k=3: pivot is a_{3,3} = 128 (the first element of this submatrix). We need to check if zero; it's 128. Previous pivot a_{2,2} = -8? Actually the denominator for step 3 is a_{2,2} = -8. So we will compute for i=4..6, j=4..6:
+
+new a_{i,j} = (a_{i,j} * a_{3,3} - a_{i,3} * a_{3,j}) / a_{2,2}, where a_{2,2} = -8.
+
+Now we have the current matrix for rows 3..6, cols 3..6. Let's index them conveniently:
+
+Let C be the 4x4 matrix with rows 3,4,5,6 and columns 3,4,5,6.
+
+C33 = 128, C34 = -42, C35 = -74, C36 = 30
+C43 = 36, C44 = -9, C45 = -57, C46 = 47
+C53 = 20, C54 = -41, C55 = -41, C56 = 55
+C63 = 140, C64 = -31, C65 = -55, C66 = 65
+
+Now we need to compute for i=4,5,6 and j=4,5,6:
+
+new a_{i,j} = (a_{i,j} * a_{3,3} - a_{i,3} * a_{3,j}) / a_{2,2}.
+
+a_{3,3}=128, a_{2,2}= -8.
+
+Compute each:
+
+Start i=4 (row4 in original, but now index 4 in submatrix; corresponds to original row4? Actually careful: In the Bareiss algorithm, indexing is based on the original matrix positions. So after step2, the updated a_{i,j} for i>=3, j>=3 are as above. So we have a_{4,3}=36, a_{4,4}= -9, a_{4,5}= -57, a_{4,6}=47; a_{3,3}=128, a_{3,4}= -42, a_{3,5}= -74, a_{3,6}=30.
+
+Now compute for i=4, j=4:
+
+numerator = a_{4,4} * a_{3,3} - a_{4,3} * a_{3,4} = (-9)*128 - (36)*(-42) = -1152 - (-1512) = -1152 + 1512 = 360. Divide by a_{2,2}= -8: 360 / -8 = -45. So new a_{4,4} = -45.
+
+i=4, j=5: numerator = a_{4,5} * a_{3,3} - a_{4,3} * a_{3,5} = (-57)*128 - (36)*(-74) = -7296 - (-2664) = -7296 + 2664 = -4632. Divide by -8: -4632 / -8 = 579. So new a_{4,5} = 579.
+
+i=4, j=6: numerator = a_{4,6} * a_{3,3} - a_{4,3} * a_{3,6} = 47*128 - (36)*30 = 6016 - 1080 = 4936. Divide by -8: 4936 / -8 = -617. So new a_{4,6} = -617.
+
+Now i=5 (row5): a_{5,3}=20, a_{5,4}= -41, a_{5,5}= -41, a_{5,6}=55.
+
+i=5, j=4: numerator = a_{5,4} * a_{3,3} - a_{5,3} * a_{3,4} = (-41)*128 - (20)*(-42) = -5248 - (-840) = -5248+840 = -4408. Divide by -8: -4408 / -8 = 551. So new a_{5,4} = 551.
+
+i=5, j=5: numerator = a_{5,5} * a_{3,3} - a_{5,3} * a_{3,5} = (-41)*128 - (20)*(-74) = -5248 - (-1480) = -5248+1480 = -3768. Divide by -8: -3768 / -8 = 471. So new a_{5,5} = 471.
+
+i=5, j=6: numerator = a_{5,6} * a_{3,3} - a_{5,3} * a_{3,6} = 55*128 - (20)*30 = 7040 - 600 = 6440. Divide by -8: 6440 / -8 = -805. So new a_{5,6} = -805.
+
+Now i=6 (row6): a_{6,3}=140, a_{6,4}= -31, a_{6,5}= -55, a_{6,6}=65.
+
+i=6, j=4: numerator = a_{6,4} * a_{3,3} - a_{6,3} * a_{3,4} = (-31)*128 - (140)*(-42) = -3968 - (-5880) = -3968+5880 = 1912. Divide by -8: 1912 / -8 = -239. So new a_{6,4} = -239.
+
+i=6, j=5: numerator = a_{6,5} * a_{3,3} - a_{6,3} * a_{3,5} = (-55)*128 - (140)*(-74) = -7040 - (-10360) = -7040+10360 = 3320. Divide by -8: 3320 / -8 = -415. So new a_{6,5} = -415.
+
+i=6, j=6: numerator = a_{6,6} * a_{3,3} - a_{6,3} * a_{3,6} = 65*128 - (140)*30 = 8320 - 4200 = 4120. Divide by -8: 4120 / -8 = -515. So new a_{6,6} = -515.
+
+Now after k=3, we have updated submatrix for rows 4..6, cols 4..6:
+
+Row4: [-45, 579, -617]
+Row5: [551, 471, -805]
+Row6: [-239, -415, -515]
+
+Now k=4: pivot is a_{4,4} = -45. Previous pivot a_{3,3}=128. So we will compute for i=5,6 and j=5,6:
+
+new a_{i,j} = (a_{i,j} * a_{4,4} - a_{i,4} * a_{4,j}) / a_{3,3} (where a_{3,3}=128).
+
+We have a_{4,4}= -45, a_{4,5}=579, a_{4,6}= -617.
+a_{5,4}=551, a_{5,5}=471, a_{5,6}= -805.
+a_{6,4}= -239, a_{6,5}= -415, a_{6,6}= -515.
+
+Now compute for i=5, j=5:
+
+numerator = a_{5,5} * a_{4,4} - a_{5,4} * a_{4,5} = 471 * (-45) - 551 * 579.
+Compute: 471 * (-45) = -21195. 551 * 579 =? Let's compute: 550*579 = 318450, plus 1*579 = 579, total 319029. So -21195 - 319029 = -340224. Then divide by a_{3,3}=128: -340224 / 128 =? 128 * 2658 = 128*2600=332800, 128*58=7424, sum 340224; Since numerator is -340224, result = -2658. So new a_{5,5} = -2658.
+
+i=5, j=6:
+
+numerator = a_{5,6} * a_{4,4} - a_{5,4} * a_{4,6} = (-805)*(-45) - 551 * (-617) = 36225 - (551 * -617) = 36225 - (-339,? Actually 551*617 =? Compute: 550*617=339350, plus 1*617=617, total 339967. So 551*617=339967. Then minus (551 * -617) = minus negative = plus 339967? Wait careful: - a_{5,4} * a_{4,6} = - (551 * (-617)) = -(-339967) = +339967? Let's do stepwise:
+
+Numerator = (a56 * a44) - (a54 * a46). a56 = -805, a44 = -45 ⇒ product = (-805)*(-45)=36225.
+a54 = 551, a46 = -617 ⇒ product = 551 * (-617) = -339967.
+So numerator = 36225 - (-339967) = 36225 + 339967 = 376192.
+Now divide by 128: 376192 / 128 =? 128*2939 = 128*2900=371200, 128*39=4992, sum 376192. So 2939. So new a_{5,6}=2939.
+
+Now i=6, j=5:
+
+numerator = a_{6,5} * a_{4,4} - a_{6,4} * a_{4,5} = (-415)*(-45) - (-239)*579 = 18675 - ( -239*579 )? Compute: (-239)*579 = -138381? Actually 239*579 = 239*500=119500, 239*79=18881, sum 138381, with sign negative = -138381. So then minus that: 18675 - (-138381) = 18675 + 138381 = 157056. Divide by 128: 157056/128 =? 128*1227 = 128*1200=153600, 128*27=3456, sum 157056. So 1227. So new a_{6,5}=1227.
+
+i=6, j=6:
+
+numerator = a_{6,6} * a_{4,4} - a_{6,4} * a_{4,6} = (-515)*(-45) - (-239)*(-617) = 23175 - ( (-239)*(-617) ). Compute (-239)*(-617) = 239*617. 239*600=143400, 239*17=4063, total 147463. So numerator = 23175 - 147463 = -124288. Divide by 128: -124288/128 = -971? Let's compute: 128*971 = 128*900=115200, 128*71=9088, sum 124288. So -971. So new a_{6,6} = -971.
+
+Now after k=4, we have updated submatrix for rows 5..6, cols 5..6:
+
+Row5: [-2658, 2939]
+Row6: [1227, -971]
+
+Now k=5: pivot is a_{5,5} = -2658. Previous pivot a_{4,4}= -45. We compute for i=6, j=6:
+
+new a_{6,6} = (a_{6,6} * a_{5,5} - a_{6,5} * a_{5,6}) / a_{4,4}.
+
+We have a_{5,5}= -2658, a_{5,6}=2939, a_{6,5}=1227, a_{6,6}= -971. a_{4,4}= -45.
+
+Compute numerator = a66 * a55 - a65 * a56 = (-971)*(-2658) - (1227)*(2939).
+
+Compute (-971)*(-2658) = 971 * 2658. Let's compute 2658 * 971 = 2658*(1000-29) = 2,658,000 - 2658*29. 2658*30=79,740, minus 2658 = 77,082. So 2,658,000 - 77,082 = 2,580,918. So first term = 2,580,918.
+
+Now second term: 1227 * 2939. Compute: 1227 * 3000 = 3,681,000; minus 1227*61 = 1227*60=73,620, plus 1227=74,847? Actually 3000-2939=61, so 1227*2939 = 1227*(3000-61)=3,681,000 - 1227*61. 1227*60=73,620, 1227*1=1227, sum 74,847. So 3,681,000 - 74,847 = 3,606,153. So second term = 3,606,153.
+
+Thus numerator = 2,580,918 - 3,606,153 = -1,025,235.
+
+Now divide by a_{4,4}= -45: (-1,025,235) / (-45) = 1,025,235 / 45 =? Compute: 45 * 22,783 = 45*22,000=990,000; 45*783=35,235; sum 1,025,235. So 22,783. So new a_{6,6} = 22,783.
+
+Now according to Bareiss algorithm, the determinant is the final a_{n,n} after all steps, provided no row swaps were done. We did not swap any rows, so determinant = a_{6,6} = 22,783.
+
+But we must check if any row swaps were needed? The pivots were all non-zero: -3, -8, 128, -45, -2658, all non-zero. So no swaps. So determinant = 22,783.
+
+However we should verify that the algorithm is correct: The Bareiss algorithm computes the determinant exactly as the (n,n) entry after performing these operations, with the initial condition a_{0,0}=1. We used denominator a_{k-1,k-1} appropriately. So the result is the determinant.
+
+But let's double-check our calculations to be sure. We can also compute determinant using other method (like Gaussian elimination with fractions) to confirm.
+
+Alternatively, we can compute using row reduction to upper triangular with integer operations that preserve determinant up to sign, but using row swaps and adding multiples. However the Bareiss algorithm is reliable if no division errors. Let's cross-check some intermediate steps for consistency.
+
+We can also compute determinant by performing elimination with fractions, but easier: compute using a computer algebra system mentally? Not possible. We can check small steps.
+
+One way: compute determinant by performing row operations that maintain determinant, but we can also compute using expansion by minors? Too large.
+
+Maybe we can verify using the fact that the determinant of an integer matrix is integer and we got 22783. Let's see if it's plausible. The entries are moderate, determinant could be around that magnitude.
+
+We can perform a quick partial check: Compute product of pivots from Gaussian elimination (without division) using fractions? But our pivots in Bareiss are not the same as Gaussian elimination pivots; they are intermediate values. However if we performed standard Gaussian elimination using fractions, the pivots would be -3, then something, and product would yield determinant. Let's try to compute using floating point approximations to see if we get similar number.
+
+Alternatively, we can compute using a systematic approach: we can do elimination with rational numbers, but keep track. Let's try to do Gaussian elimination with row operations that don't change determinant (swap rows, add multiples) but we can also multiply rows by constants and then adjust determinant later. Since we want exact, we can use fractions.
+
+Let's try to do row reduction to upper triangular using fractions, but with careful arithmetic. I'll do step by step with fractions, but we can also use integer elimination by using row operations that combine rows to avoid fractions, like using the Euclidean algorithm. But given that we already have a result, let's verify by a different approach: compute determinant by performing row operations that preserve determinant (add multiples) without scaling rows. However we may need to swap rows to get a pivot that can eliminate others without fractions? Possibly by swapping rows to get a 1 or -1 as pivot? Let's examine original matrix: first row has -3, but maybe we can swap row2 up? Row2 has 2, not 1. Row3 has -4. No 1's in first column. We could use row operations to create a 1. For instance, we can add row1 to row2? row1: -3,4,-4,-1,4,1; row2:2,0,-4,1,3,-3; row1+row2 = -1,4,-8,0,7,-2. That gives -1, which can be used as pivot. But then we need to keep track of determinant: adding row to another doesn't change determinant, but we are effectively replacing row2 with row1+row2, which is allowed. However we must be careful if we then use that as pivot, we may need to swap rows. Since determinant changes sign if we swap rows, but we can avoid swaps. We could replace row1 with something to get a pivot of 1 or -1. For instance, we can add row2 to row1? row1+row2 = (-1,4,-8,0,7,-2). Then we have row1 becomes that, and row2 remains original. That is allowed: row1 = row1+row2. This operation does not change determinant. So now pivot becomes -1, which is nice. Then we can eliminate below using integer multiples. Let's try that.
+
+Original A:
+
+R1: -3,4,-4,-1,4,1
+R2: 2,0,-4,1,3,-3
+R3: -4,-2,-3,3,-1,4
+R4: -2,-1,2,0,2,-2
+R5: -2,-1,4,4,0,-3
+R6: -3,-3,-4,2,-4,-1
+
+Perform: R1 <- R1 + R2: new R1 = (-3+2, 4+0, -4+(-4), -1+1, 4+3, 1+(-3)) = (-1, 4, -8, 0, 7, -2). So new matrix:
+
+R1: [-1, 4, -8, 0, 7, -2]
+R2: [2, 0, -4, 1, 3, -3]
+R3: [-4, -2, -3, 3, -1, 4]
+R4: [-2, -1, 2, 0, 2, -2]
+R5: [-2, -1, 4, 4, 0, -3]
+R6: [-3, -3, -4, 2, -4, -1]
+
+Now pivot in row1 col1 = -1. We can multiply row1 by -1 to get pivot 1, but that would multiply determinant by -1, so we would need to track factor. Better keep as -1, as it's fine. We'll eliminate first column below.
+
+Now for rows 2-6, we can add multiples of row1 to eliminate col1. Since pivot = -1, we can add appropriate integer multiples: For row2, col1=2, we want to add 2 * row1? Because row1 has -1, 2 + 2*(-1)=0. So row2 = row2 + 2*row1. That operation (adding multiple of another row) doesn't change determinant. So we do:
+
+R2 <- R2 + 2*R1: R2 = (2 + 2*(-1), 0+2*4, -4+2*(-8), 1+2*0, 3+2*7, -3+2*(-2)) = (2-2, 0+8, -4-16, 1+0, 3+14, -3-4) = (0, 8, -20, 1, 17, -7).
+
+Row3: col1=-4, need to add 4*row1? Since -4 + 4*(-1) = -8? Actually -4 + 4*(-1) = -8 not zero. Wait, row1 col1 = -1, so to cancel -4, we need to add (-4) times row1? Because row1 * (-4) would give +4? Let's solve: we want new row3 col1 = -4 + k*(-1)=0 => k = -4. So row3 = row3 + (-4)*row1 = row3 - 4*row1. So do:
+
+R3 <- R3 - 4*R1: Compute 4*R1 = (-4, 16, -32, 0, 28, -8). Then R3 = (-4, -2, -3, 3, -1, 4) minus ( -4, 16, -32, 0, 28, -8) = actually R3 - 4*R1 = ( -4 - (-4), -2 - 16, -3 - (-32), 3 - 0, -1 - 28, 4 - (-8) ) = (0, -18, 29, 3, -29, 12). So new R3 = (0, -18, 29, 3, -29, 12).
+
+Row4: col1=-2, need k = -2? Because -2 + k*(-1)=0 => k = -2. So R4 <- R4 - 2*R1: 2*R1 = (-2,8,-16,0,14,-4). Then R4 = (-2, -1, 2, 0, 2, -2) - (-2,8,-16,0,14,-4) = ( -2+2, -1-8, 2+16, 0-0, 2-14, -2+4 ) = (0, -9, 18, 0, -12, 2). So R4 = (0, -9, 18, 0, -12, 2).
+
+Row5: col1=-2, similarly R5 <- R5 - 2*R1: 2*R1 = (-2,8,-16,0,14,-4). R5 = (-2, -1, 4, 4, 0, -3) - (-2,8,-16,0,14,-4) = ( -2+2, -1-8, 4+16, 4-0, 0-14, -3+4 ) = (0, -9, 20, 4, -14, 1). So R5 = (0, -9, 20, 4, -14, 1).
+
+Row6: col1=-3, need k = -3? Because -3 + k*(-1)=0 => k=-3. So R6 <- R6 - 3*R1: 3*R1 = (-3,12,-24,0,21,-6). R6 = (-3, -3, -4, 2, -4, -1) - (-3,12,-24,0,21,-6) = ( -3+3, -3-12, -4+24, 2-0, -4-21, -1+6 ) = (0, -15, 20, 2, -25, 5). So R6 = (0, -15, 20, 2, -25, 5).
+
+Now after elimination, we have matrix:
+
+R1: [-1, 4, -8, 0, 7, -2]
+R2: [0, 8, -20, 1, 17, -7]
+R3: [0, -18, 29, 3, -29, 12]
+R4: [0, -9, 18, 0, -12, 2]
+R5: [0, -9, 20, 4, -14, 1]
+R6: [0, -15, 20, 2, -25, 5]
+
+Now we have a 5x5 submatrix from rows2-6, cols2-6. The determinant of original matrix is equal to determinant of this matrix, because we performed only row addition operations (which preserve determinant) and we did not swap or scale rows. The row1 now has -1 in (1,1), but that's fine. Since we added multiples of row1 to other rows, determinant unchanged. So we need to compute determinant of this matrix. Since it's upper triangular? Not yet, but we can compute determinant as (-1) times the determinant of the 5x5 submatrix? Actually the determinant of the whole matrix can be computed by expansion along first column: the first column has only one non-zero entry at (1,1) = -1, and the rest are zeros. So determinant = (-1) * det(minor) * sign (since row1 col1 sign = (-1)^(1+1)=1). So det = (-1) * det(submatrix rows2-6, cols2-6). So we need det of that 5x5 matrix. So det(A) = -1 * det(M), where M is:
+
+M = 
+[ 8, -20, 1, 17, -7 ]
+[ -18, 29, 3, -29, 12 ]
+[ -9, 18, 0, -12, 2 ]
+[ -9, 20, 4, -14, 1 ]
+[ -15, 20, 2, -25, 5 ]
+
+So we need det(M). Now we can compute det(M) using similar elimination, perhaps easier because we have smaller matrix.
+
+We can continue elimination on M. Since we want the determinant of M, we can perform row operations that preserve determinant (add multiples, swap rows) but we need to keep track of sign changes. Let's try to reduce M to upper triangular.
+
+Matrix M (5x5):
+
+Row1: [8, -20, 1, 17, -7]
+Row2: [-18, 29, 3, -29, 12]
+Row3: [-9, 18, 0, -12, 2]
+Row4: [-9, 20, 4, -14, 1]
+Row5: [-15, 20, 2, -25, 5]
+
+We can try to get a pivot in first column. We can swap rows to get a nice pivot, maybe row3 has -9, row4 -9, row5 -15, row1 8. Let's see if we can get a 1 or -1 by adding rows. For instance, add row1 and row3? row1+row3 = (-1, -2, 1, 5, -5) gives -1 in col1. That could be useful. But we need to be careful: if we replace a row with a combination, the determinant remains unchanged if we add multiple of another row. So we can do row operations to create a pivot 1 or -1 without scaling. Let's attempt: we can set new row1 = row1 + row3? But then row1 changes. However we can also replace row3 with row3+row1? or something. Let's try to get a pivot of 1 in first column by combining rows.
+
+We have row1=8, row3=-9. If we add row1 to row3, we get -1. So we can replace row3 with row3 + row1: row3 <- row3 + row1. That operation is allowed and doesn't change det. Then new row3 = (-9+8, 18+(-20), 0+1, -12+17, 2+(-7)) = (-1, -2, 1, 5, -5). Good, now we have a row with -1 in first column. We could then swap rows to bring that row to the top, but swapping changes sign. Instead we can use that row to eliminate other rows' first column entries, without swapping, by adding multiples of this row to others. But note: we replaced row3 with row3+row1, so row3 is now (-1,-2,1,5,-5). But we still have row1 as original. We can then use row3 as the pivot row (maybe we want a pivot in position (1,1)? But row1 still has 8, we could also eliminate row1 using row3? Since we want upper triangular, we want a pivot at (1,1). We could swap row1 and row3, but that would change sign. Alternatively, we can replace row1 with row1 + 8*row3? Because if we add 8 times row3 to row1, we can zero out row1 col1? row1 col1=8, row3 col1=-1, so 8 + 8*(-1)=0. That would eliminate the pivot in row1, not good because we want a pivot. So we likely want to bring row3 to the top. Since row3 now has -1, we can swap row1 and row3, but then we must account for sign change. That is acceptable: we can swap rows, and multiply determinant by -1 each swap. So let's do that.
+
+Option: Swap row1 and row3 (original row3 after modification). But careful: we already modified row3. So we have:
+
+Current rows:
+R1: [8, -20, 1, 17, -7]
+R2: [-18, 29, 3, -29, 12]
+R3: [-1, -2, 1, 5, -5]   (after R3+R1)
+R4: [-9, 20, 4, -14, 1]
+R5: [-15, 20, 2, -25, 5]
+
+Now swap R1 and R3: new order:
+R1': [-1, -2, 1, 5, -5]
+R2': [-18, 29, 3, -29, 12]
+R3': [8, -20, 1, 17, -7]   (old R1)
+R4': [-9, 20, 4, -14, 1]
+R5': [-15, 20, 2, -25, 5]
+
+This swap multiplies determinant by -1. So we need to keep track: det(M) = - det(this new matrix). So we'll compute det of this new matrix and then multiply by -1 to get det(M). Then det(A) = -1 * det(M) = -1 * ( -det(new) ) = det(new). Wait careful: det(A) = -1 * det(M). And we have det(M) = - det(new matrix after swap). So det(A) = -1 * ( - det(new) ) = det(new). So determinant of original A equals determinant of the matrix after row swap? Let's compute stepwise:
+
+Original A after row1+R2 and elimination gave det(A) = det( matrix with R1=... ) = (-1) * det(M). Then we performed row operation on M: R3 <- R3+R1 (no change). Then swapped R1 and R3, which multiplies det(M) by -1. So new det(M_swapped) = -det(M). So then det(A) = (-1) * det(M) = (-1) * (-det(M_swapped)) = det(M_swapped). So indeed the determinant of original A equals the determinant of the matrix after these operations, provided we keep track correctly. So we can simply compute determinant of the matrix we have after swapping, which is:
+
+Matrix N:
+Row1: [-1, -2, 1, 5, -5]
+Row2: [-18, 29, 3, -29, 12]
+Row3: [8, -20, 1, 17, -7]
+Row4: [-9, 20, 4, -14, 1]
+Row5: [-15, 20, 2, -25, 5]
+
+Now we can proceed to reduce to upper triangular, using row operations that preserve determinant (adding multiples of rows, swapping rows will change sign but we can avoid further swaps). We have pivot -1 at (1,1). Nice.
+
+Now eliminate first column below row1: For rows 2-5, we want to zero out col1 by adding multiples of row1.
+
+Row2 col1 = -18. We need to add k * row1 such that -18 + k*(-1)=0 => k = -18? Actually we want -18 + k*(-1) = 0 => k = -18. So row2 = row2 + (-18)*row1 = row2 - 18*row1. That's allowed (add multiple). Compute:
+
+18*row1 = 18*(-1, -2, 1, 5, -5) = (-18, -36, 18, 90, -90). Then row2 - 18*row1 = row2 - (18*row1)? Actually row2 = row2 + (-18)*row1 = row2 - 18*row1. So compute new row2 = (-18, 29, 3, -29, 12) - (-18, -36, 18, 90, -90) = (-18+18, 29+36, 3-18, -29-90, 12+90) = (0, 65, -15, -119, 102). Wait careful: subtraction: (-18) - (-18) = 0; 29 - (-36) = 29+36=65; 3 - 18 = -15; -29 - 90 = -119; 12 - (-90) = 12+90=102. So new row2 = (0, 65, -15, -119, 102).
+
+Row3 col1 = 8. To eliminate: 8 + k*(-1)=0 => k=8. So row3 = row3 + 8*row1? Actually row3 + 8*row1: 8*row1 = (-8, -16, 8, 40, -40). Then row3 = (8, -20, 1, 17, -7) + (-8, -16, 8, 40, -40) = (0, -36, 9, 57, -47). So row3 = (0, -36, 9, 57, -47).
+
+Row4 col1 = -9. k = -9? Because -9 + k*(-1)=0 => k = -9. So row4 = row4 + (-9)*row1 = row4 - 9*row1. 9*row1 = (-9, -18, 9, 45, -45). Then row4 = (-9, 20, 4, -14, 1) - (-9, -18, 9, 45, -45) = (-9+9, 20+18, 4-9, -14-45, 1+45) = (0, 38, -5, -59, 46). So row4 = (0, 38, -5, -59, 46).
+
+Row5 col1 = -15. k = -15: row5 = row5 -15*row1. 15*row1 = (-15, -30, 15, 75, -75). Then row5 = (-15, 20, 2, -25, 5) - (-15, -30, 15, 75, -75) = (-15+15, 20+30, 2-15, -25-75, 5+75) = (0, 50, -13, -100, 80). So row5 = (0, 50, -13, -100, 80).
+
+Now matrix after elimination:
+
+Row1: [-1, -2, 1, 5, -5]
+Row2: [0, 65, -15, -119, 102]
+Row3: [0, -36, 9, 57, -47]
+Row4: [0, 38, -5, -59, 46]
+Row5: [0, 50, -13, -100, 80]
+
+Now we have a 4x4 submatrix from rows2-5, cols2-5. The determinant of N is (-1) * det of that submatrix, because first column has only row1 non-zero (-1), and sign factor (1,1) = +1. So det(N) = (-1) * det(M2), where M2 is the 4x4 matrix:
+
+M2 = 
+[ 65, -15, -119, 102 ]
+[ -36, 9, 57, -47 ]
+[ 38, -5, -59, 46 ]
+[ 50, -13, -100, 80 ]
+
+And then det(A) = det(N) = - det(M2). So det(A) = - det(M2).
+
+Now we need to compute det(M2). We can continue elimination.
+
+M2 is 4x4:
+
+R1: [65, -15, -119, 102]
+R2: [-36, 9, 57, -47]
+R3: [38, -5, -59, 46]
+R4: [50, -13, -100, 80]
+
+We can try to simplify by factoring common factors? But let's proceed with elimination using integer operations.
+
+We can try to get a pivot in first column; maybe we can swap rows to get a smaller number. For instance, row2 has -36, row3 38, row4 50, row1 65. Could combine rows to get a 1 or -1. For example, add row2 and row3: 2? Actually -36+38=2. That's small. Or row3+row4? 38+50=88. Or row2+row1? 65-36=29. Not as good. Possibly we can create a pivot of 2 or -2. Let's see: row2 + row3 = (2, 4, -2, -1)? Compute: (-36+38)=2, (9+(-5))=4, (57+(-59))=-2, (-47+46)=-1. So that gives (2,4,-2,-1). That's nice because it has 2. We could then use that row as pivot. We can replace one row with that combination, but we must be careful not to change determinant. We can replace row3 with row2+row3? That is adding row2 to row3: row3 = row3 + row2. That operation is allowed (add a multiple of another row, with multiplier 1) and does not change determinant. So we do: row3 <- row3 + row2. Then row3 becomes (38-36=2, -5+9=4, -59+57=-2, 46-47=-1). So new row3 = (2,4,-2,-1). Meanwhile row2 remains unchanged. So now M2 after this operation:
+
+R1: [65, -15, -119, 102]
+R2: [-36, 9, 57, -47]
+R3: [2, 4, -2, -1]   (new)
+R4: [50, -13, -100, 80]
+
+We could also swap rows to bring row3 to the top, as it has a small pivot. However we can also keep it and use it to eliminate other rows. But note that after elimination, we want an upper triangular form. It might be easier to swap row1 and row3 to get pivot 2. But swapping changes sign. We'll keep track.
+
+Let's consider swapping row1 and row3. That would multiply determinant by -1. So det(M2) = - det(matrix after swap). Then det(A) = - det(M2) = -(-det(swapped)) = det(swapped). So we can just compute determinant of the matrix after swapping row1 and row3, and that will be det(A). Since we already have det(A) = -det(M2), and if we swap rows in M2, we need to be consistent. But we can also just continue elimination without swapping, by using row3 as pivot but it's not at top. We can use row3 to eliminate the first column entries of other rows, but we need to zero out col1 in rows 1,2,4 relative to pivot row3? However row1 and row2 and row4 have entries in col1: row1=65, row2=-36, row4=50. To eliminate these, we would add multiples of row3 to them. But then we would also need to later handle the fact that row3 is not at top, but we can reorder rows after elimination? However in determinant computation, we can perform row operations that add multiples of a row to another row, and that does not change determinant regardless of which row is used as source. So we can use row3 (with pivot 2) to eliminate col1 entries in rows 1,2,4. That is allowed, and then we can later swap rows to bring them into triangular order, which would change sign. To avoid sign issues, we can simply compute determinant by eliminating to upper triangular without swapping, but we need the pivot to be at the current top row. If we use row3 to eliminate others, we will end up with zeros below row3? Actually we want to zero out col1 in all rows except one, which we will eventually use as pivot. Standard Gaussian elimination: we choose a pivot row (usually the first row) and eliminate below. But we can also choose a different row and then swap it to the top. That is equivalent to swapping first. So to keep track, it's easier to swap row3 to the top now, then eliminate. So let's swap row1 and row3.
+
+Swap row1 and row3: new matrix M2':
+
+Rows:
+R1': [2, 4, -2, -1]   (original row3)
+R2': [-36, 9, 57, -47] (original row2)
+R3': [65, -15, -119, 102] (original row1)
+R4': [50, -13, -100, 80] (original row4)
+
+Then det(M2) = - det(M2') because we swapped rows once. So det(A) = - det(M2) = -(-det(M2')) = det(M2'). So det(A) = det(M2'). So we can compute determinant of M2' directly.
+
+Now we have M2':
+
+R1: [2, 4, -2, -1]
+R2: [-36, 9, 57, -47]
+R3: [65, -15, -119, 102]
+R4: [50, -13, -100, 80]
+
+Now we eliminate first column below R1: For rows 2,3,4, we want to zero col1 by adding multiples of R1.
+
+R2 col1 = -36. Need k such that -36 + k*2 = 0 => k = 18. So R2 = R2 + 18*R1? Because -36+18*2=0. So we do R2 <- R2 + 18*R1. Compute 18*R1 = (36, 72, -36, -18). Then new R2 = (-36+36, 9+72, 57-36, -47-18) = (0, 81, 21, -65). So R2 becomes (0,81,21,-65).
+
+R3 col1 = 65. Need k: 65 + k*2=0 => k = -32.5? Not integer. Actually 65 + k*2 = 0 => k = -65/2 = -32.5 not integer. So we cannot eliminate with integer multiple directly without fractions. However we can still use the operation with fractional multiplier, but that would change determinant if we multiply row by something? Actually adding a multiple of row1 to row3 is allowed even if multiplier is not integer? The operation row3 = row3 + c*row1 is allowed for any scalar c, and it does not change determinant. So we can use fractions. But we want to avoid fractions in the matrix entries? We can keep fractions, but then we'll have fractional entries which may complicate later steps. However we can also perform elimination using integer arithmetic by using the Euclidean algorithm: we can combine rows to reduce numbers. For instance, we can use the pivot 2 to eliminate the 65 by doing row3 = row3 - 32*row1? That would give 65 - 32*2 = 65-64=1, leaving a 1 in col1. Then we can use that to eliminate others, but then we have to handle the rest. But since we may get fractions later, it's okay to work with fractions as long as we keep exact rational numbers. The determinant will be integer eventually. Let's try to continue with fractions, but we can also use integer elimination by swapping rows to get a better pivot. For instance, we could swap row2 with something else? But we already swapped. Maybe we can use a different pivot: we could have not swapped row3 to top; perhaps we could have used row2 as pivot? Let's think.
+
+Alternatively, we can continue with the Bareiss algorithm on M2 which gave us 22783. That seems simpler. But we are now doing a different elimination to verify. Since we are close, we can continue with fractions, but we must be careful. We can also perform elimination using integer operations by multiplying rows by constants and then adjusting determinant factor. However we already have a candidate result. Let's continue with M2' using rational numbers, but keep exact arithmetic.
+
+We have:
+
+R1: [2, 4, -2, -1]
+R2: [0, 81, 21, -65]
+R3: [65, -15, -119, 102]
+R4: [50, -13, -100, 80]
+
+Now for R3 and R4, we need to eliminate col1. For R3: we can do R3 <- R3 - (65/2)*R1. Since 65/2 = 32.5, we'll get fractions. But we can also multiply the whole matrix by something to avoid fractions? Alternatively, we can perform row operations with integer arithmetic by using the fact that we can combine R3 and R1 with a factor that eliminates the first entry while keeping integers; we can replace R3 with 2*R3 - 65*R1? That operation would multiply row3 by 2, which changes determinant. But we can keep track of factor. However we can also proceed with fractions and then later simplify. Since we just want to verify the determinant, we can compute determinant of M2' by continuing elimination with fractions, but careful arithmetic.
+
+Let's convert to fractions. We'll treat rows as rational numbers. Let's do:
+
+Eliminate R3 col1: R3 <- R3 - (65/2)R1.
+
+Compute (65/2)*R1 = (65/2)*[2,4,-2,-1] = [65, 130, -65, -65/2]. So R3 = [65-65, -15-130, -119 - (-65), 102 - (-65/2)] = [0, -145, -119+65, 102+65/2]. Actually -119 - (-65) = -119+65 = -54. And 102 - (-65/2) = 102 + 65/2 = (204+65)/2 = 269/2. So R3 becomes (0, -145, -54, 269/2).
+
+Similarly, eliminate R4 col1: R4 <- R4 - (50/2)R1 = R4 - 25*R1. Since 50/2=25. So 25*R1 = [50,100,-50,-25]. Then R4 = [50-50, -13-100, -100 - (-50), 80 - (-25)] = [0, -113, -50, 105]. Wait: -100 - (-50) = -100+50=-50; 80 - (-25)=80+25=105. So R4 = (0, -113, -50, 105).
+
+Now matrix becomes:
+
+R1: [2, 4, -2, -1]
+R2: [0, 81, 21, -65]
+R3: [0, -145, -54, 269/2]
+R4: [0, -113, -50, 105]
+
+Now we have a 3x3 submatrix from rows2-4, cols2-4. Actually first column is zero except pivot row. The determinant of M2' is then equal to (2) * det of the 3x3 submatrix? Because expansion along first column: only entry is 2 at (1,1) with sign +. So det(M2') = 2 * det(submatrix of rows2-4, cols2-4). Where submatrix S is:
+
+S = 
+[ 81, 21, -65 ]
+[ -145, -54, 269/2 ]
+[ -113, -50, 105 ]
+
+But note that S has fractions. So we need det(S). Multiply the third row maybe to clear denominator. Since the third row has 269/2, we can factor 1/2. Actually, we can multiply the third row by 2 to eliminate fraction, but that would multiply determinant by 2. Alternatively, we can compute det directly with fractions. Let's do it.
+
+det(S) = determinant of 3x3 matrix with entries:
+
+a=81, b=21, c=-65
+d=-145, e=-54, f=269/2
+g=-113, h=-50, i=105
+
+Compute det = a(ei - fh) - b(di - fg) + c(dh - eg).
+
+First compute ei = (-54)*105 = -5670. fh = (269/2)*(-50) = -269*25 = -6725? Actually (269/2)* (-50) = 269 * (-25) = -6725. So ei - fh = -5670 - (-6725) = -5670 + 6725 = 1055.
+
+Now a*(ei-fh) = 81 * 1055 = 81*1000=81000, 81*55=4455, total 85455.
+
+Next, di = (-145)*105 = -15225. fg = (269/2)*(-113) = 269 * (-113)/2 = -(269*113)/2. Compute 269*113 = 269*100=26900, 269*13=3497, total 30397. So fg = -30397/2 = -15198.5? But we keep as fraction: -30397/2. So di - fg = -15225 - (-30397/2) = -15225 + 30397/2 = (-30450/2 + 30397/2) = -53/2. So b*(di - fg) = 21 * (-53/2) = -1113/2 = -556.5.
+
+Then dh = (-145)*(-50)=7250. eg = (-54)*(-113)=6102? Actually (-54)*(-113)=6102. So dh - eg = 7250 - 6102 = 1148. Then c*(dh - eg) = (-65)*1148 = -74620.
+
+Now det(S) = a(ei-fh) - b(di-fg) + c(dh-eg) = 85455 - (-1113/2) + (-74620) = 85455 + 1113/2 - 74620 = (85455-74620) + 1113/2 = 10835 + 1113/2 = (21670/2 + 1113/2) = 22783/2. So det(S) = 22783/2.
+
+Then det(M2') = 2 * det(S) = 2 * (22783/2) = 22783. And det(A) = det(M2') = 22783. So we get the same result! Good.
+
+Thus the determinant is 22783. So our Bareiss calculation is consistent.
+
+Therefore, the integer determinant is 22783.
+
+Thus answer: 22783.
+
+We should output as integer.
+
+So final line: ANSWER: 22783

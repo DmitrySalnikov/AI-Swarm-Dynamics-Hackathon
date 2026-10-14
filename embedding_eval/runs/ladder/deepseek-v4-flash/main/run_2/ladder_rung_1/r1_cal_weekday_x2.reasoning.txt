@@ -1,0 +1,656 @@
+We need to compute the day of the week for each given date. The Gregorian calendar rules: leap year if divisible by 4, but centuries not divisible by 400 are not leap. The dates are all in the Gregorian calendar (extended). We'll need to compute the day for each.
+
+We could use a known reference point, e.g., we know that 1 Jan 2000 was a Saturday (or maybe use Zeller's congruence or compute using algorithm). Since there are many dates, we need an efficient method. Perhaps we can compute the day of week using the Doomsday algorithm or use a formula. Let's recall: For the Gregorian calendar, the anchor day for each century can be computed. But we have dates from 1601 to 2390, spanning many centuries.
+
+We can use the following method: For a given date, compute the number of days since a known reference (e.g., 1 Jan 1 AD? Not needed). Alternatively, use the formula:
+
+Day of week (Sunday=0, ...) = (d + floor(13*(m+1)/5) + K + floor(K/4) + floor(J/4) - 2J) mod 7, where for month m: March = 3, April =4, ... January =13, February=14 of previous year (so we treat Jan and Feb as months of previous year). J = century (year/100), K = year mod 100. This is Zeller's congruence for Gregorian. For the Gregorian calendar, the formula gives day of week: 0=Saturday, 1=Sunday, ..., 6=Friday? Actually Zeller's often yields: h = (q + floor((13*(m+1))/5) + K + floor(K/4) + floor(J/4) + 5J) mod 7? Let's recall properly.
+
+Standard Zeller's congruence for Gregorian: 
+h = (q + floor((13*(m+1))/5) + K + floor(K/4) + floor(J/4) + 5J) mod 7, where:
+- q is day of month,
+- m is month (3=March, 4=April, ..., 14=February),
+- J = century (year/100 floor),
+- K = year mod 100,
+- h: 0=Saturday, 1=Sunday, 2=Monday, 3=Tuesday, 4=Wednesday, 5=Thursday, 6=Friday.
+But there is also a variant: h = (q + floor(13(m+1)/5) + K + floor(K/4) + floor(J/4) - 2J) mod 7, with h: 0=Sunday, 1=Monday,... 6=Saturday? I need to be careful.
+
+Better to use a reliable algorithm: I'll compute using known reference dates. Alternatively, we can use the Doomsday algorithm: each year has a "doomsday" (a day of week) and certain dates (like 4/4, 6/6, 8/8, 10/10, 12/12, 3/7, 5/9, 7/11, 9/5, 11/7, etc.) fall on the same day. For January and February, we have special dates in leap years. Then we can compute day for any date given the doomsday of the year.
+
+We need to compute the doomsday for each year. The doomsday for a year in Gregorian calendar can be computed using the formula: doomsday = (Tuesday + (year % 400) + floor((year % 400)/4) - floor((year % 400)/100) ) mod 7, where Tuesday is the doomsday for 2000? Actually the anchor for century: for 1900, doomsday is Wednesday; for 2000, doomsday is Tuesday; for 2100, doomsday is Sunday? Let's recall: The doomsday for a year y is given by: 
+- Compute the century's anchor: for each century c = year/100, anchor = (5*(c%4) + 2) mod 7? Or using: for 1800-1899: Friday; 1900-1999: Wednesday; 2000-2099: Tuesday; 2100-2199: Sunday; 2200-2299: Friday? Actually there's a pattern: anchor days: 1800: Friday, 1900: Wednesday, 2000: Tuesday, 2100: Sunday, 2200: Friday, 2300: Wednesday, 2400: Tuesday, etc. The formula: anchor = (5*(c%4) + 2) mod 7? For c=18, c%4=2 => 5*2+2=12 mod7=5 -> Friday? Actually 5 is Friday? Let's assign numbers: Sunday=0, Monday=1, Tuesday=2, Wednesday=3, Thursday=4, Friday=5, Saturday=6. Then 5=Friday correct. For c=19, c%4=3 => 5*3+2=17 mod7=3 -> Wednesday. For c=20, c%4=0 => 2 mod7=2 -> Tuesday. For c=21, c%4=1 => 5+2=7 mod7=0-> Sunday. So yes. Then doomsday = anchor + (y%100) + floor((y%100)/4) mod 7, but careful: for years in century, we add the number of years since start of century plus leap years. Actually doomsday = (anchor + (y%100) + floor((y%100)/4)) mod 7. But this formula works for years after the century anchor? However, note that for years 1900, 2000, etc., it gives: 1900: anchor=Wednesday (3), y%100=0, floor(0/4)=0 => 3 mod7 = Wednesday. But we need to consider that 1900 is not a leap year; the doomsday for 1900 is Wednesday, correct. For 2000: anchor=Tuesday (2), y%100=0 =>2, Tuesday, and 2000 was leap year; doomsday is Tuesday? Actually doomsday for 2000 is Tuesday, and it's leap, so the doomsday constants for Jan/Feb adjust. So the formula works. But note: The anchor for 1800 is Friday (5). For 1800: y%100=0 =>5, doomsday Friday. 1800 was not leap? Actually 1800 is not leap (century not divisible by 400), so doomsday Friday correct. So formula: doomsday = (anchor + (yy) + floor(yy/4)) mod 7, where yy = last two digits of year, but careful: For years in 2000s, yy is 00-99; but for 2000, yy=0, floor(0/4)=0 => doomsday = anchor (Tuesday). Good.
+
+But we need to compute for a wide range of years, including those before 1800? The dates go back to 1601. The Gregorian calendar was introduced in 1582, but here we are using the proleptic Gregorian calendar (extended to all years). So the same rules apply. We need to compute anchor for centuries: For 1500s: c=15, c%4=3? Since 1500%400 = 300? Actually we need anchor for centuries: For any century year (like 1500, 1600, 1700, 1800, ...). The pattern repeats every 400 years. Because the Gregorian calendar has a 400-year cycle. So we can compute anchor for century c = year//100. Using formula: anchor = (5*(c%4) + 2) mod 7. Let's test: For 1600: c=16, c%4=0 => anchor=2 (Tuesday). For 1700: c=17, c%4=1 => 5+2=7 mod7=0 (Sunday). For 1800: c=18, c%4=2 => 10+2=12 mod7=5 (Friday). For 1900: c=19, c%4=3 =>15+2=17 mod7=3 (Wednesday). For 2000: c=20, c%4=0 =>2 (Tuesday). So correct. So we can compute doomsday for any year using that.
+
+Then we need to find day for given date. We can use known doomsday references: For non-leap years, doomsday dates: 3/1? Actually common mnemonic: "April 4, June 6, August 8, October 10, December 12, September 5, November 7, March 7, May 9, July 11, January 3 (or 4 in leap), February 28 (or 29 in leap)". More precisely:
+- For January: Jan 3 in common year, Jan 4 in leap year (since Jan 31? Actually doomsday for January is Jan 3 and Jan 31? Wait, the doomsday algorithm says that 1/31 is also doomsday? Actually the standard doomsday dates: 4/4, 6/6, 8/8, 10/10, 12/12, 9/5, 5/9, 7/11, 11/7, 3/7, and for Jan/Feb: 1/3 (common) or 1/4 (leap), 2/28 (common) or 2/29 (leap). So we can use that.
+
+Alternatively, we can compute using Zeller's congruence directly, which might be simpler for many dates if we implement a mental algorithm. Since we have 64 dates, we need to compute each efficiently. We can write a small script mentally? But we are to produce answer manually? We can compute systematically.
+
+Given that this is a text-based reasoning, we can compute each date using a known reference. Perhaps we can compute a reference date, e.g., we know that 1 Jan 2000 was Saturday? Actually let's check: 1 Jan 2000: I recall it was a Saturday. Yes, 2000-01-01 was a Saturday. But careful: The doomsday for 2000 is Tuesday, so Jan 3 is Tuesday? Actually if doomsday is Tuesday, then Jan 4 (leap year) is Tuesday? For 2000, leap year, so Jan 4 = doomsday (Tuesday). Then Jan 1 = 3 days earlier => Saturday. Yes, so Jan 1 2000 = Saturday. So that's consistent.
+
+We can compute the number of days difference from a known date. But with 64 dates, it's tedious but doable with systematic approach. Perhaps we can compute day of week for each using a formula like:
+
+Let's define day-of-week for a given date: 
+We can compute the number of days since a reference date, e.g., 1 Jan 1 AD? But easier: Use Zeller's congruence.
+
+I'll adopt Zeller's congruence for Gregorian: 
+For a date (day d, month m, year y), where we treat Jan and Feb as months 13 and 14 of the previous year (i.e., if month is Jan or Feb, we subtract 1 from year and add 12 to month). So let:
+- m = month (3=Mar,4=Apr,...,12=Dec,13=Jan,14=Feb)
+- if month is Jan or Feb: year' = y-1, else year' = y.
+- J = year' // 100 (century)
+- K = year' % 100 (year within century)
+- Then h = (d + floor((13*(m+1))/5) + K + floor(K/4) + floor(J/4) + 5*J) mod 7.
+Result: 0=Saturday, 1=Sunday, 2=Monday, 3=Tuesday, 4=Wednesday, 5=Thursday, 6=Friday.
+
+Alternatively, some versions use mod 7 with result 0=Sunday, etc. But this is standard. We'll use that mapping.
+
+Let's verify with a known date: 1 Jan 2000. Convert to Zeller: Since Jan is month 13 of previous year: year' = 1999, m=13. d=1. J = 19, K = 99. Compute: floor(13*(13+1)/5) = floor(13*14/5)=floor(182/5)=36. K=99, floor(K/4)=24, floor(J/4)=floor(19/4)=4, 5J=95. Sum: d=1 +36+99+24+4+95 = 259. 259 mod7 = 259/7=37*7=259, remainder 0 => h=0 -> Saturday. Good.
+
+Another: 4 Jan 2000 (should be Tuesday? Actually doomsday for 2000 is Tuesday, Jan 4 is doomsday? Yes, Tuesday). For 4 Jan 2000: d=4, m=13, year'=1999, J=19,K=99. Sum =4+36+99+24+4+95=262, 262 mod7 = 262-7*37=262-259=3 => h=3 -> Tuesday? Wait mapping: 0=Sat,1=Sun,2=Mon,3=Tue, so 3 = Tuesday. Good.
+
+So formula works.
+
+Thus we can compute each date using this formula. Since we have 64 dates, we can compute each systematically. However mental calculation for each might be error-prone. We can try to compute using a spreadsheet mentally? Alternatively, we can use the Doomsday algorithm which might be easier if we compute the doomsday for each year and then adjust. But both require similar arithmetic.
+
+Given the large number, I'll compute using Zeller's congruence. I'll write a small program in my mind, but since it's text, I'll do step-by-step for each date. I'll create a table. Because it's 64 dates, we need to be efficient. Perhaps we can compute with some shortcuts: For a given year, we can compute the day of week for a fixed month/day combination relative to a known anchor. But many different years.
+
+We can compute each by performing the modular arithmetic. Let's do it systematically.
+
+We'll write each date in the form: day, month, year. Then we apply Zeller's.
+
+Let's list all dates:
+
+1. 29 September 2386
+2. 6 October 1710
+3. 19 August 2079
+4. 26 August 2385
+5. 24 December 1894
+6. 20 December 1750
+7. 5 April 1659
+8. 14 April 2016
+9. 16 March 1715
+10. 21 July 2086
+11. 7 April 1785
+12. 29 January 2180
+13. 26 November 2159
+14. 19 September 2002
+15. 28 June 1666
+16. 13 April 1640
+17. 16 August 2357
+18. 9 May 1874
+19. 22 April 1931
+20. 28 March 1720
+21. 16 March 2050
+22. 4 October 2026
+23. 20 February 2032
+24. 21 April 1601
+25. 13 April 2390
+26. 4 May 1761
+27. 9 June 1689
+28. 22 January 2314
+29. 22 July 2386
+30. 21 March 2123
+31. 5 March 2220
+32. 17 September 1899
+33. 12 September 2095
+34. 17 June 1933
+35. 26 September 2373
+36. 7 April 2163
+37. 21 October 1862
+38. 14 July 1922
+39. 6 March 2269
+40. 25 February 1936
+41. 12 December 2321
+42. 31 January 2007
+43. 21 March 1689
+44. 18 July 1844
+45. 22 March 2009
+46. 15 November 1844
+47. 22 April 1897
+48. 10 November 2278
+49. 17 January 1990
+50. 5 April 2290
+51. 27 February 2168
+52. 29 July 1784
+53. 23 September 2005
+54. 17 March 1753
+55. 18 July 2191
+56. 19 July 1712
+57. 5 June 1695
+58. 11 December 1757
+59. 14 August 1947
+60. 14 May 1966
+61. 23 March 2262
+62. 8 April 1970
+63. 27 September 1906
+64. 28 May 1857
+
+We can compute each. Let's do them in order.
+
+I'll compute using Zeller's. For each, we need to adjust month and year for Jan/Feb.
+
+Let me define a function compute(d, m, y):
+if m == 1 or m == 2: then m' = m+12, y' = y-1 else m' = m, y' = y.
+Then J = y'//100, K = y'%100.
+Then compute term = d + floor(13*(m'+1)/5) + K + floor(K/4) + floor(J/4) + 5*J
+Then h = term mod 7. Then day of week: 
+0=Saturday,1=Sunday,2=Monday,3=Tuesday,4=Wednesday,5=Thursday,6=Friday.
+
+We'll compute each.
+
+We might want to compute floor(13*(m'+1)/5) for each month. Let's precompute that for m' values:
+
+For m' = 3 (March): floor(13*4/5)=floor(52/5)=10
+m'=4 (April): floor(13*5/5)=floor(65/5)=13
+m'=5 (May): floor(13*6/5)=floor(78/5)=15
+m'=6 (June): floor(13*7/5)=floor(91/5)=18
+m'=7 (July): floor(13*8/5)=floor(104/5)=20
+m'=8 (August): floor(13*9/5)=floor(117/5)=23
+m'=9 (September): floor(13*10/5)=floor(130/5)=26
+m'=10 (October): floor(13*11/5)=floor(143/5)=28
+m'=11 (November): floor(13*12/5)=floor(156/5)=31
+m'=12 (December): floor(13*13/5)=floor(169/5)=33
+m'=13 (January): floor(13*14/5)=floor(182/5)=36
+m'=14 (February): floor(13*15/5)=floor(195/5)=39
+
+Now we can use these constants.
+
+We also need floor(K/4) and floor(J/4). And 5*J.
+
+Let's compute each date.
+
+1. 29 September 2386
+Month: September = 9, m' = 9 (since not Jan/Feb), y' = 2386.
+J = 23 (since 2386//100 = 23), K = 86.
+Compute: d=29, month factor = 26 (Sep), K=86, floor(K/4)= floor(86/4)=21 (since 21*4=84), floor(J/4)= floor(23/4)=5 (since 5*4=20), 5*J=5*23=115.
+Sum = 29+26+86+21+5+115 = Let's add: 29+26=55, +86=141, +21=162, +5=167, +115=282. 282 mod7: 7*40=280, remainder 2 => h=2 => Monday (since 2=Monday). So day: Monday? Wait mapping: 0=Sat,1=Sun,2=Mon. So 29 Sep 2386 is Monday.
+Check: But let's double-check sum: 29+26=55, 55+86=141, 141+21=162, 162+5=167, 167+115=282 yes. 282/7=40 remainder 2. So Monday.
+
+2. 6 October 1710
+October: m'=10, month factor = 28. y'=1710. J=17, K=10.
+d=6, +28=34, +K=10 =>44, +floor(K/4)=floor(10/4)=2 =>46, +floor(J/4)=floor(17/4)=4 =>50, +5J=85 =>135. 135 mod7: 7*19=133, remainder 2 => Monday. So 6 Oct 1710 is Monday? Wait same remainder 2 => Monday. But careful: 135-133=2, so Monday. So answer Monday.
+
+3. 19 August 2079
+August: m'=8, month factor =23. y'=2079. J=20, K=79.
+d=19+23=42, +K=79 =>121, +floor(K/4)=floor(79/4)=19 (since 19*4=76) =>140, +floor(J/4)=floor(20/4)=5 =>145, +5J=100 =>245. 245 mod7=0 (since 35*7=245) => Saturday. So 19 Aug 2079 is Saturday.
+
+4. 26 August 2385
+August: m'=8, month factor=23. y'=2385. J=23, K=85.
+d=26+23=49, +K=85 =>134, +floor(K/4)=floor(85/4)=21 (21*4=84) =>155, +floor(J/4)=5 =>160, +5J=115 =>275. 275 mod7: 7*39=273, remainder 2 => Monday. So Monday.
+
+5. 24 December 1894
+December: m'=12, month factor=33. y'=1894. J=18, K=94.
+d=24+33=57, +K=94 =>151, +floor(K/4)=floor(94/4)=23 (23*4=92) =>174, +floor(J/4)=floor(18/4)=4 =>178, +5J=90 =>268. 268 mod7: 7*38=266, remainder 2 => Monday. So Monday.
+
+6. 20 December 1750
+December: m'=12, factor=33. y'=1750. J=17, K=50.
+d=20+33=53, +K=50 =>103, +floor(K/4)=floor(50/4)=12 =>115, +floor(J/4)=4 =>119, +5J=85 =>204. 204 mod7: 7*29=203, remainder 1 => Sunday. So Sunday.
+
+7. 5 April 1659
+April: m'=4, factor=13. y'=1659. J=16, K=59.
+d=5+13=18, +K=59 =>77, +floor(K/4)=floor(59/4)=14 (14*4=56) =>91, +floor(J/4)=floor(16/4)=4 =>95, +5J=80 =>175. 175 mod7=0 (25*7=175) => Saturday. So Saturday.
+
+8. 14 April 2016
+April: m'=4, factor=13. y'=2016. J=20, K=16.
+d=14+13=27, +K=16 =>43, +floor(K/4)=4 =>47, +floor(J/4)=5 =>52, +5J=100 =>152. 152 mod7: 7*21=147, remainder 5 => Thursday? Since 5=Thursday? mapping: 0 Sat,1 Sun,2 Mon,3 Tue,4 Wed,5 Thu,6 Fri. So 5=Thursday. So 14 Apr 2016 is Thursday. But check: I recall that 14 Apr 2016? Actually I think April 14, 2016 was a Thursday? Possibly. Let's verify quickly: 2016 was leap year, doomsday for 2016? 2016: anchor for 2000 is Tuesday, yy=16, floor(16/4)=4, so doomsday = Tue + 16+4 = Tue+20 = Tue+20 mod7 = Tue+6 = Monday? Wait let's compute: Tuesday + 16 = Tuesday+2 (since 14 mod7=2, 16 mod7=2) = Thursday? Actually careful: doomsday = anchor + yy + floor(yy/4) mod7. For 2016, anchor=2 (Tuesday), yy=16, floor(16/4)=4, sum=2+16+4=22 mod7=1 (Monday)? Because 22-21=1, which is Monday. Wait Monday? That would mean doomsday for 2016 is Monday. Then April 4 is Monday, then April 14 is 10 days later, 10 mod7=3, so Thursday? Actually April 4 Monday, April 14 is Monday+10 = Thursday? 10 days later: Monday+10 = Thursday? Monday+7=Monday, +3=Thursday, yes. So Thursday. So our result Thursday matches. So good.
+
+9. 16 March 1715
+March: m'=3, factor=10. y'=1715. J=17, K=15.
+d=16+10=26, +K=15 =>41, +floor(K/4)=floor(15/4)=3 =>44, +floor(J/4)=4 =>48, +5J=85 =>133. 133 mod7=0 (19*7=133) => Saturday. So Saturday.
+
+10. 21 July 2086
+July: m'=7, factor=20. y'=2086. J=20, K=86.
+d=21+20=41, +K=86 =>127, +floor(K/4)=21 =>148, +floor(J/4)=5 =>153, +5J=100 =>253. 253 mod7: 7*36=252, remainder 1 => Sunday. So Sunday.
+
+11. 7 April 1785
+April: m'=4, factor=13. y'=1785. J=17, K=85.
+d=7+13=20, +K=85 =>105, +floor(K/4)=21 =>126, +floor(J/4)=4 =>130, +5J=85 =>215. 215 mod7: 7*30=210, remainder 5 => Thursday. So Thursday.
+
+12. 29 January 2180
+January: m'=13, factor=36. Since Jan, y' = y-1 = 2179. J=21, K=79. (Because 2179//100=21, 2179%100=79)
+d=29+36=65, +K=79 =>144, +floor(K/4)=19 =>163, +floor(J/4)=floor(21/4)=5 =>168, +5J=105 =>273. 273 mod7=0 => Saturday. So Saturday.
+
+13. 26 November 2159
+November: m'=11, factor=31. y'=2159. J=21, K=59.
+d=26+31=57, +K=59 =>116, +floor(K/4)=14 =>130, +floor(J/4)=5 =>135, +5J=105 =>240. 240 mod7: 7*34=238, remainder 2 => Monday. So Monday.
+
+14. 19 September 2002
+September: m'=9, factor=26. y'=2002. J=20, K=2.
+d=19+26=45, +K=2 =>47, +floor(K/4)=0 =>47, +floor(J/4)=5 =>52, +5J=100 =>152. 152 mod7=152-147=5 => Thursday. So Thursday.
+
+15. 28 June 1666
+June: m'=6, factor=18. y'=1666. J=16, K=66.
+d=28+18=46, +K=66 =>112, +floor(K/4)=16 =>128, +floor(J/4)=4 =>132, +5J=80 =>212. 212 mod7: 7*30=210, remainder 2 => Monday. So Monday.
+
+16. 13 April 1640
+April: m'=4, factor=13. y'=1640. J=16, K=40.
+d=13+13=26, +K=40 =>66, +floor(K/4)=10 =>76, +floor(J/4)=4 =>80, +5J=80 =>160. 160 mod7: 7*22=154, remainder 6 => Friday. So Friday.
+
+17. 16 August 2357
+August: m'=8, factor=23. y'=2357. J=23, K=57.
+d=16+23=39, +K=57 =>96, +floor(K/4)=14 =>110, +floor(J/4)=5 =>115, +5J=115 =>230. 230 mod7: 7*32=224, remainder 6 => Friday. So Friday.
+
+18. 9 May 1874
+May: m'=5, factor=15. y'=1874. J=18, K=74.
+d=9+15=24, +K=74 =>98, +floor(K/4)=18 =>116, +floor(J/4)=4 =>120, +5J=90 =>210. 210 mod7=0 => Saturday. So Saturday.
+
+19. 22 April 1931
+April: m'=4, factor=13. y'=1931. J=19, K=31.
+d=22+13=35, +K=31 =>66, +floor(K/4)=7 =>73, +floor(J/4)=4 =>77, +5J=95 =>172. 172 mod7: 7*24=168, remainder 4 => Wednesday. So Wednesday.
+
+20. 28 March 1720
+March: m'=3, factor=10. y'=1720. J=17, K=20.
+d=28+10=38, +K=20 =>58, +floor(K/4)=5 =>63, +floor(J/4)=4 =>67, +5J=85 =>152. 152 mod7=152-147=5 => Thursday. So Thursday.
+
+21. 16 March 2050
+March: m'=3, factor=10. y'=2050. J=20, K=50.
+d=16+10=26, +K=50 =>76, +floor(K/4)=12 =>88, +floor(J/4)=5 =>93, +5J=100 =>193. 193 mod7: 7*27=189, remainder 4 => Wednesday. So Wednesday.
+
+22. 4 October 2026
+October: m'=10, factor=28. y'=2026. J=20, K=26.
+d=4+28=32, +K=26 =>58, +floor(K/4)=6 =>64, +floor(J/4)=5 =>69, +5J=100 =>169. 169 mod7: 7*24=168, remainder 1 => Sunday. So Sunday.
+
+23. 20 February 2032
+February: m'=14, factor=39. Since Feb, y' = 2031 (since year-1). J=20, K=31.
+d=20+39=59, +K=31 =>90, +floor(K/4)=7 =>97, +floor(J/4)=5 =>102, +5J=100 =>202. 202 mod7: 7*28=196, remainder 6 => Friday. So Friday.
+
+24. 21 April 1601
+April: m'=4, factor=13. y'=1601. J=16, K=1.
+d=21+13=34, +K=1 =>35, +floor(K/4)=0 =>35, +floor(J/4)=4 =>39, +5J=80 =>119. 119 mod7=0 (17*7=119) => Saturday. So Saturday.
+
+25. 13 April 2390
+April: m'=4, factor=13. y'=2390. J=23, K=90.
+d=13+13=26, +K=90 =>116, +floor(K/4)=22 =>138, +floor(J/4)=5 =>143, +5J=115 =>258. 258 mod7: 7*36=252, remainder 6 => Friday. So Friday.
+
+26. 4 May 1761
+May: m'=5, factor=15. y'=1761. J=17, K=61.
+d=4+15=19, +K=61 =>80, +floor(K/4)=15 =>95, +floor(J/4)=4 =>99, +5J=85 =>184. 184 mod7: 7*26=182, remainder 2 => Monday. So Monday.
+
+27. 9 June 1689
+June: m'=6, factor=18. y'=1689. J=16, K=89.
+d=9+18=27, +K=89 =>116, +floor(K/4)=22 =>138, +floor(J/4)=4 =>142, +5J=80 =>222. 222 mod7: 7*31=217, remainder 5 => Thursday. So Thursday.
+
+28. 22 January 2314
+January: m'=13, factor=36. y'=2313 (since year-1). J=23, K=13 (since 2313//100=23, 2313%100=13).
+d=22+36=58, +K=13 =>71, +floor(K/4)=3 =>74, +floor(J/4)=5 =>79, +5J=115 =>194. 194 mod7: 7*27=189, remainder 5 => Thursday. So Thursday.
+
+29. 22 July 2386
+July: m'=7, factor=20. y'=2386. J=23, K=86.
+d=22+20=42, +K=86 =>128, +floor(K/4)=21 =>149, +floor(J/4)=5 =>154, +5J=115 =>269. 269 mod7: 7*38=266, remainder 3 => Tuesday. So Tuesday.
+
+30. 21 March 2123
+March: m'=3, factor=10. y'=2123. J=21, K=23.
+d=21+10=31, +K=23 =>54, +floor(K/4)=5 =>59, +floor(J/4)=5 =>64, +5J=105 =>169. 169 mod7=1 (168+1) => Sunday. So Sunday.
+
+31. 5 March 2220
+March: m'=3, factor=10. y'=2220. J=22, K=20.
+d=5+10=15, +K=20 =>35, +floor(K/4)=5 =>40, +floor(J/4)=5 =>45, +5J=110 =>155. 155 mod7: 7*22=154, remainder 1 => Sunday. So Sunday.
+
+32. 17 September 1899
+September: m'=9, factor=26. y'=1899. J=18, K=99.
+d=17+26=43, +K=99 =>142, +floor(K/4)=24 =>166, +floor(J/4)=4 =>170, +5J=90 =>260. 260 mod7: 7*37=259, remainder 1 => Sunday. So Sunday.
+
+33. 12 September 2095
+September: m'=9, factor=26. y'=2095. J=20, K=95.
+d=12+26=38, +K=95 =>133, +floor(K/4)=23 =>156, +floor(J/4)=5 =>161, +5J=100 =>261. 261 mod7: 7*37=259, remainder 2 => Monday. So Monday.
+
+34. 17 June 1933
+June: m'=6, factor=18. y'=1933. J=19, K=33.
+d=17+18=35, +K=33 =>68, +floor(K/4)=8 =>76, +floor(J/4)=4 =>80, +5J=95 =>175. 175 mod7=0 => Saturday. So Saturday.
+
+35. 26 September 2373
+September: m'=9, factor=26. y'=2373. J=23, K=73.
+d=26+26=52, +K=73 =>125, +floor(K/4)=18 =>143, +floor(J/4)=5 =>148, +5J=115 =>263. 263 mod7: 7*37=259, remainder 4 => Wednesday. So Wednesday.
+
+36. 7 April 2163
+April: m'=4, factor=13. y'=2163. J=21, K=63.
+d=7+13=20, +K=63 =>83, +floor(K/4)=15 =>98, +floor(J/4)=5 =>103, +5J=105 =>208. 208 mod7: 7*29=203, remainder 5 => Thursday. So Thursday.
+
+37. 21 October 1862
+October: m'=10, factor=28. y'=1862. J=18, K=62.
+d=21+28=49, +K=62 =>111, +floor(K/4)=15 =>126, +floor(J/4)=4 =>130, +5J=90 =>220. 220 mod7: 7*31=217, remainder 3 => Tuesday. So Tuesday.
+
+38. 14 July 1922
+July: m'=7, factor=20. y'=1922. J=19, K=22.
+d=14+20=34, +K=22 =>56, +floor(K/4)=5 =>61, +floor(J/4)=4 =>65, +5J=95 =>160. 160 mod7: 7*22=154, remainder 6 => Friday. So Friday.
+
+39. 6 March 2269
+March: m'=3, factor=10. y'=2269. J=22, K=69.
+d=6+10=16, +K=69 =>85, +floor(K/4)=17 =>102, +floor(J/4)=5 =>107, +5J=110 =>217. 217 mod7=0 (31*7=217) => Saturday. So Saturday.
+
+40. 25 February 1936
+February: m'=14, factor=39. y'=1935 (since year-1). J=19, K=35.
+d=25+39=64, +K=35 =>99, +floor(K/4)=8 =>107, +floor(J/4)=4 =>111, +5J=95 =>206. 206 mod7: 7*29=203, remainder 3 => Tuesday. So Tuesday.
+
+41. 12 December 2321
+December: m'=12, factor=33. y'=2321. J=23, K=21.
+d=12+33=45, +K=21 =>66, +floor(K/4)=5 =>71, +floor(J/4)=5 =>76, +5J=115 =>191. 191 mod7: 7*27=189, remainder 2 => Monday. So Monday.
+
+42. 31 January 2007
+January: m'=13, factor=36. y'=2006 (since year-1). J=20, K=6.
+d=31+36=67, +K=6 =>73, +floor(K/4)=1 =>74, +floor(J/4)=5 =>79, +5J=100 =>179. 179 mod7: 7*25=175, remainder 4 => Wednesday. So Wednesday.
+
+43. 21 March 1689
+March: m'=3, factor=10. y'=1689. J=16, K=89.
+d=21+10=31, +K=89 =>120, +floor(K/4)=22 =>142, +floor(J/4)=4 =>146, +5J=80 =>226. 226 mod7: 7*32=224, remainder 2 => Monday. So Monday.
+
+44. 18 July 1844
+July: m'=7, factor=20. y'=1844. J=18, K=44.
+d=18+20=38, +K=44 =>82, +floor(K/4)=11 =>93, +floor(J/4)=4 =>97, +5J=90 =>187. 187 mod7: 7*26=182, remainder 5 => Thursday. So Thursday.
+
+45. 22 March 2009
+March: m'=3, factor=10. y'=2009. J=20, K=9.
+d=22+10=32, +K=9 =>41, +floor(K/4)=2 =>43, +floor(J/4)=5 =>48, +5J=100 =>148. 148 mod7: 7*21=147, remainder 1 => Sunday. So Sunday.
+
+46. 15 November 1844
+November: m'=11, factor=31. y'=1844. J=18, K=44.
+d=15+31=46, +K=44 =>90, +floor(K/4)=11 =>101, +floor(J/4)=4 =>105, +5J=90 =>195. 195 mod7: 7*27=189, remainder 6 => Friday. So Friday.
+
+47. 22 April 1897
+April: m'=4, factor=13. y'=1897. J=18, K=97.
+d=22+13=35, +K=97 =>132, +floor(K/4)=24 =>156, +floor(J/4)=4 =>160, +5J=90 =>250. 250 mod7: 7*35=245, remainder 5 => Thursday. So Thursday.
+
+48. 10 November 2278
+November: m'=11, factor=31. y'=2278. J=22, K=78.
+d=10+31=41, +K=78 =>119, +floor(K/4)=19 =>138, +floor(J/4)=5 =>143, +5J=110 =>253. 253 mod7=1 (since 7*36=252) => Sunday. So Sunday.
+
+49. 17 January 1990
+January: m'=13, factor=36. y'=1989. J=19, K=89.
+d=17+36=53, +K=89 =>142, +floor(K/4)=22 =>164, +floor(J/4)=4 =>168, +5J=95 =>263. 263 mod7: 7*37=259, remainder 4 => Wednesday. So Wednesday.
+
+50. 5 April 2290
+April: m'=4, factor=13. y'=2290. J=22, K=90.
+d=5+13=18, +K=90 =>108, +floor(K/4)=22 =>130, +floor(J/4)=5 =>135, +5J=110 =>245. 245 mod7=0 => Saturday. So Saturday.
+
+51. 27 February 2168
+February: m'=14, factor=39. y'=2167 (since year-1). J=21, K=67.
+d=27+39=66, +K=67 =>133, +floor(K/4)=16 =>149, +floor(J/4)=5 =>154, +5J=105 =>259. 259 mod7=0 => Saturday. So Saturday.
+
+52. 29 July 1784
+July: m'=7, factor=20. y'=1784. J=17, K=84.
+d=29+20=49, +K=84 =>133, +floor(K/4)=21 =>154, +floor(J/4)=4 =>158, +5J=85 =>243. 243 mod7: 7*34=238, remainder 5 => Thursday. So Thursday.
+
+53. 23 September 2005
+September: m'=9, factor=26. y'=2005. J=20, K=5.
+d=23+26=49, +K=5 =>54, +floor(K/4)=1 =>55, +floor(J/4)=5 =>60, +5J=100 =>160. 160 mod7: 7*22=154, remainder 6 => Friday. So Friday.
+
+54. 17 March 1753
+March: m'=3, factor=10. y'=1753. J=17, K=53.
+d=17+10=27, +K=53 =>80, +floor(K/4)=13 =>93, +floor(J/4)=4 =>97, +5J=85 =>182. 182 mod7=0 (26*7=182) => Saturday. So Saturday.
+
+55. 18 July 2191
+July: m'=7, factor=20. y'=2191. J=21, K=91.
+d=18+20=38, +K=91 =>129, +floor(K/4)=22 =>151, +floor(J/4)=5 =>156, +5J=105 =>261. 261 mod7=2 (7*37=259) => Monday. So Monday.
+
+56. 19 July 1712
+July: m'=7, factor=20. y'=1712. J=17, K=12.
+d=19+20=39, +K=12 =>51, +floor(K/4)=3 =>54, +floor(J/4)=4 =>58, +5J=85 =>143. 143 mod7: 7*20=140, remainder 3 => Tuesday. So Tuesday.
+
+57. 5 June 1695
+June: m'=6, factor=18. y'=1695. J=16, K=95.
+d=5+18=23, +K=95 =>118, +floor(K/4)=23 =>141, +floor(J/4)=4 =>145, +5J=80 =>225. 225 mod7: 7*32=224, remainder 1 => Sunday. So Sunday.
+
+58. 11 December 1757
+December: m'=12, factor=33. y'=1757. J=17, K=57.
+d=11+33=44, +K=57 =>101, +floor(K/4)=14 =>115, +floor(J/4)=4 =>119, +5J=85 =>204. 204 mod7=1 (203+1) => Sunday. So Sunday.
+
+59. 14 August 1947
+August: m'=8, factor=23. y'=1947. J=19, K=47.
+d=14+23=37, +K=47 =>84, +floor(K/4)=11 =>95, +floor(J/4)=4 =>99, +5J=95 =>194. 194 mod7: 7*27=189, remainder 5 => Thursday. So Thursday.
+
+60. 14 May 1966
+May: m'=5, factor=15. y'=1966. J=19, K=66.
+d=14+15=29, +K=66 =>95, +floor(K/4)=16 =>111, +floor(J/4)=4 =>115, +5J=95 =>210. 210 mod7=0 => Saturday. So Saturday.
+
+61. 23 March 2262
+March: m'=3, factor=10. y'=2262. J=22, K=62.
+d=23+10=33, +K=62 =>95, +floor(K/4)=15 =>110, +floor(J/4)=5 =>115, +5J=110 =>225. 225 mod7=1 (224+1) => Sunday. So Sunday.
+
+62. 8 April 1970
+April: m'=4, factor=13. y'=1970. J=19, K=70.
+d=8+13=21, +K=70 =>91, +floor(K/4)=17 =>108, +floor(J/4)=4 =>112, +5J=95 =>207. 207 mod7: 7*29=203, remainder 4 => Wednesday. So Wednesday.
+
+63. 27 September 1906
+September: m'=9, factor=26. y'=1906. J=19, K=6.
+d=27+26=53, +K=6 =>59, +floor(K/4)=1 =>60, +floor(J/4)=4 =>64, +5J=95 =>159. 159 mod7: 7*22=154, remainder 5 => Thursday. So Thursday.
+
+64. 28 May 1857
+May: m'=5, factor=15. y'=1857. J=18, K=57.
+d=28+15=43, +K=57 =>100, +floor(K/4)=14 =>114, +floor(J/4)=4 =>118, +5J=90 =>208. 208 mod7: 7*29=203, remainder 5 => Thursday. So Thursday.
+
+Now we have all days. Let's list them in order:
+
+1. Monday
+2. Monday
+3. Saturday
+4. Monday
+5. Monday
+6. Sunday
+7. Saturday
+8. Thursday
+9. Saturday
+10. Sunday
+11. Thursday
+12. Saturday
+13. Monday
+14. Thursday
+15. Monday
+16. Friday
+17. Friday
+18. Saturday
+19. Wednesday
+20. Thursday
+21. Wednesday
+22. Sunday
+23. Friday
+24. Saturday
+25. Friday
+26. Monday
+27. Thursday
+28. Thursday
+29. Tuesday
+30. Sunday
+31. Sunday
+32. Sunday
+33. Monday
+34. Saturday
+35. Wednesday
+36. Thursday
+37. Tuesday
+38. Friday
+39. Saturday
+40. Tuesday
+41. Monday
+42. Wednesday
+43. Monday
+44. Thursday
+45. Sunday
+46. Friday
+47. Thursday
+48. Sunday
+49. Wednesday
+50. Saturday
+51. Saturday
+52. Thursday
+53. Friday
+54. Saturday
+55. Monday
+56. Tuesday
+57. Sunday
+58. Sunday
+59. Thursday
+60. Saturday
+61. Sunday
+62. Wednesday
+63. Thursday
+64. Thursday
+
+Now we need to output the weekday names as English: Monday, Tuesday, etc., separated by commas, in the order of the dates. So we need to produce the list exactly.
+
+Let's double-check some possibly tricky ones: For date 29 (22 July 2386) we got Tuesday, but earlier we had 1 (29 Sep 2386) Monday, 4 (26 Aug 2385) Monday, 29 (22 Jul 2386) Tuesday. That seems plausible.
+
+We should verify a couple using alternative methods to ensure no arithmetic errors.
+
+Let's test a few using doomsday:
+
+For 29 Sep 2386: 
+Year 2386. Century 2300? Actually 2386 is in 2300s? Since 2300-2399. Anchor for 2300: c=23, c%4=3, anchor = 5*3+2=17 mod7=3 -> Wednesday? Wait 5*3=15+2=17 mod7=3 => Wednesday. For 2300, anchor = Wednesday. For 2386, yy=86, floor(86/4)=21, so doomsday = anchor + yy + floor(yy/4) = Wed + 86+21 = Wed+107 = Wed+2 (since 107 mod7=2) = Friday? Actually 107 mod7 = 107-105=2, so Wed+2=Friday? So doomsday for 2386 is Friday? Then doomsday for September: 9/5 is doomsday? Actually for September, the doomsday is 9/5 (September 5) and also 9/12? Actually standard: 9/5 and 9/12? Wait doomsday dates: 4/4, 6/6, 8/8, 10/10, 12/12, 9/5, 5/9, 7/11, 11/7, 3/7. Also for Jan/Feb: 1/3 or 1/4, 2/28 or 2/29. So for September, doomsday is Sept 5. So if doomsday is Friday, then Sept 5 is Friday. Then Sept 29 is 24 days later; 24 mod7 = 3, so Friday+3 = Monday? Actually Friday + 3 = Monday? Friday+1=Saturday, +2=Sunday, +3=Monday. Yes, so 29 Sep is Monday, matches.
+
+For 6 Oct 1710: Century 1700: c=17, c%4=1, anchor=5*1+2=7 mod7=0 => Sunday. yy=10, floor(10/4)=2, doomsday = Sunday + 10+2 = Sunday+12 = Sunday+5 (since 12 mod7=5) = Friday? Actually Sunday+5=Friday? Sunday=0, +5=5 -> Friday. So doomsday for 1710 is Friday. October doomsday: 10/10. So Oct 10 is Friday. Then Oct 6 is 4 days earlier: Friday - 4 = Monday? Friday-1=Thu, -2=Wed, -3=Tue, -4=Mon. Yes, Monday. Good.
+
+For 19 Aug 2079: Century 2000: anchor=Tuesday. yy=79, floor(79/4)=19, doomsday = Tue+79+19 = Tue+98 = Tue+0 (98 mod7=0) = Tuesday. August doomsday: 8/8. So Aug 8 is Tuesday. Aug 19 is 11 days later: 11 mod7=4, Tue+4=Saturday. Yes Saturday.
+
+For 14 Apr 2016: Already checked.
+
+For 20 Dec 1750: Century 1700: anchor=Sunday. yy=50, floor(50/4)=12, doomsday = Sun+50+12 = Sun+62 = Sun+6 (62 mod7=6) = Saturday? Actually Sunday+6 = Saturday? Wait Sunday=0, +6=6 -> Saturday. So doomsday for 1750 is Saturday. December doomsday: 12/12, so Dec 12 is Saturday. Then Dec 20 is 8 days later: 8 mod7=1, Saturday+1=Sunday. Yes matches.
+
+So seems consistent.
+
+Now final list: We need to write them as comma-separated. Let's list:
+
+1. Monday
+2. Monday
+3. Saturday
+4. Monday
+5. Monday
+6. Sunday
+7. Saturday
+8. Thursday
+9. Saturday
+10. Sunday
+11. Thursday
+12. Saturday
+13. Monday
+14. Thursday
+15. Monday
+16. Friday
+17. Friday
+18. Saturday
+19. Wednesday
+20. Thursday
+21. Wednesday
+22. Sunday
+23. Friday
+24. Saturday
+25. Friday
+26. Monday
+27. Thursday
+28. Thursday
+29. Tuesday
+30. Sunday
+31. Sunday
+32. Sunday
+33. Monday
+34. Saturday
+35. Wednesday
+36. Thursday
+37. Tuesday
+38. Friday
+39. Saturday
+40. Tuesday
+41. Monday
+42. Wednesday
+43. Monday
+44. Thursday
+45. Sunday
+46. Friday
+47. Thursday
+48. Sunday
+49. Wednesday
+50. Saturday
+51. Saturday
+52. Thursday
+53. Friday
+54. Saturday
+55. Monday
+56. Tuesday
+57. Sunday
+58. Sunday
+59. Thursday
+60. Saturday
+61. Sunday
+62. Wednesday
+63. Thursday
+64. Thursday
+
+Now we need to format as: ANSWER: Monday, Monday, Saturday, Monday, Monday, Sunday, Saturday, Thursday, Saturday, Sunday, Thursday, Saturday, Monday, Thursday, Monday, Friday, Friday, Saturday, Wednesday, Thursday, Wednesday, Sunday, Friday, Saturday, Friday, Monday, Thursday, Thursday, Tuesday, Sunday, Sunday, Sunday, Monday, Saturday, Wednesday, Thursday, Tuesday, Friday, Saturday, Tuesday, Monday, Wednesday, Monday, Thursday, Sunday, Friday, Thursday, Sunday, Wednesday, Saturday, Saturday, Thursday, Friday, Saturday, Monday, Tuesday, Sunday, Sunday, Thursday, Saturday, Sunday, Wednesday, Thursday, Thursday
+
+Let's double-check a few more especially the ones with century 22, 23 etc. For 30: 21 March 2123: Century 2100: anchor? 2100: c=21, c%4=1 => anchor=5*1+2=7 mod7=0 Sunday. But careful: 2100 is a century not divisible by 400, so it's not leap. So anchor for 2100 is Sunday. For 2123, yy=23, floor(23/4)=5, doomsday = Sun+23+5= Sun+28 = Sun+0 = Sunday. March doomsday: 3/7 (or 3/0? Actually 3/7 and also 3/14? Standard: March 7 is doomsday. So March 7 is Sunday. March 21 is 14 days later: 14 mod7=0, so March 21 also Sunday. That matches our Sunday. So good.
+
+For 31: 5 March 2220. Century 2200: c=22, c%4=2 => anchor = 5*2+2=12 mod7=5 (Friday). yy=20, floor(20/4)=5, doomsday = Fri+20+5 = Fri+25 = Fri+4 (25 mod7=4) = Tuesday? But wait Fri+4 = Tuesday? Friday=5, +4=9 mod7=2 -> Tuesday. Doomsday for 2220 is Tuesday. March 7 is doomsday? Actually March 7 is doomsday, so March 7 is Tuesday. Then March 5 is 2 days earlier: Tuesday-2=Sunday. Yes Sunday matches.
+
+For 32: 17 Sep 1899: Century 1800: anchor=Friday. yy=99, floor(99/4)=24, doomsday = Fri+99+24 = Fri+123 = Fri+4 (123 mod7=4) = Tuesday? Fri=5+4=9 mod7=2 -> Tuesday. Sep 5 is doomsday, so Sep 5 is Tuesday. Sep 17 is 12 days later: 12 mod7=5, Tue+5=Sunday. Yes Sunday.
+
+For 33: 12 Sep 2095: Century 2000: anchor=Tuesday. yy=95, floor(95/4)=23, doomsday = Tue+95+23 = Tue+118 = Tue+6 (118 mod7=6) = Monday? Actually Tue+6=Monday? Tue=2, +6=8 mod7=1 -> Monday. Sep 5 is Monday. Sep 12 is 7 days later: Monday+7=Monday? Actually 7 days later same day, so Sep 12 also Monday. Yes.
+
+For 34: 17 June 1933: Century 1900: anchor=Wednesday. yy=33, floor(33/4)=8, doomsday = Wed+33+8 = Wed+41 = Wed+6 (41 mod7=6) = Tuesday? Wed=3+6=9 mod7=2 -> Tuesday. June 6 is doomsday? Actually 6/6, so June 6 is Tuesday. June 17 is 11 days later: 11 mod7=4, Tue+4=Saturday. So Saturday, matches.
+
+For 35: 26 Sep 2373: Century 2300: anchor=Wednesday (since c=23, c%4=3, 5*3+2=17 mod7=3). yy=73, floor(73/4)=18, doomsday = Wed+73+18 = Wed+91 = Wed+0 (91 mod7=0) = Wednesday. Sep 5 is Wednesday, Sep 26 is 21 days later (21 mod7=0), so Sep 26 also Wednesday. Yes matches.
+
+For 36: 7 Apr 2163: Century 2100: anchor=Sunday. yy=63, floor(63/4)=15, doomsday = Sun+63+15 = Sun+78 = Sun+1 (78 mod7=1) = Monday? Actually Sun=0+1=1 Monday. April 4 is doomsday? Actually 4/4, so Apr 4 is Monday. Apr 7 is 3 days later: Monday+3=Thursday. Yes Thursday.
+
+For 37: 21 Oct 1862: Century 1800: anchor=Friday. yy=62, floor(62/4)=15, doomsday = Fri+62+15 = Fri+77 = Fri+0 (77 mod7=0) = Friday. Oct 10 is doomsday? 10/10, so Oct 10 is Friday. Oct 21 is 11 days later: 11 mod7=4, Fri+4=Tuesday. Yes.
+
+For 38: 14 Jul 1922: Century 1900: anchor=Wednesday. yy=22, floor(22/4)=5, doomsday = Wed+22+5 = Wed+27 = Wed+6 (27 mod7=6) = Tuesday? Wed=3+6=9 mod7=2 -> Tuesday. July 11 is doomsday? Actually 7/11, so July 11 is Tuesday. July 14 is 3 days later: Tuesday+3=Friday. Yes.
+
+For 39: 6 Mar 2269: Century 2200: anchor=Friday. yy=69, floor(69/4)=17, doomsday = Fri+69+17 = Fri+86 = Fri+2 (86 mod7=2) = Sunday? Fri=5+2=7 mod7=0 -> Sunday? Wait 5+2=7 → 0 => Sunday. Doomsday for March: March 7 is doomsday. So March 7 is Sunday. Then March 6 is Saturday? Actually March 6 is one day before March 7, so Saturday. But we got Saturday? Our result from Zeller was Saturday. Yes March 6 Saturday. So consistent.
+
+For 40: 25 Feb 1936: Leap year? 1936 divisible by 4? 1936/4=484, yes, and not century, so leap year. For February in leap year, doomsday is Feb 29. Century 1900: anchor=Wednesday. yy=36, floor(36/4)=9, doomsday = Wed+36+9 = Wed+45 = Wed+3 (45 mod7=3) = Saturday? Wed=3+3=6 -> Saturday. So doomsday for 1936 is Saturday. Feb 29 is Saturday. Then Feb 25 is 4 days earlier: Saturday-4=Tuesday. Yes Tuesday matches.
+
+For 41: 12 Dec 2321: Century 2300: anchor=Wednesday. yy=21, floor(21/4)=5, doomsday = Wed+21+5 = Wed+26 = Wed+5 (26 mod7=5) = Monday? Wed=3+5=8 mod7=1 -> Monday. Dec 12 is doomsday? 12/12, so Dec 12 is Monday. So Monday matches.
+
+For 42: 31 Jan 2007: Non-leap, Jan doomsday is Jan 3? For 2007, doomsday: Century 2000: anchor=Tuesday, yy=7, floor(7/4)=1, doomsday = Tue+7+1 = Tue+8 = Tue+1 = Wednesday? Tue=2+1=3 -> Wednesday. So doomsday for 2007 is Wednesday. Jan 3 is Wednesday. Jan 31 is 28 days later: 28 mod7=0, so Jan 31 also Wednesday. Yes matches.
+
+For 43: 21 Mar 1689: Century 1600: anchor=Tuesday. yy=89, floor(89/4)=22, doomsday = Tue+89+22 = Tue+111 = Tue+6 (111 mod7=6) = Monday? Tue=2+6=8 mod7=1 -> Monday. Mar 7 is doomsday? 3/7, so Mar 7 is Monday. Mar 21 is 14 days later: Monday+14= Monday+0= Monday? Actually 14 mod7=0, so Monday. So Monday. Matches.
+
+For 44: 18 Jul 1844: Century 1800: anchor=Friday. yy=44, floor(44/4)=11, doomsday = Fri+44+11 = Fri+55 = Fri+6 (55 mod7=6) = Thursday? Fri=5+6=11 mod7=4 -> Thursday. July 11 is doomsday? 7/11, so July 11 is Thursday. July 18 is 7 days later: Thursday+7=Thursday. So Thursday matches.
+
+For 45: 22 Mar 2009: Century 2000: anchor=Tuesday. yy=9, floor(9/4)=2, doomsday = Tue+9+2 = Tue+11 = Tue+4 = Saturday? Tue=2+4=6 -> Saturday. Mar 7 is doomsday, so Mar 7 is Saturday. Mar 22 is 15 days later: 15 mod7=1, Saturday+1=Sunday. So Sunday matches.
+
+For 46: 15 Nov 1844: Century 1800: anchor=Friday, yy=44, floor=11, doomsday = Fri+44+11= Fri+55= Thursday as above. Nov 7 is doomsday? 11/7, so Nov 7 is Thursday. Nov 15 is 8 days later: 8 mod7=1, Thursday+1=Friday. So Friday matches.
+
+For 47: 22 Apr 1897: Century 1800: anchor=Friday, yy=97, floor(97/4)=24, doomsday = Fri+97+24 = Fri+121 = Fri+2 (121 mod7=2) = Sunday? Fri=5+2=7 mod7=0 -> Sunday. April 4 is doomsday? 4/4, so Apr 4 is Sunday. Apr 22 is 18 days later: 18 mod7=4, Sunday+4=Thursday. Yes Thursday matches.
+
+For 48: 10 Nov 2278: Century 2200: anchor=Friday, yy=78, floor(78/4)=19, doomsday = Fri+78+19 = Fri+97 = Fri+6 (97 mod7=6) = Thursday? Fri=5+6=11 mod7=4 -> Thursday. Nov 7 is doomsday? 11/7, so Nov 7 is Thursday. Nov 10 is 3 days later: Thursday+3=Sunday. Yes Sunday matches.
+
+For 49: 17 Jan 1990: Century 1900: anchor=Wednesday, yy=90, floor(90/4)=22, doomsday = Wed+90+22 = Wed+112 = Wed+0 (112 mod7=0) = Wednesday. Jan 3 is doomsday for non-leap? 1990 not leap, Jan 3 is Wednesday. Jan 17 is 14 days later: Wednesday+14=Wednesday+0=Wednesday. So matches.
+
+For 50: 5 Apr 2290: Century 2200: anchor=Friday, yy=90, floor(90/4)=22, doomsday = Fri+90+22 = Fri+112 = Fri+0 = Friday. Apr 4 is doomsday? 4/4, so Apr 4 is Friday. Apr 5 is 1 day later: Saturday? Actually Apr 4 Friday, Apr 5 Saturday. But our Zeller gave Saturday? Yes we got Saturday. So matches.
+
+For 51: 27 Feb 2168: Leap year? 2168 divisible by 4? yes, and not century? 2168/100=21.68, so not a century year, so leap. Century 2100: anchor=Sunday, yy=68, floor(68/4)=17, doomsday = Sun+68+17 = Sun+85 = Sun+1 (85 mod7=1) = Monday. For leap year, Feb 29 is doomsday. So Feb 29 is Monday. Feb 27 is 2 days earlier: Monday-2=Saturday. So Saturday matches.
+
+For 52: 29 Jul 1784: Century 1700: anchor=Sunday, yy=84, floor(84/4)=21, doomsday = Sun+84+21 = Sun+105 = Sun+0 = Sunday. July 11 is doomsday? 7/11, so July 11 is Sunday. July 29 is 18 days later: 18 mod7=4, Sunday+4=Thursday. Yes Thursday matches.
+
+For 53: 23 Sep 2005: Century 2000: anchor=Tuesday, yy=5, floor=1, doomsday = Tue+5+1= Tue+6 = Monday? Tue=2+6=8 mod7=1 -> Monday. Sep 5 is doomsday? 9/5, so Sep 5 is Monday. Sep 23 is 18 days later: 18 mod7=4, Monday+4=Friday. Yes Friday matches.
+
+For 54: 17 Mar 1753: Century 1700: anchor=Sunday, yy=53, floor(53/4)=13, doomsday = Sun+53+13 = Sun+66 = Sun+3 (66 mod7=3) = Wednesday? Sun=0+3=3 -> Wednesday. Mar 7 is doomsday? 3/7, so Mar 7 is Wednesday. Mar 17 is 10 days later: 10 mod7=3, Wednesday+3=Saturday. Yes Saturday matches.
+
+For 55: 18 Jul 2191: Century 2100: anchor=Sunday, yy=91, floor(91/4)=22, doomsday = Sun+91+22 = Sun+113 = Sun+1 (113 mod7=1) = Monday. July 11 is doomsday? 7/11, so July 11 is Monday. July 18 is 7 days later: Monday+7=Monday. So Monday matches.
+
+For 56: 19 Jul 1712: Leap year? 1712 divisible by 4? yes, not century (1700 is century but 1712 is not), so leap. Century 1700: anchor=Sunday, yy=12, floor(12/4)=3, doomsday = Sun+12+3 = Sun+15 = Sun+1 (15 mod7=1) = Monday. July 11 is doomsday? For leap year, doomsday dates remain same? Actually 7/11 is doomsday regardless of leap. So July 11 is Monday. July 19 is 8 days later: 8 mod7=1, Monday+1=Tuesday. Yes Tuesday matches.
+
+For 57: 5 Jun 1695: Century 1600: anchor=Tuesday, yy=95, floor(95/4)=23, doomsday = Tue+95+23 = Tue+118 = Tue+6 (118 mod7=6) = Monday? Tue=2+6=8 mod7=1 -> Monday. June 6 is doomsday? 6/6, so June 6 is Monday. June 5 is 1 day earlier: Sunday. Yes Sunday matches.
+
+For 58: 11 Dec 1757: Century 1700: anchor=Sunday, yy=57, floor=14, doomsday = Sun+57+14 = Sun+71 = Sun+1 (71 mod7=1) = Monday. Dec 12 is doomsday? 12/12, so Dec 12 is Monday. Dec 11 is 1 day earlier: Sunday. Yes Sunday matches.
+
+For 59: 14 Aug 1947: Century 1900: anchor=Wednesday, yy=47, floor=11, doomsday = Wed+47+11 = Wed+58 = Wed+2 (58 mod7=2) = Friday? Wed=3+2=5 -> Friday. Aug 8 is doomsday? 8/8, so Aug 8 is Friday. Aug 14 is 6 days later: Friday+6=Thursday? Friday+1=Sat,+2=Sun,+3=Mon,+4=Tue,+5=Wed,+6=Thu. Yes Thursday matches.
+
+For 60: 14 May 1966: Century 1900: anchor=Wednesday, yy=66, floor=16, doomsday = Wed+66+16 = Wed+82 = Wed+5 (82 mod7=5) = Monday? Wed=3+5=8 mod7=1 -> Monday. May 9 is doomsday? 5/9, so May 9 is Monday. May 14 is 5 days later: Monday+5=Saturday. Yes Saturday matches.
+
+For 61: 23 Mar 2262: Century 2200: anchor=Friday, yy=62, floor=15, doomsday = Fri+62+15 = Fri+77 = Fri+0 = Friday. Mar 7 is doomsday, so Mar 7 is Friday. Mar 23 is 16 days later: 16 mod7=2, Friday+2=Sunday. Yes Sunday matches.
+
+For 62: 8 Apr 1970: Century 1900: anchor=Wednesday, yy=70, floor=17, doomsday = Wed+70+17 = Wed+87 = Wed+3 (87 mod7=3) = Saturday? Wed=3+3=6 -> Saturday. Apr 4 is doomsday? 4/4, so Apr 4 is Saturday. Apr 8 is 4 days later: Saturday+4=Wednesday? Saturday+1=Sun,+2=Mon,+3=Tue,+4=Wed. Yes Wednesday matches.
+
+For 63: 27 Sep 1906: Century 1900: anchor=Wednesday, yy=6, floor=1, doomsday = Wed+6+1 = Wed+7 = Wed+0 = Wednesday. Sep 5 is doomsday? 9/5, so Sep 5 is Wednesday. Sep 27 is 22 days later: 22 mod7=1, Wednesday+1=Thursday. Yes Thursday matches.
+
+For 64: 28 May 1857: Century 1800: anchor=Friday, yy=57, floor=14, doomsday = Fri+57+14 = Fri+71 = Fri+1 (71 mod7=1) = Saturday? Fri=5+1=6 -> Saturday. May 9 is doomsday? 5/9, so May 9 is Saturday. May 28 is 19 days later: 19 mod7=5, Saturday+5=Thursday? Saturday+1=Sun,+2=Mon,+3=Tue,+4=Wed,+5=Thu. Yes Thursday matches.
+
+All good.
+
+Now the final answer list as above. We'll present as: 
+ANSWER: Monday, Monday, Saturday, Monday, Monday, Sunday, Saturday, Thursday, Saturday, Sunday, Thursday, Saturday, Monday, Thursday, Monday, Friday, Friday, Saturday, Wednesday, Thursday, Wednesday, Sunday, Friday, Saturday, Friday, Monday, Thursday, Thursday, Tuesday, Sunday, Sunday, Sunday, Monday, Saturday, Wednesday, Thursday, Tuesday, Friday, Saturday, Tuesday, Monday, Wednesday, Monday, Thursday, Sunday, Friday, Thursday, Sunday, Wednesday, Saturday, Saturday, Thursday, Friday, Saturday, Monday, Tuesday, Sunday, Sunday, Thursday, Saturday, Sunday, Wednesday, Thursday, Thursday
+
+Make sure commas and spacing correct. Also note that days are case-sensitive? Usually they are capitalized. So final answer.
+
+We'll output exactly as above.
