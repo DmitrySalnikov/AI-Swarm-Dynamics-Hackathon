@@ -1,5 +1,9 @@
 # Swarm detection in embedded vector space
 
+Local development setup (including Windows/PyCharm): [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+Research handoff context: [docs/RESEARCH_CONTEXT.md](docs/RESEARCH_CONTEXT.md).
+Stateful agent runner and pilot workflow: [docs/PIPELINE.md](docs/PIPELINE.md).
+
 **With a hidden communication channel.** AI Swarm Dynamics Hackathon, 3–4 October 2026 (https://swarmchasing.com/).
 
 Maxim Gordeev, Dmitry Salnikov, Ilya Rogatov, Andrey Seryakov, Ivan Lyaptsev — a.u.seryakov@gmail.com
