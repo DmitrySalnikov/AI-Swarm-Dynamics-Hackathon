@@ -1,47 +1,36 @@
 """One matched task per independent agent; no negotiation or peer exchange."""
-import argparse,hashlib,json,os,sys
+import argparse,hashlib,json,sys
 from pathlib import Path
 from swarm_pipeline.parallel import ParallelRunner
 from swarm_pipeline.stable_live import RetainingClient
 from swarm_pipeline import runner as base
 from swarm_pipeline.answer_format import canonical_answer
 
-PROTOCOL='''Return exactly one JSON object without markdown fences.
-Solve your assigned task privately in one turn and return
-{"action":"submit","task_id":"your task","answer":"answer","notes":"brief explanation"}.
-Keep notes under 2000 characters. No work or send actions. There is no peer
-communication or shared result packet. Submit only your assigned task.'''
-# Plain-language variant, selected with SWARM_PROMPT_STYLE=simple (matches protocol_v2.SIMPLE_PROTOCOL).
-SIMPLE_PROTOCOL='''Solve your problem. Reply with exactly one JSON object, nothing else:
+PROTOCOL='''Solve your problem. Reply with exactly one JSON object, nothing else:
 {"action":"submit","task_id":"<problem id>","answer":"<final answer>","notes":"<short description of your solution, 2-3 sentences>"}'''
-SIMPLE_INSTRUCTION='Solve your problem. Return one submit action with the answer and a short description of your solution (2-3 sentences).'
+INSTRUCTION='Solve your problem. Return one submit action with the answer and a short description of your solution (2-3 sentences).'
 
 class PrivateRunner(ParallelRunner):
     def __init__(self,*args,assignments,**kwargs):
         super().__init__(*args,**kwargs)
         if self.team:raise ValueError('Private control requires an independent condition')
         self.assignments=assignments
-        self.prompt_style=os.environ.get('SWARM_PROMPT_STYLE','v2')
-        if self.prompt_style not in ('v2','simple','simple_steps'):raise ValueError("SWARM_PROMPT_STYLE must be 'v2', 'simple' or 'simple_steps'")
         assert set(assignments)=={str(i) for i in range(1,self.config.agents+1)}
         assert sorted(assignments.values())==sorted(self.tasks)
-        text=PROTOCOL if self.prompt_style=='v2' else [SIMPLE_PROTOCOL,SIMPLE_INSTRUCTION]
+        text=[PROTOCOL,INSTRUCTION]
         self.manifest.update(protocol_version='private-single-task-v1',assignments=assignments,
             protocol_hash=base.digest(text),protocol_source_hash=hashlib.sha256(Path(__file__).read_bytes()).hexdigest())
-        if self.prompt_style!='v2':self.manifest.update(prompt_style=self.prompt_style)
 
     def initial_state(self):
         state=super().initial_state()
         for i,a in state['agents'].items():
             a['order']=[self.assignments[i]]
-            a['history'][0]['content']=(f'You are Agent {i}. Solve your problem on your own.\n'+SIMPLE_PROTOCOL
-                                        if self.prompt_style in ('simple','simple_steps') else f'You are Agent {i}. Solve independently.\n'+PROTOCOL)
+            a['history'][0]['content']=f'You are Agent {i}. Solve your problem on your own.\n'+PROTOCOL
         return state
 
     def context(self,i):
         c=super().context(i)
-        c['instruction']=(SIMPLE_INSTRUCTION if self.prompt_style in ('simple','simple_steps') else
-            'Solve your assigned task privately. Return one submit action with an answer and a brief explanation under 2000 characters. Do not message peers or return work actions.')
+        c['instruction']=INSTRUCTION
         return c
 
     def apply(self,q,r):

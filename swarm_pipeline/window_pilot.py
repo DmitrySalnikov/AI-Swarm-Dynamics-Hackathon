@@ -24,7 +24,7 @@ class DistributionRunner(V2Runner):
 
 
 ASYNC_PROTOCOL = PROTOCOL.replace(
-    'The coordinator waits for every solution and delivers an identical shared packet.',
+    'Your answer and the short description are sent to the team chat.',
     'Immediately after submitting, you will be asked to report to the shared chat while peers may still be solving. '
     'Use a send action to all with a brief result and explanation. Read already published messages in that request. '
     'The coordinator does not inject messages into requests already in flight. '

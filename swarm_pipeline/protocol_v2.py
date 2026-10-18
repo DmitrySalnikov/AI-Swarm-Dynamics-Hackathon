@@ -2,7 +2,6 @@
 import argparse
 import hashlib
 import json
-import os
 from pathlib import Path
 import sys
 
@@ -12,46 +11,23 @@ from swarm_pipeline.stable_live import RetainingClient
 from swarm_pipeline.supervision import write_json
 from swarm_pipeline.answer_format import canonical_answer
 
-PROTOCOL = """Return exactly one JSON object without markdown fences.
-Distribution: first send {"action":"send","to":"all","message":"task preference and rationale"},
-then claim {"action":"claim","task_id":"an available task"}. Do not solve yet.
-Solving: solve your assigned task privately in one turn and return
-{"action":"submit","task_id":"your task","answer":"answer","notes":"brief explanation"}.
-Keep notes under 2000 characters. No work or send actions during solving.
-The coordinator waits for every solution and delivers an identical shared packet.
-Commit: return {"action":"finish","answers":{"task_id":"published answer",...}}.
-Preserve every published answer exactly. Do not discuss, correct, or solve again.
-Your private history stays available. Other agents receive only published results
-and brief explanations; internal reasoning is not broadcast.
-"""
-
-# Plain-language variant, selected with SWARM_PROMPT_STYLE=simple (default "v2" keeps the text above unchanged).
-# The distribution step shows every full problem, so the ban on solving is stated bluntly and repeated.
-SIMPLE_PROTOCOL = """You work in three steps. Reply with exactly one JSON object, nothing else.
+PROTOCOL = """You work in three steps. Reply with exactly one JSON object, nothing else.
 1. Distribution. Pick the problem you will solve. DO NOT SOLVE ANY PROBLEM NOW. DON'T EVEN TRY.
-   First send {"action":"send","to":"all","message":"which problem you want, in one sentence"}.
-   Then claim it: {"action":"claim","task_id":"<problem id>"}. If it is taken, claim another free problem.
+   Each reply performs exactly one action. Follow the current request instruction.
+   The coordinator requests your preference first and requests a claim in a later turn.
 2. Solving. Solve your problem and return
    {"action":"submit","task_id":"<your problem id>","answer":"<final answer>","notes":"<short description of your solution, 2-3 sentences>"}.
    Your answer and the short description are sent to the team chat.
 3. Final answers. You receive the team chat with every answer. Return
    {"action":"finish","answers":{"<problem id>":"<answer exactly as in the chat>", ...}}.
 """
-SIMPLE_INSTRUCTIONS = {
-    "negotiation": "Distribution step. Pick one problem. DO NOT SOLVE ANY PROBLEM NOW. DON'T EVEN TRY. "
-                   "Send your choice in one sentence, then claim the problem.",
+INSTRUCTIONS = {
     "solving": "Solving step. Solve your problem. Return one submit action with the answer and a short "
                "description of your solution (2-3 sentences).",
     "exchange": "Final step. The team chat below has every answer. Return one finish action with all answers, "
                 "copied exactly.",
 }
 
-# Keep the historical simple text available for replay and controlled comparisons.
-STEP_PROTOCOL = SIMPLE_PROTOCOL.replace(
-    '   First send {"action":"send","to":"all","message":"which problem you want, in one sentence"}.\n'
-    '   Then claim it: {"action":"claim","task_id":"<problem id>"}. If it is taken, claim another free problem.',
-    '   Each reply performs exactly one action. Follow the current request instruction.\n'
-    '   The coordinator requests your preference first and requests a claim in a later turn.')
 STEP_INSTRUCTIONS = {
     'send': 'Distribution step: announce your preference. DO NOT SOLVE ANY PROBLEM NOW. DON\'T EVEN TRY. '
             'For this reply, return only {"action":"send","to":"all","message":"which problem you want, in one sentence"}. '
@@ -62,52 +38,34 @@ STEP_INSTRUCTIONS = {
 }
 
 
-def prompt_style():
-    style = os.environ.get("SWARM_PROMPT_STYLE", "v2")
-    if style not in ("v2", "simple", "simple_steps"):
-        raise ValueError("SWARM_PROMPT_STYLE must be 'v2', 'simple' or 'simple_steps'")
-    return style
-
-
 class V2Runner(ParallelRunner):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if not self.team:
             raise ValueError("Protocol v2 changes only the cooperative condition")
-        self.prompt_style = prompt_style()
-        text = PROTOCOL if self.prompt_style == "v2" else [SIMPLE_PROTOCOL, SIMPLE_INSTRUCTIONS]
-        if self.prompt_style == 'simple_steps':
-            text = [STEP_PROTOCOL, STEP_INSTRUCTIONS, SIMPLE_INSTRUCTIONS['solving'], SIMPLE_INSTRUCTIONS['exchange']]
+        text = [PROTOCOL, STEP_INSTRUCTIONS, INSTRUCTIONS['solving'], INSTRUCTIONS['exchange']]
         self.manifest.update(protocol_version="v2", protocol_hash=base.digest(text),
                              protocol_source_hash=hashlib.sha256(Path(__file__).read_bytes()).hexdigest())
-        if self.prompt_style != "v2":
-            self.manifest.update(prompt_style=self.prompt_style)
 
     def initial_state(self):
         state = super().initial_state()
         state["shared_packet"] = None
         for agent, record in state["agents"].items():
-            if self.prompt_style in ("simple", "simple_steps"):
-                record["history"][0]["content"] = (f"You are Agent {agent} in a team of {self.config.agents} agents. "
-                                                   "The team has the same number of problems; each agent solves exactly one.\n"
-                                                   + (STEP_PROTOCOL if self.prompt_style == 'simple_steps' else SIMPLE_PROTOCOL))
-            else:
-                record["history"][0]["content"] = f"You are Agent {agent}. Distribute the tasks as a team, solve privately, and commit the common results.\n" + PROTOCOL
+            record["history"][0]["content"] = (
+                f"You are Agent {agent} in a team of {self.config.agents} agents. "
+                "The team has the same number of problems; each agent solves exactly one.\n" + PROTOCOL)
             record["solution_notes"] = {}
         return state
 
     def context(self, agent_id):
         context = super().context(agent_id)
         context.pop("reported",None);context.pop("all_reported",None)
-        if context["phase"] == "solving":
-            context["instruction"] = "Solve your assigned task privately. Return one submit action with an answer and a brief explanation under 2000 characters. Do not message peers or return work actions."
-        elif context["phase"] == "exchange":
+        if context["phase"] == "exchange":
             context["shared_packet"] = self.state["shared_packet"]
             context["shared_packet_hash"] = base.digest(self.state["shared_packet"])
-            context["instruction"] = "Read the common published packet and commit one complete answer map, preserving each published answer exactly. Do not discuss or correct answers."
-        if self.prompt_style in ("simple", "simple_steps") and context["phase"] in SIMPLE_INSTRUCTIONS:
-            context["instruction"] = SIMPLE_INSTRUCTIONS[context["phase"]]
-        if self.prompt_style == 'simple_steps' and context['phase'] == 'negotiation':
+        if context["phase"] in INSTRUCTIONS:
+            context["instruction"] = INSTRUCTIONS[context["phase"]]
+        if context['phase'] == 'negotiation':
             context['instruction'] = STEP_INSTRUCTIONS['claim' if context['negotiated'] else 'send']
         return json.loads(json.dumps(context))
 

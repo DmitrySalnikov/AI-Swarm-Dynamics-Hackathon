@@ -24,7 +24,6 @@ def main():
     args = parser.parse_args()
     if args.repeat_count < 1 or args.parallel_groups < 1:
         parser.error('Repeat count and parallel groups must be positive')
-    os.environ['SWARM_PROMPT_STYLE'] = 'simple_steps'
 
     def run_level(level, seed, repeat):
         source = Path(f'artifacts/pipeline-ladder-v2-simple/rung_{level}/swarm/cooperative/seed_{seed}/manifest.json')

@@ -52,8 +52,8 @@ class V2Tests(unittest.TestCase):
             self.assertEqual(audit(r.directory)['commit_retries'],1)
 
     def test_step_prompts_follow_accepted_actions_and_keep_full_tasks(self):
-        from swarm_pipeline.protocol_v2 import STEP_INSTRUCTIONS, SIMPLE_INSTRUCTIONS
-        with tempfile.TemporaryDirectory() as temp, patch.dict('os.environ', {'SWARM_PROMPT_STYLE':'simple_steps'}):
+        from swarm_pipeline.protocol_v2 import STEP_INSTRUCTIONS, INSTRUCTIONS
+        with tempfile.TemporaryDirectory() as temp:
             r=V2Runner(TASKS,Config(condition='cooperative',agents=3,offline=True),Path(temp),V2OfflineClient(),workers=3)
             r.state=r.initial_state()
             def act(action, finish='stop'):
@@ -70,17 +70,17 @@ class V2Tests(unittest.TestCase):
             self.assertEqual(r.context(1)['instruction'],STEP_INSTRUCTIONS['claim'])
             self.assertIsNone(act({'action':'claim','task_id':'task/0'})['action_error'])
             r.state['phase']='solving'
-            self.assertEqual(r.context(1)['instruction'],SIMPLE_INSTRUCTIONS['solving'])
+            self.assertEqual(r.context(1)['instruction'],INSTRUCTIONS['solving'])
 
     def test_step_prompt_full_offline_run(self):
-        from swarm_pipeline.protocol_v2 import STEP_INSTRUCTIONS, STEP_PROTOCOL
-        with tempfile.TemporaryDirectory() as temp, patch.dict('os.environ', {'SWARM_PROMPT_STYLE':'simple_steps'}):
+        from swarm_pipeline.protocol_v2 import STEP_INSTRUCTIONS, PROTOCOL
+        with tempfile.TemporaryDirectory() as temp:
             r=V2Runner(TASKS,Config(condition='cooperative',agents=3,offline=True),Path(temp),V2OfflineClient(),workers=3)
             with redirect_stdout(io.StringIO()):self.assertEqual(r.run()['status'],'completed')
             counts={'send':0,'claim':0}
             for p in r.directory.glob('calls/*/request.json'):
                 q=json.loads(p.read_text())
-                self.assertIn(STEP_PROTOCOL,q['messages'][0]['content'])
+                self.assertIn(PROTOCOL,q['messages'][0]['content'])
                 if q['context']['phase']=='negotiation':
                     step='claim' if q['context']['negotiated'] else 'send'
                     self.assertEqual(q['context']['instruction'],STEP_INSTRUCTIONS[step])
@@ -88,29 +88,18 @@ class V2Tests(unittest.TestCase):
             self.assertEqual(counts,{'send':3,'claim':3})
             self.assertTrue(audit(r.directory)['single_successful_submit_and_commit_per_agent'])
 
-    def test_simple_prompt_style(self):
-        from swarm_pipeline import runner as base
-        from swarm_pipeline.protocol_v2 import PROTOCOL,SIMPLE_PROTOCOL
-        with tempfile.TemporaryDirectory() as temp, patch.dict('os.environ',{},clear=False):
-            import os; os.environ.pop('SWARM_PROMPT_STYLE',None)
-            default=V2Runner(TASKS,Config(condition="cooperative",agents=3,offline=True),Path(temp)/'d',V2OfflineClient(),workers=3)
-            self.assertEqual(default.manifest['protocol_hash'],base.digest(PROTOCOL))
-            self.assertNotIn('prompt_style',default.manifest)
-            os.environ['SWARM_PROMPT_STYLE']='simple'
-            r=V2Runner(TASKS,Config(condition="cooperative",agents=3,offline=True),Path(temp)/'s',V2OfflineClient(),workers=3)
-            with redirect_stdout(io.StringIO()): result=r.run()
-            self.assertEqual(result['status'],'completed')
-            self.assertEqual(r.manifest['prompt_style'],'simple')
-            seen=set()
-            for p in sorted(r.directory.glob('calls/*/request.json')):
-                q=json.loads(p.read_text(encoding='utf-8'))
-                self.assertIn(SIMPLE_PROTOCOL,q['messages'][0]['content'])
-                seen.add(q['context']['phase'])
-                if q['context']['phase']=='negotiation':
-                    self.assertIn("DO NOT SOLVE ANY PROBLEM NOW",q['context']['instruction'])
-            self.assertEqual(seen,{'negotiation','solving','exchange'})
-            os.environ['SWARM_PROMPT_STYLE']='other'
-            with self.assertRaises(ValueError):
-                V2Runner(TASKS,Config(condition="cooperative",agents=3,offline=True),Path(temp)/'x',V2OfflineClient(),workers=3)
+    def test_legacy_environment_cannot_select_old_prompts(self):
+        from swarm_pipeline.protocol_v2 import PROTOCOL, STEP_INSTRUCTIONS
+        snapshots=[]
+        with tempfile.TemporaryDirectory() as temp:
+            for value in ('v2','simple','simple_steps','other'):
+                with patch.dict('os.environ',{'SWARM_PROMPT_STYLE':value}):
+                    r=V2Runner(TASKS,Config(condition='cooperative',agents=3,offline=True),Path(temp)/value,V2OfflineClient(),workers=3)
+                    r.state=r.initial_state()
+                    self.assertIn(PROTOCOL,r.state['agents']['1']['history'][0]['content'])
+                    self.assertEqual(r.context(1)['instruction'],STEP_INSTRUCTIONS['send'])
+                    self.assertNotIn('prompt_style',r.manifest)
+                    snapshots.append((r.manifest['protocol_hash'],r.state,r.context(1)))
+            self.assertTrue(all(s==snapshots[0] for s in snapshots))
 
 if __name__=='__main__':unittest.main()

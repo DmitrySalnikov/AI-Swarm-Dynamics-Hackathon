@@ -1,7 +1,9 @@
 # Explicit distribution actions
 
-`SWARM_PROMPT_STYLE=simple_steps` is a new opt-in variant of `simple`. Existing
-`simple` and `v2` prompt text and hashes are preserved for historical replay.
+The corrected step-specific prompts are used automatically. There is no runtime
+prompt selection. Historical prompt versions are preserved in Git; use their
+original checkout to replay or resume old runs. Existing run manifests prevent
+silently resuming a historical run with changed prompts.
 
 During distribution, every request asks for exactly one action:
 
