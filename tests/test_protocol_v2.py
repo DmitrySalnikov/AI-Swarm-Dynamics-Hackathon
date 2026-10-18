@@ -51,4 +51,29 @@ class V2Tests(unittest.TestCase):
                 self.assertEqual(r.run()['status'],'completed')
             self.assertEqual(audit(r.directory)['commit_retries'],1)
 
+    def test_simple_prompt_style(self):
+        from swarm_pipeline import runner as base
+        from swarm_pipeline.protocol_v2 import PROTOCOL,SIMPLE_PROTOCOL
+        with tempfile.TemporaryDirectory() as temp, patch.dict('os.environ',{},clear=False):
+            import os; os.environ.pop('SWARM_PROMPT_STYLE',None)
+            default=V2Runner(TASKS,Config(condition="cooperative",agents=3,offline=True),Path(temp)/'d',V2OfflineClient(),workers=3)
+            self.assertEqual(default.manifest['protocol_hash'],base.digest(PROTOCOL))
+            self.assertNotIn('prompt_style',default.manifest)
+            os.environ['SWARM_PROMPT_STYLE']='simple'
+            r=V2Runner(TASKS,Config(condition="cooperative",agents=3,offline=True),Path(temp)/'s',V2OfflineClient(),workers=3)
+            with redirect_stdout(io.StringIO()): result=r.run()
+            self.assertEqual(result['status'],'completed')
+            self.assertEqual(r.manifest['prompt_style'],'simple')
+            seen=set()
+            for p in sorted(r.directory.glob('calls/*/request.json')):
+                q=json.loads(p.read_text(encoding='utf-8'))
+                self.assertIn(SIMPLE_PROTOCOL,q['messages'][0]['content'])
+                seen.add(q['context']['phase'])
+                if q['context']['phase']=='negotiation':
+                    self.assertIn("DO NOT SOLVE ANY PROBLEM NOW",q['context']['instruction'])
+            self.assertEqual(seen,{'negotiation','solving','exchange'})
+            os.environ['SWARM_PROMPT_STYLE']='other'
+            with self.assertRaises(ValueError):
+                V2Runner(TASKS,Config(condition="cooperative",agents=3,offline=True),Path(temp)/'x',V2OfflineClient(),workers=3)
+
 if __name__=='__main__':unittest.main()

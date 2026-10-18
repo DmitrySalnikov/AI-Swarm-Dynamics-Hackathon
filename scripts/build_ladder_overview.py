@@ -1,12 +1,13 @@
 """Show all ladder arcs on a common scale without new model requests."""
 import csv
+import sys
 from pathlib import Path
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-ROOT=Path(__file__).resolve().parents[1]/'artifacts/pipeline-ladder'
+ROOT=Path(sys.argv[1]).resolve() if len(sys.argv)>1 else Path(__file__).resolve().parents[1]/'artifacts/pipeline-ladder'
 LABELS=['Unrelated domains','Physics subfields','Linear algebra','Same determinant template']
 
 def main():

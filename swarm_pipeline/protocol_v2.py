@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import sys
 
@@ -24,20 +25,57 @@ Your private history stays available. Other agents receive only published result
 and brief explanations; internal reasoning is not broadcast.
 """
 
+# Plain-language variant, selected with SWARM_PROMPT_STYLE=simple (default "v2" keeps the text above unchanged).
+# The distribution step shows every full problem, so the ban on solving is stated bluntly and repeated.
+SIMPLE_PROTOCOL = """You work in three steps. Reply with exactly one JSON object, nothing else.
+1. Distribution. Pick the problem you will solve. DO NOT SOLVE ANY PROBLEM NOW. DON'T EVEN TRY.
+   First send {"action":"send","to":"all","message":"which problem you want, in one sentence"}.
+   Then claim it: {"action":"claim","task_id":"<problem id>"}. If it is taken, claim another free problem.
+2. Solving. Solve your problem and return
+   {"action":"submit","task_id":"<your problem id>","answer":"<final answer>","notes":"<short description of your solution, 2-3 sentences>"}.
+   Your answer and the short description are sent to the team chat.
+3. Final answers. You receive the team chat with every answer. Return
+   {"action":"finish","answers":{"<problem id>":"<answer exactly as in the chat>", ...}}.
+"""
+SIMPLE_INSTRUCTIONS = {
+    "negotiation": "Distribution step. Pick one problem. DO NOT SOLVE ANY PROBLEM NOW. DON'T EVEN TRY. "
+                   "Send your choice in one sentence, then claim the problem.",
+    "solving": "Solving step. Solve your problem. Return one submit action with the answer and a short "
+               "description of your solution (2-3 sentences).",
+    "exchange": "Final step. The team chat below has every answer. Return one finish action with all answers, "
+                "copied exactly.",
+}
+
+
+def prompt_style():
+    style = os.environ.get("SWARM_PROMPT_STYLE", "v2")
+    if style not in ("v2", "simple"):
+        raise ValueError("SWARM_PROMPT_STYLE must be 'v2' or 'simple'")
+    return style
+
 
 class V2Runner(ParallelRunner):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if not self.team:
             raise ValueError("Protocol v2 changes only the cooperative condition")
-        self.manifest.update(protocol_version="v2", protocol_hash=base.digest(PROTOCOL),
+        self.prompt_style = prompt_style()
+        text = PROTOCOL if self.prompt_style == "v2" else [SIMPLE_PROTOCOL, SIMPLE_INSTRUCTIONS]
+        self.manifest.update(protocol_version="v2", protocol_hash=base.digest(text),
                              protocol_source_hash=hashlib.sha256(Path(__file__).read_bytes()).hexdigest())
+        if self.prompt_style != "v2":
+            self.manifest.update(prompt_style=self.prompt_style)
 
     def initial_state(self):
         state = super().initial_state()
         state["shared_packet"] = None
         for agent, record in state["agents"].items():
-            record["history"][0]["content"] = f"You are Agent {agent}. Distribute the tasks as a team, solve privately, and commit the common results.\n" + PROTOCOL
+            if self.prompt_style == "simple":
+                record["history"][0]["content"] = (f"You are Agent {agent} in a team of {self.config.agents} agents. "
+                                                   "The team has the same number of problems; each agent solves exactly one.\n"
+                                                   + SIMPLE_PROTOCOL)
+            else:
+                record["history"][0]["content"] = f"You are Agent {agent}. Distribute the tasks as a team, solve privately, and commit the common results.\n" + PROTOCOL
             record["solution_notes"] = {}
         return state
 
@@ -50,6 +88,8 @@ class V2Runner(ParallelRunner):
             context["shared_packet"] = self.state["shared_packet"]
             context["shared_packet_hash"] = base.digest(self.state["shared_packet"])
             context["instruction"] = "Read the common published packet and commit one complete answer map, preserving each published answer exactly. Do not discuss or correct answers."
+        if self.prompt_style == "simple" and context["phase"] in SIMPLE_INSTRUCTIONS:
+            context["instruction"] = SIMPLE_INSTRUCTIONS[context["phase"]]
         return json.loads(json.dumps(context))
 
     def runnable(self):

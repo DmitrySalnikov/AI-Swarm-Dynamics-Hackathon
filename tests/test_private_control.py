@@ -20,4 +20,18 @@ class PrivateControlTests(unittest.TestCase):
                 q=json.loads(p.read_text());self.assertEqual(q['context']['task']['id'],mapping[str(q['agent'])])
                 self.assertNotIn('shared_packet',q['context']);self.assertEqual(q['context']['inbox'],[])
 
+    def test_simple_prompt_style(self):
+        import os
+        from unittest.mock import patch
+        from swarm_pipeline.private_control import SIMPLE_PROTOCOL,SIMPLE_INSTRUCTION
+        tasks=[{'id':f't{i}','prompt':'Give one integer.','answer':'1','check':{'type':'exact'}} for i in range(3)]
+        mapping={'1':'t2','2':'t0','3':'t1'}
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ,{'SWARM_PROMPT_STYLE':'simple'}):
+            run=PrivateRunner(tasks,Config(condition='fixed',agents=3,offline=True,seed=73),Path(tmp),PrivateOfflineClient(),assignments=mapping,workers=3)
+            run.run();self.assertEqual(audit(run.directory)['integrity'],'passed')
+            self.assertEqual(run.manifest['prompt_style'],'simple')
+            for p in (run.directory/'calls').glob('*/request.json'):
+                q=json.loads(p.read_text())
+                self.assertIn(SIMPLE_PROTOCOL,q['messages'][0]['content']);self.assertEqual(q['context']['instruction'],SIMPLE_INSTRUCTION)
+
 if __name__=='__main__':unittest.main()
