@@ -5,6 +5,19 @@ from swarm_pipeline.private_control import PrivateRunner,PrivateOfflineClient
 from swarm_pipeline.audit import audit
 
 class PrivateControlTests(unittest.TestCase):
+    def test_step_style_keeps_private_solving_identical(self):
+        from unittest.mock import patch
+        snapshots=[]
+        with tempfile.TemporaryDirectory() as tmp:
+            for style in ('simple','simple_steps'):
+                with patch.dict('os.environ',{'SWARM_PROMPT_STYLE':style}):
+                    tasks=[{'id':'t0','prompt':'Give one integer.','answer':'1','check':{'type':'exact'}}]
+                    run=PrivateRunner(tasks,Config(condition='fixed',agents=1,offline=True),Path(tmp)/style,
+                                      PrivateOfflineClient(),assignments={'1':'t0'},workers=1)
+                    run.state=run.initial_state()
+                    snapshots.append((run.state['agents']['1']['history'],run.context(1)))
+            self.assertEqual(snapshots[0],snapshots[1])
+
     def test_one_task_each_no_peer_inputs_and_no_exchange(self):
         tasks=[{'id':f't{i}','prompt':'Give one integer.','answer':'1','check':{'type':'exact'}} for i in range(3)]
         mapping={'1':'t2','2':'t0','3':'t1'}

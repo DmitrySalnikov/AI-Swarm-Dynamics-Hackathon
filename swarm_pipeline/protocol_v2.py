@@ -46,11 +46,26 @@ SIMPLE_INSTRUCTIONS = {
                 "copied exactly.",
 }
 
+# Keep the historical simple text available for replay and controlled comparisons.
+STEP_PROTOCOL = SIMPLE_PROTOCOL.replace(
+    '   First send {"action":"send","to":"all","message":"which problem you want, in one sentence"}.\n'
+    '   Then claim it: {"action":"claim","task_id":"<problem id>"}. If it is taken, claim another free problem.',
+    '   Each reply performs exactly one action. Follow the current request instruction.\n'
+    '   The coordinator requests your preference first and requests a claim in a later turn.')
+STEP_INSTRUCTIONS = {
+    'send': 'Distribution step: announce your preference. DO NOT SOLVE ANY PROBLEM NOW. DON\'T EVEN TRY. '
+            'For this reply, return only {"action":"send","to":"all","message":"which problem you want, in one sentence"}. '
+            'You will be asked to claim a problem in a later request.',
+    'claim': 'Distribution step: your preference message has been accepted. DO NOT SOLVE ANY PROBLEM NOW. DON\'T EVEN TRY. '
+             'For this reply, return only {"action":"claim","task_id":"<one ID from available_tasks>"}. '
+             'If your preferred problem is no longer available, choose another available problem.',
+}
+
 
 def prompt_style():
     style = os.environ.get("SWARM_PROMPT_STYLE", "v2")
-    if style not in ("v2", "simple"):
-        raise ValueError("SWARM_PROMPT_STYLE must be 'v2' or 'simple'")
+    if style not in ("v2", "simple", "simple_steps"):
+        raise ValueError("SWARM_PROMPT_STYLE must be 'v2', 'simple' or 'simple_steps'")
     return style
 
 
@@ -61,6 +76,8 @@ class V2Runner(ParallelRunner):
             raise ValueError("Protocol v2 changes only the cooperative condition")
         self.prompt_style = prompt_style()
         text = PROTOCOL if self.prompt_style == "v2" else [SIMPLE_PROTOCOL, SIMPLE_INSTRUCTIONS]
+        if self.prompt_style == 'simple_steps':
+            text = [STEP_PROTOCOL, STEP_INSTRUCTIONS, SIMPLE_INSTRUCTIONS['solving'], SIMPLE_INSTRUCTIONS['exchange']]
         self.manifest.update(protocol_version="v2", protocol_hash=base.digest(text),
                              protocol_source_hash=hashlib.sha256(Path(__file__).read_bytes()).hexdigest())
         if self.prompt_style != "v2":
@@ -70,10 +87,10 @@ class V2Runner(ParallelRunner):
         state = super().initial_state()
         state["shared_packet"] = None
         for agent, record in state["agents"].items():
-            if self.prompt_style == "simple":
+            if self.prompt_style in ("simple", "simple_steps"):
                 record["history"][0]["content"] = (f"You are Agent {agent} in a team of {self.config.agents} agents. "
                                                    "The team has the same number of problems; each agent solves exactly one.\n"
-                                                   + SIMPLE_PROTOCOL)
+                                                   + (STEP_PROTOCOL if self.prompt_style == 'simple_steps' else SIMPLE_PROTOCOL))
             else:
                 record["history"][0]["content"] = f"You are Agent {agent}. Distribute the tasks as a team, solve privately, and commit the common results.\n" + PROTOCOL
             record["solution_notes"] = {}
@@ -88,8 +105,10 @@ class V2Runner(ParallelRunner):
             context["shared_packet"] = self.state["shared_packet"]
             context["shared_packet_hash"] = base.digest(self.state["shared_packet"])
             context["instruction"] = "Read the common published packet and commit one complete answer map, preserving each published answer exactly. Do not discuss or correct answers."
-        if self.prompt_style == "simple" and context["phase"] in SIMPLE_INSTRUCTIONS:
+        if self.prompt_style in ("simple", "simple_steps") and context["phase"] in SIMPLE_INSTRUCTIONS:
             context["instruction"] = SIMPLE_INSTRUCTIONS[context["phase"]]
+        if self.prompt_style == 'simple_steps' and context['phase'] == 'negotiation':
+            context['instruction'] = STEP_INSTRUCTIONS['claim' if context['negotiated'] else 'send']
         return json.loads(json.dumps(context))
 
     def runnable(self):

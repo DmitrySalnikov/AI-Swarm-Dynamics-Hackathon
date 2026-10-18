@@ -22,7 +22,7 @@ class PrivateRunner(ParallelRunner):
         if self.team:raise ValueError('Private control requires an independent condition')
         self.assignments=assignments
         self.prompt_style=os.environ.get('SWARM_PROMPT_STYLE','v2')
-        if self.prompt_style not in ('v2','simple'):raise ValueError("SWARM_PROMPT_STYLE must be 'v2' or 'simple'")
+        if self.prompt_style not in ('v2','simple','simple_steps'):raise ValueError("SWARM_PROMPT_STYLE must be 'v2', 'simple' or 'simple_steps'")
         assert set(assignments)=={str(i) for i in range(1,self.config.agents+1)}
         assert sorted(assignments.values())==sorted(self.tasks)
         text=PROTOCOL if self.prompt_style=='v2' else [SIMPLE_PROTOCOL,SIMPLE_INSTRUCTION]
@@ -35,12 +35,12 @@ class PrivateRunner(ParallelRunner):
         for i,a in state['agents'].items():
             a['order']=[self.assignments[i]]
             a['history'][0]['content']=(f'You are Agent {i}. Solve your problem on your own.\n'+SIMPLE_PROTOCOL
-                                        if self.prompt_style=='simple' else f'You are Agent {i}. Solve independently.\n'+PROTOCOL)
+                                        if self.prompt_style in ('simple','simple_steps') else f'You are Agent {i}. Solve independently.\n'+PROTOCOL)
         return state
 
     def context(self,i):
         c=super().context(i)
-        c['instruction']=(SIMPLE_INSTRUCTION if self.prompt_style=='simple' else
+        c['instruction']=(SIMPLE_INSTRUCTION if self.prompt_style in ('simple','simple_steps') else
             'Solve your assigned task privately. Return one submit action with an answer and a brief explanation under 2000 characters. Do not message peers or return work actions.')
         return c
 

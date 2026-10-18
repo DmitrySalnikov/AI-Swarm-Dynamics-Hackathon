@@ -51,6 +51,43 @@ class V2Tests(unittest.TestCase):
                 self.assertEqual(r.run()['status'],'completed')
             self.assertEqual(audit(r.directory)['commit_retries'],1)
 
+    def test_step_prompts_follow_accepted_actions_and_keep_full_tasks(self):
+        from swarm_pipeline.protocol_v2 import STEP_INSTRUCTIONS, SIMPLE_INSTRUCTIONS
+        with tempfile.TemporaryDirectory() as temp, patch.dict('os.environ', {'SWARM_PROMPT_STYLE':'simple_steps'}):
+            r=V2Runner(TASKS,Config(condition='cooperative',agents=3,offline=True),Path(temp),V2OfflineClient(),workers=3)
+            r.state=r.initial_state()
+            def act(action, finish='stop'):
+                q={'agent':1,'call':r.state['calls'],'context':r.context(1)}
+                return r.apply(q,{'content':json.dumps(action),'finish_reason':finish})
+            c=r.context(1)
+            self.assertEqual(c['instruction'],STEP_INSTRUCTIONS['send'])
+            self.assertEqual({t['id']:t['prompt'] for t in c['tasks']},{t['id']:t['prompt'] for t in TASKS})
+            self.assertIsNotNone(act({'actions':[]})['action_error'])
+            self.assertEqual(r.context(1)['instruction'],STEP_INSTRUCTIONS['send'])
+            self.assertIsNone(act({'action':'send','to':'all','message':'I prefer task/0.'})['action_error'])
+            self.assertEqual(r.context(1)['instruction'],STEP_INSTRUCTIONS['claim'])
+            self.assertIsNotNone(act({'action':'claim','task_id':'unavailable'})['action_error'])
+            self.assertEqual(r.context(1)['instruction'],STEP_INSTRUCTIONS['claim'])
+            self.assertIsNone(act({'action':'claim','task_id':'task/0'})['action_error'])
+            r.state['phase']='solving'
+            self.assertEqual(r.context(1)['instruction'],SIMPLE_INSTRUCTIONS['solving'])
+
+    def test_step_prompt_full_offline_run(self):
+        from swarm_pipeline.protocol_v2 import STEP_INSTRUCTIONS, STEP_PROTOCOL
+        with tempfile.TemporaryDirectory() as temp, patch.dict('os.environ', {'SWARM_PROMPT_STYLE':'simple_steps'}):
+            r=V2Runner(TASKS,Config(condition='cooperative',agents=3,offline=True),Path(temp),V2OfflineClient(),workers=3)
+            with redirect_stdout(io.StringIO()):self.assertEqual(r.run()['status'],'completed')
+            counts={'send':0,'claim':0}
+            for p in r.directory.glob('calls/*/request.json'):
+                q=json.loads(p.read_text())
+                self.assertIn(STEP_PROTOCOL,q['messages'][0]['content'])
+                if q['context']['phase']=='negotiation':
+                    step='claim' if q['context']['negotiated'] else 'send'
+                    self.assertEqual(q['context']['instruction'],STEP_INSTRUCTIONS[step])
+                    counts[step]+=1
+            self.assertEqual(counts,{'send':3,'claim':3})
+            self.assertTrue(audit(r.directory)['single_successful_submit_and_commit_per_agent'])
+
     def test_simple_prompt_style(self):
         from swarm_pipeline import runner as base
         from swarm_pipeline.protocol_v2 import PROTOCOL,SIMPLE_PROTOCOL
