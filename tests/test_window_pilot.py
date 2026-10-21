@@ -43,11 +43,11 @@ class WindowPilotTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             r = GradualRunner(TASKS, Config('cooperative', 3, offline=True), Path(tmp), Delayed(), workers=3)
             self.assertEqual(r.run()['status'], 'completed')
-            events = [json.loads(p.read_text()) for p in r.directory.glob('calls/*/event.json')]
+            events = [json.loads(p.read_text()) for p in sorted(r.directory.glob('calls/*/event.json'))]
             reports = [e for e in events if e['phase'] == 'report']
             solves = [e for e in events if e['phase'] == 'solving']
             self.assertLess(min(e['applied_at'] for e in reports), max(e['applied_at'] for e in solves))
-            requests = [json.loads(p.read_text()) for p in r.directory.glob('calls/*/request.json')]
+            requests = [json.loads(p.read_text()) for p in sorted(r.directory.glob('calls/*/request.json'))]
             later = next(q for q in requests if q['agent'] == 2 and q['context']['phase'] == 'report')
             self.assertTrue(any(m['call'] == reports[0]['call'] for m in later['context']['inbox']))
             inflight = next(q for q in requests if q['agent'] == 2 and q['context']['phase'] == 'solving')
