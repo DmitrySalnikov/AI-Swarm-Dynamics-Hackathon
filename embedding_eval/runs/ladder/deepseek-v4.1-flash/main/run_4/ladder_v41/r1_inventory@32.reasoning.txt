@@ -1,0 +1,805 @@
+We need solve carefully. Need compute COGS under FIFO, LIFO, moving weighted average perpetual. Need no round intermediate. Need final amounts.
+
+We need process 32 transactions. Need maintain inventory layers for FIFO/LIFO, moving avg. Need total cost goods sold.
+
+Let's parse.
+
+Initial inventory: 95 @ 6.12 = 581.4? 6.12*95 = 581.4 yes.
+
+Transactions:
+1 purchase 92 @7.47
+2 sale 13
+3 sale 56
+4 sale 116
+5 purchase 27 @8.14
+6 purchase 91 @5.12
+7 purchase 83 @5.37
+8 purchase 142 @7.42
+9 sale 192
+10 purchase 138 @4.83
+11 sale 10
+12 sale 156
+13 purchase 102 @6.09
+14 purchase 43 @5.77
+15 sale 115
+16 purchase 81 @5.30
+17 sale 8
+18 purchase 29 @5.83
+19 purchase 121 @6.52
+20 sale 188
+21 purchase 146 @7.91
+22 sale 208
+23 sale 5
+24 purchase 39 @5.21
+25 purchase 91 @5.67
+26 sale 48
+27 sale 155
+28 purchase 54 @7.44
+29 sale 9
+30 sale 87
+31 purchase 120 @8.14
+32 sale 97
+
+Need ensure sales don't exceed inventory? Likely yes but need process. We can compute.
+
+Could do manual with layers. Need exact cents. Let's compute systematically. Since many transactions, need avoid errors. We'll compute FIFO COGS, LIFO COGS separately. Moving avg maybe.
+
+Let's set up tables.
+
+I'll use quantities integer, costs decimals.
+
+FIFO: maintain queue of layers (qty,cost). Sales consume oldest. COGS sum.
+
+LIFO: stack: sales consume newest layers. Need maybe same purchases/sales.
+
+Moving avg: after each purchase, avg = total cost/total qty; sales at current avg. Need recompute after each purchase. Since sales don't alter avg. Need COGS sum = sum sale qty * current avg at time. Need track inventory cost total exactly maybe fractions. We can compute using high precision manually? Many transactions. Need final rounded. Could use fractions or decimal. This is time-consuming. Need be meticulous. Maybe can simulate with calculations. We have big token budget. Let's do step by step.
+
+Maybe use modular arithmetic and tables. Need final three amounts.
+
+Let's start with FIFO.
+
+I'll create inventory layers list. Initial:
+
+L1: 95 @6.12.
+
+Transaction 1: Purchase +92 @7.47. Layers:
+(95,6.12), (92,7.47). Total qty 187.
+
+2 Sale 13: consume L1 -> qty L1 82. COGS +=13*6.12=79.56. FIFO cogs total 79.56.
+
+3 Sale 56: consume L1 56 -> L1 26. COGS +=56*6.12=342.72. total 422.28.
+
+4 Sale 116: L1 26 @6.12, then need 90 from L2 @7.47.
+COGS +=26*6.12=159.12. +90*7.47=672.3. total sale 831.42. FIFO cumulative 1253.70? Let's sum: 79.56+342.72=422.28; +159.12=581.40? Wait sale 4 components: 159.12+672.30=831.42; cumulative 422.28+831.42=1253.70 yes.
+L2 remaining 2 @7.47.
+
+5 Purchase 27 @8.14: layers L2 rem (2,7.47), L5 (27,8.14). qty 29.
+
+6 Purchase 91 @5.12: layers: (2,7.47), (27,8.14), (91,5.12). qty 120.
+
+7 Purchase 83 @5.37: add (83,5.37). qty 203.
+
+8 Purchase 142 @7.42: add. qty 345.
+
+9 Sale 192. Need consume FIFO:
+Start (2@7.47): qty2 cogs 14.94. remain needed190.
+(27@8.14): 27 cogs 219.78. remain 163.
+(91@5.12): 91 cogs 465.92. remain 72.
+(83@5.37): need 72 of 83. cogs 72*5.37 = 386.64. remain 11 @5.37.
+(142@7.42) untouched.
+Sale9 total =14.94+219.78=234.72; +465.92=700.64; +386.64=1087.28.
+Cumulative FIFO =1253.70+1087.28=2340.98.
+
+After t9 inventory layers: (11,5.37), (142,7.42). qty153.
+
+10 Purchase 138 @4.83: add. layers: 11@5.37,142@7.42,138@4.83. qty291.
+
+11 Sale 10: consume 10 @5.37 -> cogs 53.70. L layer 11->1 @5.37. Cum 2394.68.
+
+12 Sale 156: consume 1 @5.37 =5.37. Need155 from next 142@7.42 ->155*7.42. 7.42*100=742; *50=371; *5=37.1; total 1150.10. Sale total 1155.47. Cum =2340.98+53.70=2394.68; +1155.47=3550.15.
+After: layer 142-> -? consumed 155 >142? Wait hold on at t10 layers: 11@5.37, 142@7.42, 138@4.83. Sale156: consume 1 from 11, then 155 from 142. But 142 layer only has 142! That exceeds by 13. Oops I mis-calc: Need after t10 qty: t9 remaining 11+142=153; +138=291. Sale 156: consume 1, remaining needed 155. There are 142 @7.42, then need 13 from 138 @4.83. I missed. So sale12: 1@5.37=5.37; 142@7.42=1053.64? Compute 7.42*142: 7.42*100=742; *40=296.8; *2=14.84 total 1053.64. Need 13 @4.83 =62.79. Total sale12 =5.37+1053.64+62.79=1121.80. Check earlier partial 155*7.42=1150.10 incorrect because only 142. So cum: before sale12 2394.68; +1121.80=3516.48. Let's recalc from t9.
+
+After sale12: layer @4.83 remaining 138-13=125 @4.83. No other. qty125. Let's verify.
+
+Then t13 purchase 102 @6.09. qty 227 layers: 125@4.83, 102@6.09.
+
+14 purchase 43 @5.77. qty270 layers: 125@4.83,102@6.09,43@5.77.
+
+15 sale 115: consume 115 from 125@4.83. cogs=115*4.83 = 4.83*100=483; *15=72.45; total 555.45. Remain 10@4.83.
+Cum =3516.48+555.45=4071.93.
+
+16 purchase 81 @5.30. layers: 10@4.83, 102@6.09,43@5.77,81@5.30. qty236.
+
+17 sale 8: consume 8@4.83 =38.64. remain 2@4.83. Cum=4110.57.
+
+18 purchase 29 @5.83. layers: 2@4.83,102@6.09,43@5.77,81@5.30,29@5.83. qty257.
+
+19 purchase 121 @6.52. layers add: qty378.
+
+20 sale 188. Need consume:
+- 2@4.83 =9.66. remain 186.
+- 102@6.09 =? 6.09*102 = 621.18 (6.09*100=609; +12.18). remain84.
+- 43@5.77 = 248.11? 5.77*40=230.8; *3=17.31 total248.11. remain41.
+- Need 41 from next 81@5.30 = 217.30 (5.30*40=212; +5.3). remain 40@5.30.
+Sale20 total=9.66+621.18=630.84; +248.11=878.95; +217.30=1096.25.
+Cum=4110.57+1096.25=5206.82.
+
+After t20 layers: 40@5.30, 29@5.83, 121@6.52? Wait we didn't consume 29 or 121. Let's list before t20 after t19: 2@4.83, 102@6.09, 43@5.77, 81@5.30, 29@5.83, 121@6.52. Sale188 consumed 2+102+43+41 from 81. Remaining: 40@5.30, 29@5.83, 121@6.52. qty190.
+
+21 purchase 146 @7.91. layers: 40@5.30,29@5.83,121@6.52,146@7.91. qty336.
+
+22 sale 208. Consume:
+- 40@5.30 =212.00. rem168.
+- 29@5.83 =? 5.83*29=5.83*30-5.83=174.90-5.83=169.07. rem139.
+- 121@6.52 =? 6.52*121=6.52*100=652; *20=130.4; +6.52=788.92. rem18.
+- Need 18 from 146@7.91 = 142.38 (7.91*20=158.2 -15.82=142.38). remain128@7.91.
+Sale22 total=212+169.07=381.07; +788.92=1169.99; +142.38=1312.37.
+Cum=5206.82+1312.37=6519.19.
+
+After t22: 128@7.91. qty128.
+
+23 sale 5: consume 5@7.91 =39.55. remain123@7.91. Cum=6558.74.
+
+24 purchase 39 @5.21. layers: 123@7.91,39@5.21. qty162.
+
+25 purchase 91 @5.67. layers: 123@7.91,39@5.21,91@5.67. qty253.
+
+26 sale 48: consume from oldest 123@7.91: 48*7.91 = 7.91*50 -15.82 =395.5 -15.82=379.68. remain75@7.91. Cum=6938.42.
+
+27 sale 155: consume 75@7.91 =? 7.91*75 = 7.91*3/4? compute 7.91*70=553.7; *5=39.55; total593.25. Remain needed80.
+Next 39@5.21 = 203.19 (5.21*40=208.4-5.21). remain41 to consume from 91@5.67.
+41@5.67 = 232.47 (5.67*40=226.8; +5.67). remain50@5.67.
+Sale27 total=593.25+203.19=796.44; +232.47=1028.91.
+Cum=6938.42+1028.91=7967.33.
+
+After t27: 50@5.67. qty50.
+
+28 purchase 54 @7.44. layers: 50@5.67,54@7.44. qty104.
+
+29 sale 9: consume 9@5.67 =51.03. remain41@5.67. Cum=8018.36.
+
+30 sale 87: consume 41@5.67 =? 5.67*41=5.67*40=226.8 +5.67=232.47. remain needed46.
+Next 54@7.44 = 342.24 (7.44*40=297.6; *6=44.64). But need46, so 46*7.44 = 342.24? Wait 46*7.44 = 7.44*(40+6)=297.6+44.64=342.24. Yes consume 46 from 54, remaining 8@7.44. Sale30 total=232.47+342.24=574.71.
+Cum=8018.36+574.71=8593.07.
+
+After t30: 8@7.44. qty8.
+
+31 purchase 120 @8.14. layers: 8@7.44,120@8.14. qty128.
+
+32 sale 97: consume 8@7.44 =59.52. remain needed89 from 120@8.14. 89*8.14 = 8.14*90 -8.14 =732.6-8.14=724.46. remain31@8.14.
+Sale32 total=59.52+724.46=783.98.
+Cum FIFO COGS =8593.07+783.98=9377.05.
+
+So FIFO = 9377.05. Need verify all cumulative / sales. We should double-check FIFO with total available minus ending inventory maybe.
+
+Total units purchased + initial. Initial95. Purchases: 92+27+91+83+142+138+102+43+81+29+121+146+39+91+54+120.
+Let's sum purchases: t1 92
++27=119
++91=210
++83=293
++142=435
++138=573
++102=675
++43=718
++81=799
++29=828
++121=949
++146=1095
++39=1134
++91=1225
++54=1279
++120=1399. Total available 1494.
+
+Sales quantities: 13+56+116+192+10+156+115+8+188+208+5+48+155+9+87+97.
+Let's sum: 13+56=69; +116=185; +192=377; +10=387; +156=543; +115=658; +8=666; +188=854; +208=1062; +5=1067; +48=1115; +155=1270; +9=1279; +87=1366; +97=1463. Ending qty =1494-1463=31. Matches after t32 31@8.14. Good.
+
+Can compute FIFO ending inventory cost: 31*8.14=252.34? 8.14*30=244.2 +8.14=252.34. Total available cost? If FIFO COGS = total cost available - ending. Let's compute total cost available to check.
+
+Initial 581.40.
+Purchases costs:
+t1 92*7.47 = 7.47*(100-8)=747-59.76=687.24.
+t5 27*8.14 = 219.78.
+t6 91*5.12 = 465.92.
+t7 83*5.37 = 5.37*80=429.6; +16.11 =445.71.
+t8 142*7.42 = 1053.64.
+t10 138*4.83 = 4.83*(100+38)=483+183.54=666.54? 4.83*38=4.83*40=193.2-9.66=183.54 yes total666.54.
+t13 102*6.09 = 621.18.
+t14 43*5.77 = 248.11.
+t16 81*5.30 = 429.30.
+t18 29*5.83 = 169.07.
+t19 121*6.52 = 788.92.
+t21 146*7.91 = 7.91*(100+46)=791+363.86? 7.91*46=7.91*40=316.4; *6=47.46 total363.86; sum1154.86.
+t24 39*5.21 = 203.19.
+t25 91*5.67 = 515.97? 5.67*90=510.3 +5.67=515.97.
+t28 54*7.44 = 401.76? 7.44*50=372; *4=29.76 total401.76.
+t31 120*8.14 = 976.80.
+
+Sum purchase costs:
+t1 687.24
++219.78=907.02
++465.92=1372.94
++445.71=1818.65
++1053.64=2872.29
++666.54=3538.83
++621.18=4160.01
++248.11=4408.12
++429.30=4837.42
++169.07=5006.49
++788.92=5795.41
++1154.86=6950.27
++203.19=7153.46
++515.97=7669.43
++401.76=8071.19
++976.80=9047.99.
++ initial 581.40 =9629.39 total available. Ending FIFO 252.34. COGS =9629.39-252.34=9377.05. Matches. Great FIFO.
+
+Now LIFO. Need compute COGS under perpetual LIFO, sales consume most recent purchases/layers. Need track stack. Since many sales, perhaps easier compute inventory remaining and total cost? LIFO COGS = total available - ending inventory cost under LIFO. Ending inventory consists oldest layers remaining after all sales. We can simulate purchases and sales but LIFO consumes newest, so ending layers correspond to earliest layers not fully sold. Could process all transactions but maybe use total. Need be careful with intermix purchases after sales.
+
+Let's simulate LIFO layers as stack. Initial layer at bottom. Purchases push. Sales pop newest. Need COGS. We can maintain total available cost and ending inventory under LIFO maybe easier: At end, after all transactions, identify remaining quantities in oldest layers. Because LIFO will leave oldest units. We can compute by total sales 1463 from total 1494, ending qty 31. Under LIFO, ending inventory consists first/oldest 31 units available? Wait if LIFO consumes latest, yes remaining are earliest units in chronological order of acquisition, except purchases after some sales? Since all sales consume most recent units at that time, ultimately the units left are from the earliest acquisition layers that were never consumed. However if a later purchase occurs after earlier layers consumed? Let's think: LIFO push/pop. At any time, stack order chronological. Sales pop from top (newest). After final, remaining units are at bottom of stack: oldest units among all acquisitions, specifically initial and early purchases, with any layers fully not consumed. Since total sales 1463, total available 1494, remaining 31. These should be from initial layer? Initial 95 @6.12. Did we ever exhaust initial? Need check if cumulative sales consumed newest layers while initial remains until maybe deep sales. Because LIFO can leave initial untouched for long if purchases replenish. At end remaining 31 likely from initial layer @6.12, unless initial layer eventually consumed and then next oldest. Need determine how many oldest units consumed. Since total sales 1463, total available 1494, only 31 remain, so 64 of initial 95 consumed? Wait if initial remains until all later layers consumed. Total later purchases after initial =1399. If all later purchases consumed, sales =1463 >1399 by64, so 64 units from initial consumed. Thus remaining 31 initial @6.12. Is that always? Need consider later purchases after some sales could be consumed while initial remains. Final after all sales: total later purchases 1399. Total sales 1463. LIFO consumes all later purchases first, then initial. Since 1463 >1399, consumes 64 initial. Remaining 31 initial. Thus LIFO ending inventory =31@6.12=189.72. Then LIFO COGS = total available cost 9629.39 -189.72 =9439.67. Is it that simple? Need verify LIFO sales at times don't consume initial before some later purchases? LIFO always consumes newest, but initial at bottom. As long as there are any later purchases in inventory, sales consume those. There might be periods after huge sales where all later purchases exhausted and then initial consumed, then later purchases occur. That could mean initial consumed before later purchase, so final remaining might not be simply initial 31? Wait total later purchases includes purchases after initial; some may occur after initial was partially consumed? If a sale exhausts all current later layers, it may consume initial. Then a later purchase pushes above remaining initial. Later sales consume that new purchase first, but initial remaining stays bottom. At final, if total sales exceed total later purchases, it would consume initial by the excess. But if initial was consumed earlier and then later purchases added, total sales overall still exceed later purchases? Let's model total: initial + later purchases =1494. LIFO consumes later purchases in reverse order, but if sales occur before later purchases are made, those sales can consume initial because later purchases don't exist yet. Later purchases cannot be used to satisfy earlier sales. Ah! So final remaining isn't simply oldest total 31. Need simulate. Important.
+
+Example: initial 100, sale 80 before any purchase consumes initial, leaving20. Later purchase 100, sale 50 consumes later, leaving initial20 + later50. Total sales130, later purchases100; total sales > later by30 but initial remaining20, later50. So not simple. Need simulate chronological LIFO. We need do full LIFO.
+
+We'll simulate stack. Need track layers. Many transactions. Let's do carefully. Similar to FIFO but pop newest. We'll maintain stack as list of (qty, cost) chronological; sales consume from end. We'll compute COGS cumulative. Need exact.
+
+Let's start.
+
+Initial: [95 @6.12]. total qty95.
+
+1 Purchase 92@7.47: stack [95@6.12, 92@7.47].
+
+2 Sale 13: consume newest 92@7.47 -> qty 79 @7.47. COGS=13*7.47=97.11. Cum LIFO=97.11.
+
+3 Sale 56: consume 56 from 79@7.47 -> remain23@7.47. COGS=56*7.47 = 7.47*(50+6)=373.5+44.82=418.32. Cum=515.43.
+
+4 Sale 116: Need consume 23@7.47 then 93 from initial 95@6.12.
+23*7.47 = 7.47*20=149.4; *3=22.41 total171.81. Remain needed93.
+93*6.12 = 6.12*(100-7)=612-42.84=569.16. Initial remains2@6.12.
+Sale4 total=171.81+569.16=740.97.
+Cum=515.43+740.97=1256.40.
+
+Stack after t4: initial 2@6.12. (No other? Yes all @7.47 consumed). qty2.
+
+5 Purchase 27@8.14: stack [2@6.12,27@8.14]. qty29.
+
+6 Purchase 91@5.12: stack [2@6.12,27@8.14,91@5.12]. qty120.
+
+7 Purchase 83@5.37: stack append. qty203.
+
+8 Purchase 142@7.42: append. qty345.
+Stack: 2@6.12,27@8.14,91@5.12,83@5.37,142@7.42.
+
+9 Sale 192. LIFO consume newest:
+- 142@7.42: consume 142. COGS=142*7.42=1053.64. Remaining needed50.
+- Next 83@5.37: consume 50 from 83. COGS=50*5.37=268.50. Remaining 33@5.37.
+Sale9 total=1053.64+268.50=1322.14.
+Cum=1256.40+1322.14=2578.54.
+
+Stack after t9: 2@6.12,27@8.14,91@5.12,33@5.37. qty153.
+
+10 Purchase 138@4.83: append. qty291.
+Stack: [2@6.12,27@8.14,91@5.12,33@5.37,138@4.83]
+
+11 Sale 10: consume newest 138@4.83 -> remain128@4.83. COGS=10*4.83=48.30. Cum=2626.84.
+
+12 Sale 156: consume:
+- 128@4.83: COGS=128*4.83 = 4.83*(100+28)=483+135.24=618.24. Remaining needed28.
+- Next 33@5.37: consume 28. COGS=28*5.37 = 5.37*20=107.4; *8=42.96; total150.36. Remain5@5.37.
+Sale12 total=618.24+150.36=768.60.
+Cum=2626.84+768.60=3395.44.
+
+Stack after t12: 2@6.12,27@8.14,91@5.12,5@5.37. qty125.
+
+13 Purchase 102@6.09: append. qty227.
+Stack: ... 5@5.37,102@6.09.
+
+14 Purchase 43@5.77: append. qty270.
+
+15 Sale 115:
+- consume 43@5.77: COGS=43*5.77=248.11.
+- need72 from 102@6.09. COGS=72*6.09=438.48 (6.09*70=426.3; +12.18). Remain30@6.09.
+Sale15 total=248.11+438.48=686.59.
+Cum=3395.44+686.59=4082.03.
+
+Stack after t15: 2@6.12,27@8.14,91@5.12,5@5.37,30@6.09. qty155.
+
+16 Purchase 81@5.30: append. qty236.
+
+17 Sale 8: consume newest 81@5.30 -> 8*5.30=42.40. Remain73@5.30.
+Cum=4124.43.
+
+18 Purchase 29@5.83: append. qty257.
+Stack: ...73@5.30,29@5.83.
+
+19 Purchase 121@6.52: append. qty378.
+
+20 Sale 188:
+Consume newest:
+- 121@6.52: COGS=121*6.52=788.92. Need67.
+- 29@5.83: consume29. COGS=29*5.83=169.07. Need38.
+- 73@5.30: consume38. COGS=38*5.30=201.40. Remain35@5.30.
+Sale20 total=788.92+169.07=957.99; +201.40=1159.39.
+Cum=4124.43+1159.39=5283.82.
+
+Stack after t20: 2@6.12,27@8.14,91@5.12,5@5.37,30@6.09,35@5.30. qty190. (Check t19 removed 121,29,38 from81). Yes.
+
+21 Purchase 146@7.91: append. qty336.
+
+22 Sale 208:
+Consume:
+- 146@7.91: COGS=146*7.91=1154.86? Compute 7.91*100=791; *40=316.4; *6=47.46; total 1154.86. Need62.
+- Next 35@5.30: consume35. COGS=35*5.30=185.50. Need27.
+- Next 30@6.09: consume27. COGS=27*6.09=164.43 (6.09*20=121.8; *7=42.63). Remain3@6.09.
+Sale22 total=1154.86+185.50=1340.36; +164.43=1504.79.
+Cum=5283.82+1504.79=6788.61.
+
+Stack after t22: 2@6.12,27@8.14,91@5.12,5@5.37,3@6.09. qty128.
+
+23 Sale 5: consume newest 3@6.09 +2 from next 5@5.37? Wait stack after t22: ...5@5.37,3@6.09. Newest is 3@6.09. Sale5: consume 3@6.09, need2 from 5@5.37.
+COGS=3*6.09=18.27. +2*5.37=10.74. Total=29.01.
+Cum=6788.61+29.01=6817.62.
+Stack after t23: 2@6.12,27@8.14,91@5.12,3@5.37. qty123.
+
+24 Purchase 39@5.21: append. qty162.
+
+25 Purchase 91@5.67: append. qty253.
+Stack: 2@6.12,27@8.14,91@5.12,3@5.37,39@5.21,91@5.67.
+
+26 Sale 48:
+- consume 91@5.67? newest yes. Need 48 of 91. COGS=48*5.67 = 5.67*(50-2)=283.5-11.34=272.16. Remain43@5.67.
+Cum=6817.62+272.16=7089.78.
+
+27 Sale 155:
+- consume remaining 43@5.67: COGS=43*5.67 = 5.67*40=226.8; *3=17.01; total243.81. Need112.
+- next 39@5.21: consume39. COGS=39*5.21=203.19. Need73.
+- next 3@5.37: consume3. COGS=3*5.37=16.11. Need70.
+- next 91@5.12: consume70. COGS=70*5.12=358.40. Remain21@5.12.
+Sale27 total=243.81+203.19=447.00; +16.11=463.11; +358.40=821.51.
+Cum=7089.78+821.51=7911.29.
+
+Stack after t27: 2@6.12,27@8.14,21@5.12. qty50.
+
+28 Purchase 54@7.44: append. qty104.
+Stack: ...21@5.12,54@7.44.
+
+29 Sale 9: consume newest 54@7.44 -> 9*7.44=66.96. Remain45@7.44.
+Cum=7911.29+66.96=7978.25.
+
+30 Sale 87:
+- consume remaining 45@7.44: COGS=45*7.44 = 7.44*40=297.6; *5=37.2; total334.80. Need42.
+- next 21@5.12: consume21. COGS=21*5.12=107.52. Need21.
+- next 27@8.14: consume21. COGS=21*8.14=170.94 (8.14*20=162.8; +8.14). Remain6@8.14.
+Sale30 total=334.80+107.52=442.32; +170.94=613.26.
+Cum=7978.25+613.26=8591.51.
+
+Stack after t30: 2@6.12,6@8.14. qty8. Wait check: after t27 stack had 2@6.12,27@8.14,21@5.12. Sale30 consumed 21@5.12 and 21 from 27@8.14, leaving 6@8.14. Yes.
+
+31 Purchase 120@8.14: append. Stack: 2@6.12,6@8.14,120@8.14. qty128. Note same cost, could merge but separate.
+
+32 Sale 97:
+Consume newest:
+- 120@8.14: consume97. COGS=97*8.14 = 8.14*(100-3)=814-24.42=789.58. Remain23@8.14 (the t31 layer).
+Sale32 total=789.58.
+Cum LIFO=8591.51+789.58=9381.09.
+
+Let's check ending inventory after t32: 2@6.12 +6@8.14 +23@8.14 =2@6.12 +29@8.14. qty31. Cost=2*6.12=12.24 +29*8.14=236.06? 8.14*30=244.2 -8.14=236.06. Total ending=248.30. Total available 9629.39 - COGS 9381.09 =248.30. Matches. So LIFO COGS = 9381.09.
+
+Need be cautious: LIFO same cost 8.14 layers; t31 purchase after some 8.14 layer t5? Actually there was initial purchase t5 @8.14? Wait t5 purchase 27@8.14. That was consumed? Let's trace. At t20 consumed 29@5.83, etc. The 27@8.14 from t5 remained until t30 consumed 21 leaving 6@8.14. Then t31 purchase 120@8.14. LIFO t32 consumes newest t31 @8.14, leaving old 6@8.14 and 23@8.14. Same cost so no issue. Ending qty 29@8.14. Good.
+
+Now moving weighted-average method. Need compute perpetual moving average. Recompute average after each purchase; sales at current average. No rounding intermediate. Need COGS sum. Need track quantity and total inventory cost as exact decimal/fraction. Since costs have 2 decimals, purchases qty integer, average may have many decimals; sales qty times average. Need final cent. We can compute using exact rational: total cost / qty. Need maintain total cost after purchases and sale reductions. For moving average, sales reduce total cost by qty * avg = qty * (total cost/qty_before) = sale qty/qty_before * total cost. This may create fractions. To avoid rounding, maintain total cost as fraction maybe numerator denominator. There are many purchases/sales. But we can compute with decimal high precision manually? Need final sum. Could use alternative: Moving average COGS can be computed by tracking total inventory cost and quantity. Sales COGS = current average * sale qty; after sale inventory total cost = prior total * (1 - sale_qty/qty). Purchases add cost. Need final COGS = total available cost - ending inventory cost. We can track ending inventory cost after all transactions by sequential moving average. Maybe easier use fractions and maybe compute with calculator-like manual. Many steps (32). Need high precision. Could be tedious but doable with careful arithmetic. Need final rounded to cent. We can exploit that average changes only on purchases. Between purchases, multiple sales use same avg. Need compute.
+
+Let's list transactions. Initial qty 95 cost 581.40 avg 6.12.
+
+We need process. I can maintain quantity Q and total cost C. Purchases: C += qty*price, Q += qty. Sales: COGS += sale_qty * C/Q before. Then C -= that, Q -= sale_qty.
+
+We need final total COGS. To avoid rounding, we can compute C as decimal with many digits. Could use exact fractions for C/Q. But manual many operations. Maybe use rational with Q. Since Q changes by integers, C can be expressed as numerator over product? Hmm.
+
+Alternative: Since moving avg only changes on purchases, and sales between purchases don't change average. We can compute COGS per sale as q*avg. Need average at sale. Sales before next purchase share avg. We can compute total quantity sold between purchases and then COGS = total_sold * avg. Inventory after those sales: Q reduced, C reduced by total_sold*avg, so C = C*(1 - sold/Q). This may be manageable. We can compute using high precision decimal for C/Q. There are 16 purchases. At each purchase, update C. Need averages.
+
+Maybe use exact cents and fractions? Let's set Q and C. I can use long division for avg. But many sales quantities. Need final cent. Potential errors. Could use a spreadsheet mentally? Let's proceed carefully with high precision, perhaps keep C to 4 decimals enough? No rounding intermediate but final cent; small error maybe acceptable? Need exact. I can compute using fractions and multiply. Since quantities moderate, manual with 6 decimal precision may suffice to cent if careful? Need final rounded to cent; total COGS ~? Moving avg likely around 90xx. Error <0.005 needed. If I keep 0.001 per step maybe could accumulate. Better exact rational for each segment.
+
+Maybe there is another way: Use total cost available minus ending inventory. Ending inventory under moving average after all transactions. Could compute final average after last purchase and sales. Need process all. Since final sale after last purchase t31: average after t31, then sale97, ending qty31 at that avg. COGS = total available - ending cost (31 * avg_after_t31). Wait moving average: after last purchase t31, average computed. Then t32 sale 97 at that average. Ending inventory quantity = Q_after_t31 -97. Remaining cost = Q_end * avg_after_t31 (because sale at avg). Thus ending inventory cost = 31 * average after t31. COGS = total available 9629.39 - 31*avg_after_t31. That may be easier? Need compute average after t31, i.e., inventory state just before t32. Need process up to t31 (purchases and sales). Still many but maybe less? We need final average after t31. Could track C/Q through all transactions up to t31. Still same number but final sale t32 not needed to compute COGS if use ending. Actually COGS = total available - ending. Ending cost = 31 * avg_after_t31. So need Q and C after t31. t31 purchase then Q=128? Wait after t30 Q=8, t31 purchase 120 -> Q=128, C after t30 +976.80. Then t32 sale 97 leaves Q=31. Yes need C after t30 and avg after t31. Need process up to t30. That's all except t32. Similar.
+
+Could compute moving average using a "pool" and maybe use exact arithmetic with rational. Let's do step by step. I'll maintain Q and C. Because C is sum of costs. Sales reduce C by q*C/Q. To avoid rounding, I can keep C as decimal maybe with many digits. The Q values are not huge; average fractions have denominator Q. I can compute reductions using formula C_new = C_old * (Q_new/Q_old). Since Q_new = Q_old - sale_qty. This is exact multiplication by a rational with small denominator. I can compute C to say 6 decimals. At each step, multiply by ratio. Error may be <1e-6 per. Final cost ~9000, 30 steps error <0.00003? Actually if rounding to 6 decimals each step, error <1e-6, total <3e-5. Enough. Need manual multiplication. Could use cents? Maybe keep 6 decimals.
+
+Let's start moving average. I'll create table: after each transaction, Q, C, avg maybe. We need COGS sum too. But if using total cost - ending, only need C after t31. However, to verify, compute COGS cumulative maybe. Let's track both? Might be heavy. We can compute C sequentially.
+
+Initial: Q=95, C=581.400000, avg=6.120000.
+
+Transaction1 Purchase 92 @7.47: purchase cost 92*7.47=687.24. Q=187, C=1268.640000. Avg=1268.64/187. Compute later.
+
+2 Sale 13. Q before 187, C=1268.64. COGS=13*C/187. C_new = C*(174/187). Because Q_after=174.
+Compute C_new =1268.64 * 174 /187.
+1268.64 /187? Let's compute ratio.
+187*6.785? Actually 1268.64*(174/187) = 1268.64 - 1268.64*(13/187).
+Compute 1268.64*13 = 16492.32. /187 =? 187*88.194? Let's do exact: C_new = 1268.64*174 = 220? 1268.64*100=126864; *70=88804.8; *4=5074.56 total 220743.36? Wait 1268.64*174 = 1268.64*(200-26)=253728 - 32984.64=220743.36. Divide by187. 187*1180 =220660. Remainder83.36. So =1180.445775? Let's compute: 220743.36 /187.
+187*1180=220660, rem83.36. 83.36/187=0.4457754. So C=1180.445775. Q=174.
+COGS = initial C - C_new =1268.64-1180.445775=88.194225. Not needed.
+
+3 Sale 56. Q before174, after118. C_new = C * 118/174 = C*(59/87). C=1180.445775... Compute maybe using exact from previous? Let's do formula from initial? Could compute C_new =1268.64 * (174/187)*(118/174)=1268.64*118/187. Nice! Because consecutive sales without purchase. Indeed after sale 2&3, Q=118. C = initial after purchase * 118/187. 1268.64*118 =? 1268.64*(100+18)=126864+22835.52=149699.52. /187.
+187*800=149600, rem99.52. /187=0.5321925. So C=800.5321925? Wait 149699.52/187 = 800.532192513. Yes.
+Q=118.
+
+4 Sale 116. Q before118, after2. C_new = C * 2/118 = C/59. C=800.5321925 /59.
+59*13=767, rem33.532. 33.532/59=0.56834. Let's compute precisely: 800.532192513 /59.
+59*13.568 =? 59*13=767; 0.568*59=33.512; sum800.512. Need.
+Use exact: C after sale4 = 1268.64 * 2/187 = 2537.28/187 =? Wait consecutive from purchase t1 to after t4: Q=2, C=1268.64*2/187. Because sales 13+56+116=185; 187-185=2. Yes C = 2537.28/187. 187*13=2431, rem106.28. 106.28/187=0.568342246. So C=13.568342246. Q=2.
+
+5 Purchase 27 @8.14 =219.78. Q=29. C=13.568342246+219.78=233.348342246.
+
+6 Purchase 91 @5.12 =465.92. Q=120. C=699.268342246? Wait add 465.92 to 233.348342246 = 699.268342246.
+
+7 Purchase 83 @5.37 =445.71. Q=203. C=1144.978342246.
+
+8 Purchase 142 @7.42 =1053.64. Q=345. C=2198.618342246? Let's add: 1144.978342246 +1053.64 =2198.618342246.
+
+9 Sale 192. Q before345, after153. C_new = C * 153/345. Simplify 153/345=51/115. C=2198.618342246.
+Compute C_new = 2198.618342246 * 51 /115. Or C - 192/345*C.
+Let's calculate exact enough.
+
+C * 153 /345. First C/345? Alternatively 2198.618342246*153 = * (150+3).
+*150 = 2198.618342246*100=219861.8342246; *50=109930.9171123; sum329792.7513369.
+*3=6595.855026738.
+Total =336388.606363638.
+Divide by345. 345*975 =336375. Remainder13.606363638. /345=0.039438735. So C_new=975.039438735? Let's do: 336388.606363638 /345.
+345*975=336375 exactly. Rem 13.606363638. /345 = 0.03943873518. So C=975.039438735.
+Q=153.
+
+Check: 2198.618 *0.443478=975. yes.
+
+10 Purchase 138 @4.83 =666.54. Q=291. C=975.039438735+666.54=1641.579438735.
+
+11 Sale 10. Q before291, after281. C_new = C * 281/291. Difference = C *10/291. Compute C_new =1641.579438735 * 281 /291.
+First compute C*281 = C*(300-19)=492473.8316205 - (1641.579438735*19). *19= *20 - *1=32831.5887747 -1641.579438735=31190.009335965. Subtract: 492473.8316205 -31190.009335965=461283.822284535. Divide by291.
+291*1585 =? 291*1500=436500; *85=24735; total461235. Remainder48.822284535. /291=0.16777486. So C=1585.16777486. Let's compute more precise.
+48.822284535/291. 291*0.1678=48.8298. Slight.
+Use division: 461283.822284535 /291.
+291*1585.167 = 291*1585=461235; 291*0.167=48.597; total461283.597. rem0.225. /291=0.000773. So 1585.167773. Let's do exact:
+48.822284535 / 291.
+291 * 0.167774 = 48.825? 0.167774*300=50.3322 minus0.167774*9=1.509966 =>48.822234. rem0.0000505. /291=0.000000173. So 0.167774173. Thus C=1585.167774173. Good.
+Q=281.
+
+Alternatively C=1641.579438735*281/291. Let's compute with more precision later.
+
+12 Sale 156. Q before281, after125. C_new = C *125/281. C prior = 1641.579438735 * (281/291) * (125/281)? Wait after t11 Q=281. Sale156 -> Q=125. C_new = C_after_purchase_t10 * 125/291? Because sales t11+t12 total166, Q from291 to125. Yes C_after_t12 =1641.579438735 *125/291. Let's compute exactly from t10 purchase: C10=1641.579438735. Q=291. After sales 10+156=166, Q=125. C= C10 *125/291.
+Compute 1641.579438735 *125 = * (100+25) =164157.9438735 +41039.485968375 (since /4? 1641.579438735*25=41039.485968375) =205197.429841875.
+Divide by291. 291*705 =205155. Remainder42.429841875. /291=0.145807. 42.42984/291.
+291*0.1458=42.4278. rem0.00204. /291=0.0000070. So 0.1458070. C=705.1458070? Let's compute precisely:
+205197.429841875 /291.
+291*705.1458 = 291*705=205155; 291*0.1458=42.4278; sum205197.4278. rem0.002041875. /291=0.000007017. So 705.145807017.
+C=705.145807017. Q=125.
+
+Let's verify via t11: C11=1585.167774 *? Actually C after t12 = C11*125/281. C11=1641.579*281/291. product =1641.579*125/291 yes.
+
+13 Purchase 102 @6.09 =621.18. Q=227. C=705.145807017+621.18=1326.325807017.
+
+14 Purchase 43 @5.77 =248.11. Q=270. C=1574.435807017.
+
+15 Sale 115. Q before270, after155. C_new = C *155/270. Simplify 31/54.
+C=1574.435807017. Compute *155/270.
+C*155 = C*(100+50+5)=157443.5807017 +78721.79035085 +7872.179035085 =244037.550087635.
+Divide by270. 270*903 =243810; remainder227.550087635. /270=0.842778102. So C=903.842778102? Wait 244037.55/270 = 903.842778. Yes.
+Let's compute: 270*903.842778 = 243? 903*270=243810. Remainder 227.550. 227.55/270=0.842778. So C=903.842778102.
+Q=155.
+
+16 Purchase 81 @5.30 =429.30. Q=236. C=1333.142778102.
+
+17 Sale 8. Q before236, after228. C_new = C *228/236 = *57/59.
+C=1333.142778102.
+Compute C*57/59. Difference 2/59.
+C*57 = C*(60-3)=79988.56668612 -3999.428334306=75989.138351814.
+Divide by59. 59*1288 =759? 1288*59 =1288*(60-1)=77280-1288=75992. Slight.
+Let's compute directly: 1333.142778102 * 228 /236.
+First C/236? Or use C*228 = C*(200+28)=266628.5556204 + (1333.142778102*28=37327.997786856) =303956.553407256.
+Divide by236. 236*1288 =303? 1288*236=1288*(200+36)=257600+46368=303968. Too high. Try 1287.95.
+236*1287 =303? 1287*236=257400+46332=303732. Remainder224.5534. /236=0.9515. So 1287.951497? Let's do exact using 57/59:
+1333.142778102*57 =?
+1333.142778102 * 50 =66657.1389051
+*7=9331.999446714
+sum75989.138351814. Divide 59.
+59*1287 = 759? 1287*60=77220 -1287=75933. Remainder56.138351814. /59=0.951497488. So C=1287.951497488.
+Q=228.
+
+18 Purchase 29 @5.83 =169.07. Q=257. C=1457.021497488.
+
+19 Purchase 121 @6.52 =788.92. Q=378. C=2245.941497488.
+
+20 Sale 188. Q before378, after190. C_new = C *190/378 = *95/189.
+C=2245.941497488.
+Compute C*95 = C*(100-5)=224594.1497488 -11229.70748744 =213364.44226136.
+Divide by189. 189*1128 =? 189*(1100=207900; +28=5292) total213192. Remainder172.44226136. /189=0.912393976. So C=1128.912393976? Wait 213364.44/189 = 1128.912? Check 189*1128=213192; remainder172.44; /189=0.9124. Sum 1128.9124. Yes.
+Q=190.
+
+Let's compute more precise: 172.44226136/189.
+189*0.9124 =172.4436? 0.9124*200=182.48 -0.9124*11=10.0364 =>172.4436. Slight high by0.0013386. So 0.9123929. C=1128.9123929.
+Good.
+
+21 Purchase 146 @7.91 =1154.86. Q=336. C=2283.7723929? Add: 1128.9123929+1154.86=2283.7723929.
+
+Let's refine C20 before add. C20 =2245.941497488 *95/189.
+Compute 2245.941497488*95 = 213364.44226136.
+Divide by189 exactly: 189*1128 =213192. Rem172.44226136.
+172.44226136/189:
+189*0.912 =172.368; rem0.07426136.
+rem/189=0.000392918.
+So 0.912392918. Thus C=1128.912392918.
+Add 1154.86 =2283.772392918.
+
+22 Sale 208. Q before336, after128. C_new = C *128/336 = *8/21? 128/336=8/21 yes.
+C=2283.772392918.
+Compute C*8/21 = C*8=18270.179143344 /21.
+21*870 =18270. Remainder0.179143344. /21=0.008530635. So C=870.008530635.
+Q=128.
+
+23 Sale 5. Q before128, after123. C_new = C *123/128.
+C=870.008530635.
+Compute C*123 = C*(100+20+3)=87000.8530635 +17400.1706127 +2610.025591905 =107011.049268105.
+Divide by128. 128*836 =107008. Remainder3.049268105. /128=0.023822407. So C=836.023822407.
+Q=123.
+
+24 Purchase 39 @5.21 =203.19. Q=162. C=1039.213822407.
+
+25 Purchase 91 @5.67 =515.97. Q=253. C=1555.183822407.
+
+26 Sale 48. Q before253, after205. C_new = C *205/253.
+C=1555.183822407.
+Compute C*205 = C*(200+5)=311036.7644814 +7775.919112035 =318812.683593435.
+Divide by253. 253*1260 =318780. Remainder32.683593435. /253=0.129184164. So C=1260.129184164? Wait 318812/253 =1260.129. Yes.
+Q=205.
+
+Let's compute: 253*1260=318780. Remainder32.683593435. /253:
+253*0.129=32.637; rem0.0466; /253=0.000184. So 0.129184. C=1260.129184164.
+
+27 Sale 155. Q before205, after50. C_new = C *50/205 = *10/41.
+C=1260.129184164.
+*10=12601.29184164 /41.
+41*307 =12587. Remainder14.29184164. /41=0.348581504. So C=307.348581504? Wait 12601/41=307.348. Yes.
+Q=50.
+
+28 Purchase 54 @7.44 =401.76. Q=104. C=709.108581504.
+
+29 Sale 9. Q before104, after95. C_new = C *95/104.
+C=709.108581504.
+Compute *95 = C*(100-5)=70910.8581504 -3545.54290752=67365.31524288.
+Divide by104. 104*647=67288. Remainder77.31524288. /104=0.743415797. So C=647.743415797.
+Q=95.
+
+30 Sale 87. Q before95, after8. C_new = C *8/95.
+C=647.743415797.
+*8=5181.947326376. /95.
+95*54=5130. Remainder51.947326376. /95=0.546813962. So C=54.546813962.
+Q=8.
+
+31 Purchase 120 @8.14 =976.80. Q=128. C=1031.346813962.
+
+32 Sale 97. Q before128, after31. If we need COGS, sale at avg after t31 = C/Q =1031.346813962 /128. COGS sale=97*avg. Ending C = C*31/128 =1031.346813962*31/128.
+Let's compute ending cost and COGS.
+
+C_after31 = 1031.346813962.
+Ending C = C *31/128.
+Compute C*31 = C*(30+1)=30940.40441886 +1031.346813962 =31971.751232822.
+Divide by128. 128*249 =31872. Remainder99.751232822. /128=0.779306506. So ending C =249.779306506.
+Then total COGS moving avg = total available 9629.39 - ending =9629.39 -249.779306506 =9379.610693494. Rounded to cent =9379.61.
+
+Alternatively COGS sale 97 = C - ending =1031.346813962 -249.779306506=781.567507456. Need cumulative COGS before t32? Let's verify with sum maybe. If final COGS = total available - ending =9379.6107. Need check our C after t31. Could also compute cumulative COGS from previous steps to validate. Let's compute total COGS before t32 = total available cost up to t31 - C_after31? Up to t31, total available cost = initial + purchases t1..t31 =9629.39 - cost t? Wait t32 no purchase, total available including t31 =9629.39. After t31 inventory C=1031.3468. COGS through t31 = total available - C_after31 =9629.39 -1031.346813962 =8598.043186038. Then t32 COGS=781.567507456. Total=9379.610693494. Yes.
+
+Need ensure moving average C calculations accurate. Let's verify by recalculating moving average steps more rigorously, maybe there are arithmetic mistakes. Since final depends on C after t31. We can cross-check by computing cumulative COGS per purchase segment with averages. Or use exact rational with all purchases? Let's audit moving average step by step carefully. It is easy to make an arithmetic error. We'll redo from start with a more systematic exact fraction or high precision. Use maybe maintain C as exact rational in terms of after each purchase. I'll verify key steps.
+
+Let's create a table with Q and C after each purchase/sale. I'll recalc using fractions where possible.
+
+Initial Q=95 C=581.4.
+
+t1 purchase +687.24 => Q=187 C=1268.64.
+
+t2 sale13, t3 sale56, t4 sale116 total sales=185, Q=2. C =1268.64 * (2/187). Compute 1268.64*2=2537.28 /187.
+187*13=2431, rem106.28. 106.28/187=0.56834224599. C=13.568342246. Good.
+
+t5 purchase 27@8.14=219.78 -> Q=29 C=233.348342246.
+
+t6 +91*5.12=465.92 -> Q=120 C=699.268342246. (233.348342246+465.92=699.268342246 yes)
+
+t7 +83*5.37. 83*5=415; 83*0.37=30.71; total445.71. Q=203 C=1144.978342246.
+
+t8 +142*7.42. 142*7=994; *0.42=59.64; total1053.64. Q=345 C=2198.618342246.
+
+t9 sale192, Q=153. C = C*153/345.
+Let's recompute precisely:
+2198.618342246 *153 = *100 219861.8342246
+*50 109930.9171123
+*3 6595.855026738
+Sum for 153 = *100+*50+*3 =219861.8342246+109930.9171123=329792.7513369; +6595.855026738=336388.606363638. Divide 345.
+345*975=336375. Remainder 13.606363638.
+13.606363638/345 = 0.03943873518 (since 13.6/345=0.03942). So C=975.039438735. Good.
+
+t10 +138*4.83. 138*4=552; *0.83=114.54; total666.54. Q=291. C=1641.579438735.
+
+t11+t12 sales 10+156=166, Q from291 to125. C =1641.579438735 *125/291.
+Compute 1641.579438735*125 = 1641.579438735*100=164157.9438735; *25=41039.485968375; sum205197.429841875.
+Divide 291. Let's compute using long division:
+291*705=205155. Remainder42.429841875.
+42.429841875/291. 291*0.1458=42.4278. remainder0.002041875.
+0.002041875/291=0.00000701675.
+So 0.14580701675. C=705.14580701675. Good.
+
+t13 +102*6.09. 6.09*100=609; *2=12.18; total621.18. Q=227. C=1326.32580701675.
+
+t14 +43*5.77. 5.77*40=230.8; *3=17.31; total248.11. Q=270. C=1574.43580701675.
+
+t15 sale115, Q=155. C = C*155/270.
+Compute 1574.43580701675*155 = *100 157443.580701675
+*50 78721.7903508375
+*5 7872.17903508375
+Sum *100+*50=236165.3710525125; +*5=244037.55008759625. Divide 270.
+270*903=243810. Remainder227.55008759625.
+227.55008759625/270=0.842778102208. C=903.842778102208. (Earlier 903.842778102). Good.
+
+t16 +81*5.30=429.30. Q=236. C=1333.142778102208.
+
+t17 sale8, Q=228. C = C*228/236 = *57/59.
+Compute 1333.142778102208*57:
+*50=66657.1389051104
+*7=9331.99944671546
+sum75989.1383518259.
+Divide by59.
+59*1287=75933. Remainder56.1383518259.
+56.1383518259/59. 59*0.951=56.109; rem0.02935; /59=0.0004975. Let's compute: 56.1383518259/59 =0.95149748858 (since 59*0.951497488=56.138351792). So C=1287.95149748858.
+Q=228. Good.
+
+t18 +29*5.83. 5.83*30=174.9-5.83=169.07. Q=257. C=1457.02149748858.
+
+t19 +121*6.52. 6.52*100=652; *20=130.4; *1=6.52; total788.92. Q=378. C=2245.94149748858.
+
+t20 sale188, Q=190. C = C*190/378 = *95/189.
+Compute C*95 = C*(100-5)=224594.149748858 -11229.7074874429 =213364.442261415.
+Divide 189.
+189*1128=213192. Remainder172.442261415.
+172.442261415/189. 189*0.912=172.368; rem0.074261415.
+0.074261415/189=0.0003929186.
+So 0.9123929186. C=1128.9123929186. Good.
+
+t21 +146*7.91. 7.91*100=791; *40=316.4; *6=47.46; total1154.86. Q=336. C=2283.7723929186.
+
+t22 sale208, Q=128. C = C*128/336 = *8/21.
+Compute C*8=18270.1791433488.
+Divide 21. 21*870=18270. Remainder0.1791433488.
+0.1791433488/21=0.008530635657. C=870.008530635657.
+Q=128. Good.
+
+t23 sale5, Q=123. C = C*123/128.
+C=870.008530635657.
+Compute C*123:
+*100=87000.8530635657
+*20=17400.1706127131
+*3=2610.02559190697
+Sum=107011.0492681858.
+Divide 128.
+128*836=107008. Remainder3.0492681858.
+3.0492681858/128=0.02382240770.
+C=836.02382240770.
+Q=123. Good.
+
+t24 +39*5.21. 5.21*40=208.4-5.21=203.19. Q=162. C=1039.21382240770.
+
+t25 +91*5.67. 5.67*90=510.3; +5.67=515.97. Q=253. C=1555.18382240770.
+
+t26 sale48, Q=205. C = C*205/253.
+C=1555.18382240770.
+Compute *205 = *200 311036.76448154; *5 7775.9191120385; sum318812.6835935785.
+Divide 253.
+253*1260=318780. Remainder32.6835935785.
+32.6835935785/253. 253*0.129=32.637; rem0.0465935785.
+0.0465935785/253=0.00018416434.
+So 0.12918416434. C=1260.12918416434.
+Q=205. Good.
+
+t27 sale155, Q=50. C = C*50/205 = *10/41.
+C*10=12601.2918416434.
+Divide 41.
+41*307=12587. Remainder14.2918416434.
+14.2918416434/41=0.3485815035.
+C=307.3485815035.
+Q=50. Good.
+
+t28 +54*7.44. 7.44*50=372; *4=29.76; total401.76. Q=104. C=709.1085815035.
+
+t29 sale9, Q=95. C = C*95/104.
+C*95 = C*(100-5)=70910.85815035 -3545.5429075175 =67365.3152428325.
+Divide 104.
+104*647=67288. Remainder77.3152428325.
+77.3152428325/104=0.74341579647. C=647.74341579647.
+Q=95. Good.
+
+t30 sale87, Q=8. C = C*8/95.
+C*8=5181.9473263718.
+Divide 95.
+95*54=5130. Remainder51.9473263718.
+51.9473263718/95=0.54681396181. C=54.5468139618.
+Q=8. Good.
+
+t31 +120*8.14. 8.14*100=814; *20=162.8; total976.8. Q=128. C=1031.3468139618.
+
+t32 sale97, Q=31. Ending C = C*31/128.
+C*31 = C*30=30940.404418854; +C=1031.3468139618 =>31971.7512328158.
+Divide 128.
+128*249=31872. Remainder99.7512328158.
+99.7512328158/128=0.77930650637. C_end=249.77930650637.
+COGS total = 9629.39 - 249.77930650637 = 9379.61069349363. Round 9379.61.
+
+So moving avg = 9379.61.
+
+Need final answer three amounts FIFO, LIFO, moving weighted average. FIFO 9377.05, LIFO 9381.09, moving avg 9379.61. Need ensure order as (1) FIFO, (2) LIFO, (3) moving. So "9377.05, 9381.09, 9379.61".
+
+But before final, let's double-check FIFO and LIFO with possible errors. We validated FIFO ending inventory and total. LIFO ending inventory after full simulation. Let's do a full cross-check for LIFO via total available minus ending. We got ending 2@6.12 +29@8.14 = 12.24+236.06=248.30. Total available 9629.39 -> 9381.09. Let's verify LIFO ending by independent method or recalc LIFO COGS cumulative. We did step. Check key LIFO transactions.
+
+Re-simulate LIFO maybe from t20 onward because error possible. Let's audit LIFO fully using stack.
+
+Initial [95@6.12]
+t1 +92@7.47
+t2 sale13: pop 92 -> 79@7.47. COGS 97.11.
+t3 sale56: 23@7.47 left. COGS 418.32. Cum 515.43.
+t4 sale116: pop 23@7.47 (171.81), pop 93@6.12 (569.16), initial 2@6.12. Cum 1256.40. Stack [2@6.12]. Correct.
+
+t5 +27@8.14 -> [2@6.12,27@8.14]
+t6 +91@5.12 -> [2,27@8.14,91@5.12]
+t7 +83@5.37
+t8 +142@7.42
+t9 sale192: pop 142@7.42=1053.64; need50 pop 83@5.37 -> 50*5.37=268.50; remain33@5.37. Sale9=1322.14. Cum 2578.54. Stack [2@6.12,27@8.14,91@5.12,33@5.37]. Q=2+27+91+33=153. Good.
+
+t10 +138@4.83 -> Q291.
+t11 sale10: pop 138@4.83 => 128 left. COGS 48.30. Cum2626.84.
+t12 sale156: pop 128@4.83 =618.24. Need28 pop 33@5.37 ->28*5.37=150.36. remain5@5.37. Sale12=768.60. Cum3395.44. Stack [2@6.12,27@8.14,91@5.12,5@5.37]. Q125. Good.
+
+t13 +102@6.09 -> [..5@5.37,102@6.09]
+t14 +43@5.77 -> top43@5.77.
+t15 sale115: pop43@5.77=248.11. Need72 pop102@6.09 ->72*6.09=438.48. remain30@6.09. Sale15=686.59. Cum4082.03. Stack [2,27,91,5,30@6.09]. Q155. Good.
+
+t16 +81@5.30 -> top81.
+t17 sale8: pop8@5.30=42.40. remain73@5.30. Cum4124.43.
+t18 +29@5.83.
+t19 +121@6.52.
+Stack: 2@6.12,27@8.14,91@5.12,5@5.37,30@6.09,73@5.30,29@5.83,121@6.52. Q378? Sum:2+27=29;+91=120;+5=125;+30=155;+73=228;+29=257;+121=378. yes.
+
+t20 sale188: pop121@6.52=788.92 need67; pop29@5.83=169.07 need38; pop73@5.30=38*5.30=201.40 remain35@5.30. Sale=1159.39. Cum=4124.43+1159.39=5283.82. Stack: 2,27,91,5,30,35@5.30. Q190. Sum 2+27+91+5+30+35=190. Good.
+
+t21 +146@7.91. Stack top146.
+t22 sale208: pop146@7.91 =? 146*7.91. Compute 7.91*100=791; *40=316.4; *6=47.46; total1154.86. Need62.
+pop35@5.30=185.50 need27.
+pop30@6.09: 27*6.09=164.43 remain3@6.09.
+Sale22=1154.86+185.50=1340.36+164.43=1504.79. Cum=5283.82+1504.79=6788.61.
+Stack: 2@6.12,27@8.14,91@5.12,5@5.37,3@6.09. Q=2+27+91+5+3=128. Good.
+
+t23 sale5: pop3@6.09=18.27 need2 pop5@5.37=10.74. remain3@5.37. Sale=29.01. Cum6817.62.
+Stack: 2,27,91,3@5.37. Q=123. Good.
+
+t24 +39@5.21. Stack top39.
+t25 +91@5.67. top91.
+Stack: 2,27,91,3,39,91. Q=253.
+
+t26 sale48: pop91@5.67 -> 48*5.67=272.16. remain43@5.67. Cum6817.62+272.16=7089.78. Q205.
+
+t27 sale155: pop43@5.67 = 43*5.67. 5.67*40=226.8; *3=17.01; total243.81. Need112.
+pop39@5.21=203.19 need73.
+pop3@5.37=16.11 need70.
+pop91@5.12=70*5.12=358.40 remain21@5.12.
+Sale27=243.81+203.19=447.00; +16.11=463.11; +358.40=821.51. Cum=7089.78+821.51=7911.29.
+Stack after: 2@6.12,27@8.14,21@5.12. Q=50. yes.
+
+t28 +54@7.44. Q104.
+t29 sale9: pop54@7.44 -> 9*7.44=66.96. remain45@7.44. Cum=7911.29+66.96=7978.25.
+t30 sale87: pop45@7.44 = 45*7.44=334.80. Need42.
+pop21@5.12=107.52 need21.
+pop27@8.14=21*8.14=170.94 remain6@8.14.
+Sale30=334.80+107.52=442.32; +170.94=613.26. Cum=7978.25+613.26=8591.51.
+Stack after: 2@6.12,6@8.14. Q8. yes.
+
+t31 +120@8.14. Stack: 2@6.12,6@8.14,120@8.14. Q128.
+t32 sale97: pop120@8.14 -> 97*8.14=789.58. remain23@8.14. Cum=8591.51+789.58=9381.09. Ending: 2@6.12,6@8.14,23@8.14. Sum cost 12.24+48.84+187.22=248.30. Total available 9629.39 -248.30 =9381.09. Good.
+
+FIFO audit maybe we did. Let's re-simulate FIFO quickly to ensure no mistake. Since final FIFO = total available - ending. Ending after FIFO we had 31@8.14 from t31? Wait FIFO after t32 remaining 31@8.14. Let's verify final FIFO ending quantity and cost. Under FIFO, sales consume oldest, ending should be newest 31 units. Last purchase t31 120@8.14, after sale32 89 consumed, remaining31@8.14. But wait there was t28 purchase 54@7.44, t25 etc. At t30 we had after sale30 8@7.44 remaining. t31 purchase 120@8.14. t32 sale97 consumes oldest: first 8@7.44 then 89@8.14, leaving31@8.14. Yes ending 31@8.14=252.34. So FIFO COGS =9629.39-252.34=9377.05. Good.
+
+Moving average final ending 31 units at average after t31. We computed 249.779, which is less than FIFO ending because average less? LIFO ending 248.30, moving avg 249.78, FIFO 252.34. COGS accordingly LIFO highest 9381.09, moving 9379.61, FIFO 9377.05. Seems plausible.
+
+Need final answer format plain decimal numbers separated by commas. The prompt: "Give the 3 amounts in dollars, rounded to the cent, as plain decimal numbers separated by commas. ... finish with final line ANSWER: <your answer>."
+
+So final line: ANSWER: 9377.05, 9381.09, 9379.61
+
+Need ensure no extra. Use final.
