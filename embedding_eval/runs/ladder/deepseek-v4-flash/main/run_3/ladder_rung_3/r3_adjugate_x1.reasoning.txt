@@ -1,0 +1,495 @@
+We are asked to compute the adjugate (classical adjoint) of a given 6x6 integer matrix A. That is, adj(A) = C^T, where C is the cofactor matrix. Then A * adj(A) = det(A) * I.
+
+We need to output all 36 entries of adj(A) as a comma-separated list, row by row.
+
+We could compute directly using cofactors, but that would be tedious by hand. However, since it's a 6x6 matrix, we might find det(A) and then compute adj(A) using the relation A^{-1} = adj(A)/det(A). So if we can compute the inverse of A (maybe using Gaussian elimination) and multiply by det(A), we get adj(A). But computing inverse of 6x6 integer matrix by hand is heavy, but possible with systematic elimination. Alternatively, we can compute all cofactors: each cofactor is (-1)^{i+j} times the determinant of the 5x5 minor. That's 36 determinants of 5x5 matrices. That's a lot of work by hand. However, maybe there are symmetries or simpler methods. Could use row/column operations to reduce A to something simpler, then compute adjugate via properties? But adjugate is not easily computed via row operations; it's better to compute inverse using elimination and then multiply by determinant.
+
+Since the matrix is given, and likely has some structure, we could attempt to compute det(A) first. Then compute A^{-1} via solving linear systems or using row reduction. We can do it step by step, but we need to be careful with arithmetic.
+
+Let's denote A. I'll copy it:
+
+A = 
+[1,   2,  -2,  -2,   2,   0]
+[1,   1,   0,  -1,   3,  -2]
+[2,   5,  -5,  -7,   2,   0]
+[2,   5,  -4,  -8,   0,  -3]
+[2,   4,  -4,  -5,   3,   1]
+[-1,  0,  -1,  -2,  -3,   3]
+
+We can compute det(A) maybe via row reduction to upper triangular form, keeping track of row swaps and scaling. Since we need integer arithmetic, we can perform Gaussian elimination with integer operations (keeping fractions maybe). Alternatively, compute determinant using elimination without fractions (e.g., using Bareiss algorithm). But doing by hand, we can do elimination with rational numbers.
+
+Better: Use a systematic approach: I'll treat A as an augmented matrix for inversion: [A | I]. Then perform row operations to reduce A to I, and the right side becomes A^{-1}. Then the adjugate is det(A) * A^{-1}. But we need det(A) as well. However, during elimination we can also compute det(A) as product of pivots (with sign changes from row swaps). So we can do both. Since A is 6x6, we can do it by hand carefully. Let's attempt.
+
+Write the augmented matrix (A | I). I'll use fractions if needed, but we can keep integers by using row operations that maintain integer entries? It's easier to use fractions. But we need exact rational numbers. The final adj(A) will be integer (since A is integer, its adjugate is integer). So we can do elimination with rational numbers, then multiply by det(A) to get integers.
+
+Alternatively, we can compute the inverse using the formula for adjugate via cofactors: Maybe we can compute minors systematically? That might be even more work. Perhaps we can compute det(A) first by, say, using Laplace expansion along a row/column with many zeros or using row operations to simplify.
+
+Let's look at A. Notice that some rows/columns have patterns. For instance, row3 and row4 are similar: row3 = [2,5,-5,-7,2,0]; row4 = [2,5,-4,-8,0,-3]. Row5: [2,4,-4,-5,3,1]. Row1: [1,2,-2,-2,2,0]. Row2: [1,1,0,-1,3,-2]. Row6: [-1,0,-1,-2,-3,3].
+
+We could try to compute determinant by performing row operations that do not change determinant (or change sign if swapping). We aim to simplify.
+
+Let's denote rows R1..R6.
+
+We could try to eliminate entries in first column below R1. But R1 has 1 in (1,1). Good. So we can use R1 as pivot.
+
+Perform operations:
+
+R2 <- R2 - R1 (since R2[1]=1, R1[1]=1): new R2: (1-1=0, 1-2=-1, 0-(-2)=2? Wait careful: R2 orig: [1,1,0,-1,3,-2]; subtract R1: [1,2,-2,-2,2,0] => new R2: [0, -1, 2, 1, 1, -2]. Because: 1-1=0; 1-2=-1; 0-(-2)=2; -1-(-2)=1; 3-2=1; -2-0=-2.
+
+R3 <- R3 - 2*R1 (since R3[1]=2): R3 orig: [2,5,-5,-7,2,0]; minus 2*R1: [2,4,-4,-4,4,0] => new R3: [0,1,-1,-3,-2,0]. Because: 5-4=1; -5-(-4)=-1; -7-(-4)=-3; 2-4=-2; 0-0=0.
+
+R4 <- R4 - 2*R1: R4 orig: [2,5,-4,-8,0,-3]; minus 2*R1: [2,4,-4,-4,4,0] => new R4: [0,1,0,-4,-4,-3]. Because: 5-4=1; -4-(-4)=0; -8-(-4)=-4; 0-4=-4; -3-0=-3.
+
+R5 <- R5 - 2*R1: R5 orig: [2,4,-4,-5,3,1]; minus 2*R1: [2,4,-4,-4,4,0] => new R5: [0,0,0,-1,-1,1]. Because: 4-4=0; -4-(-4)=0; -5-(-4)=-1; 3-4=-1; 1-0=1.
+
+R6 <- R6 - (-1)*R1? Actually R6[1] = -1, so we can do R6 <- R6 + R1 (since -1 - (-1?) Wait, we want to eliminate column1. Original R6: [-1,0,-1,-2,-3,3]. Adding R1: [1,2,-2,-2,2,0] gives [0,2,-3,-4,-1,3]. Actually: -1+1=0; 0+2=2; -1+(-2)=-3; -2+(-2)=-4; -3+2=-1; 3+0=3. So new R6: [0,2,-3,-4,-1,3].
+
+So after first elimination, we have:
+
+R1: [1,2,-2,-2,2,0]
+R2: [0,-1,2,1,1,-2]
+R3: [0,1,-1,-3,-2,0]
+R4: [0,1,0,-4,-4,-3]
+R5: [0,0,0,-1,-1,1]
+R6: [0,2,-3,-4,-1,3]
+
+Now we need to eliminate column2 below R2, but careful: The pivot for column2 is the second row's second element: -1. We can optionally swap rows to have a non-zero pivot (it's -1). So we proceed with R2 as pivot. We'll eliminate entries in column2 for rows 3,4,5,6.
+
+First, note R5 already has 0 in column2, so skip.
+
+Operations:
+
+R3 <- R3 + R2? Because R3[2]=1, pivot=-1, so we can do R3 <- R3 + R2 to zero: R3 + R2: [0,1+(-1)=0, -1+2=1, -3+1=-2, -2+1=-1, 0+(-2)=-2]. So new R3: [0,0,1,-2,-1,-2].
+
+Alternatively, we could do R3 <- R3 - (1/(-1)) * R2? But using integer ops: R3 + R2 works because 1 + (-1) =0. Good.
+
+R4 <- R4 + R2? R4[2]=1, so R4 + R2: [0,1+(-1)=0, 0+2=2, -4+1=-3, -4+1=-3, -3+(-2)=-5]. So new R4: [0,0,2,-3,-3,-5].
+
+R6: R6[2]=2, pivot=-1, so we can do R6 <- R6 + 2*R2? Because 2 + 2*(-1) = 0. So R6 + 2*R2: R6: [0,2,-3,-4,-1,3]; 2*R2: [0,-2,4,2,2,-4]; sum: [0,0,1,-2,1,-1]. So new R6: [0,0,1,-2,1,-1].
+
+R5 remains [0,0,0,-1,-1,1].
+
+Now matrix after column2 elimination:
+
+R1: [1,2,-2,-2,2,0]
+R2: [0,-1,2,1,1,-2]
+R3: [0,0,1,-2,-1,-2]
+R4: [0,0,2,-3,-3,-5]
+R5: [0,0,0,-1,-1,1]
+R6: [0,0,1,-2,1,-1]
+
+Now we need to eliminate column3. Our pivot row is R3 (third row, third column = 1). We'll eliminate entries in column3 for rows 4 and 6 (since R5 has 0 in column3). Also note that R2 has a 2 in column3, but we don't eliminate above the pivot? Actually the standard Gaussian elimination to get upper triangular (row echelon) we only eliminate below the pivot. For inverse, we typically do forward elimination then back substitution. For determinant, we only need upper triangular. For inverse, we can do Gauss-Jordan eliminating both below and above. But we can proceed with forward elimination to get upper triangular, then later back substitution to get reduced row echelon. However, for the inverse we need to keep track of the right side. I'll continue forward elimination to produce an upper triangular matrix (zeros below diagonal). Then we can compute det as product of diagonal entries (with sign from row swaps). Then we can continue with back elimination to get inverse.
+
+We have:
+
+R4: column3 = 2, pivot=1, so R4 <- R4 - 2*R3: R4 - 2*R3: [0,0,2-2*1=0, -3 -2*(-2)= -3 +4 =1, -3 -2*(-1)= -3+2=-1, -5 -2*(-2)= -5+4=-1]. So new R4: [0,0,0,1,-1,-1].
+
+R6: column3 = 1, so R6 <- R6 - 1*R3: R6 - R3: [0,0,1-1=0, -2 - (-2)=0, 1 - (-1)=2, -1 - (-2)=1]. Actually compute: R6: [0,0,1,-2,1,-1]; R3: [0,0,1,-2,-1,-2]; subtract: [0,0,0,0,2,1]. So new R6: [0,0,0,0,2,1].
+
+R5 remains: [0,0,0,-1,-1,1].
+
+Now matrix after column3 elimination:
+
+R1: [1,2,-2,-2,2,0]
+R2: [0,-1,2,1,1,-2]
+R3: [0,0,1,-2,-1,-2]
+R4: [0,0,0,1,-1,-1]
+R5: [0,0,0,-1,-1,1]
+R6: [0,0,0,0,2,1]
+
+Now we need to eliminate column4. Pivot row is R4 (row4, column4=1). Eliminate entries in column4 below: R5 has -1 in column4. So R5 <- R5 + R4? Because -1 + 1=0. So R5 + R4: [0,0,0,-1+1=0, -1+(-1)= -2, 1+(-1)=0]. So new R5: [0,0,0,0,-2,0]. R6 has 0 in column4 already.
+
+Now matrix:
+
+R1: [1,2,-2,-2,2,0]
+R2: [0,-1,2,1,1,-2]
+R3: [0,0,1,-2,-1,-2]
+R4: [0,0,0,1,-1,-1]
+R5: [0,0,0,0,-2,0]
+R6: [0,0,0,0,2,1]
+
+Now column5: pivot row is R5 (row5, column5 = -2). Eliminate below: R6 has 2 in column5. So we do R6 <- R6 + R5? Because 2 + (-2) =0? Actually to eliminate, we need to add 1*R5? Let's compute: pivot = -2. To zero R6[5]=2, we can do R6 <- R6 + (2/2)*R5? But careful: we want to use integer operations. Since pivot is -2, we can multiply R5 by 1 and add to R6? That would give 2 + (-2)=0. So R6 <- R6 + R5: R6 + R5: [0,0,0,0,2+(-2)=0, 1+0=1]. So new R6: [0,0,0,0,0,1].
+
+Now matrix is upper triangular (with nonzero diagonal entries after row swaps? We haven't swapped any rows so far; we used row operations of adding multiples without swapping. So the diagonal entries are: R1[1]=1, R2[2]=-1, R3[3]=1, R4[4]=1, R5[5]=-2, R6[6]=1. The product = 1 * (-1) * 1 * 1 * (-2) * 1 = 2. Since we performed only row addition operations (which do not change determinant), the determinant of A is the product of these diagonal entries, i.e., det(A)=2. But we should check if we performed any row swaps? None. Also row operations of adding a multiple of one row to another do not change determinant. So det(A)=2.
+
+Double-check: Possibly we might have made an arithmetic error. Let's verify quickly by another method? Could compute determinant using Laplace expansion or using a tool mentally? But we can trust the elimination for now, but careful: The elimination we did used row operations that are allowed: R2 <- R2 - R1, R3 <- R3 - 2R1, etc. Those are adding multiples, determinant unchanged. Then later operations like R3 <- R3 + R2, etc., also adding multiples, determinant unchanged. So the determinant is product of the pivots after forward elimination, provided we didn't multiply rows by scalars. We did not multiply rows by scalars; we only added multiples. So yes, det = product of diagonal entries of the upper triangular matrix we obtained. That product is 1 * (-1) * 1 * 1 * (-2) * 1 = 2. So det(A)=2.
+
+Now we need adj(A). Since A * adj(A) = det(A) I = 2 I, then adj(A) = 2 A^{-1}. So we can compute A^{-1} (the inverse) and then multiply each entry by 2 to get adj(A). Since A is integer, A^{-1} might have fractions with denominator 2? Actually det(A)=2 so A^{-1} = (1/2) adj(A). Since adj(A) is integer, A^{-1} will have entries that are half-integers. So we can compute A^{-1} by performing Gauss-Jordan elimination on [A | I] and then multiply by 2 to get adj(A). Alternatively, we can compute the inverse directly and then multiply by 2. But we already have the forward elimination done; we can continue with back substitution to obtain the inverse. We need to keep track of the right-hand side (the identity matrix). We have been transforming the left side; we must apply the same row operations to the identity matrix on the right. So we should set up the augmented matrix [A | I] and perform the same row operations we did on A to reduce it to I, and the right side becomes A^{-1}. Since we already performed forward elimination on A to an upper triangular form, we should also apply these operations to I. Let's do that systematically.
+
+We start with [A | I], I being 6x6 identity. We'll record the operations step by step. I'll denote the augmented matrix as 6x12. We'll keep track of the right half as we apply row operations.
+
+Step 0: Original A and I:
+
+A:
+R1: [1,2,-2,-2,2,0]
+R2: [1,1,0,-1,3,-2]
+R3: [2,5,-5,-7,2,0]
+R4: [2,5,-4,-8,0,-3]
+R5: [2,4,-4,-5,3,1]
+R6: [-1,0,-1,-2,-3,3]
+
+I:
+R1: [1,0,0,0,0,0]
+R2: [0,1,0,0,0,0]
+R3: [0,0,1,0,0,0]
+R4: [0,0,0,1,0,0]
+R5: [0,0,0,0,1,0]
+R6: [0,0,0,0,0,1]
+
+Now apply operations:
+
+1. R2 <- R2 - R1: update R2 of A as we did: new A2 = [0,-1,2,1,1,-2]; and I2 <- I2 - I1 = [0-1,1-0,0-0,0-0,0-0,0-0] = [-1,1,0,0,0,0].
+
+2. R3 <- R3 - 2*R1: new A3 = [0,1,-1,-3,-2,0]; I3 <- I3 - 2*I1 = [0-2,0-0,1-0,0-0,0-0,0-0] = [-2,0,1,0,0,0].
+
+3. R4 <- R4 - 2*R1: new A4 = [0,1,0,-4,-4,-3]; I4 <- I4 - 2*I1 = [0-2,0-0,0-0,1-0,0-0,0-0] = [-2,0,0,1,0,0].
+
+4. R5 <- R5 - 2*R1: new A5 = [0,0,0,-1,-1,1]; I5 <- I5 - 2*I1 = [0-2,0-0,0-0,0-0,1-0,0-0] = [-2,0,0,0,1,0].
+
+5. R6 <- R6 + R1: because we did R6 + R1 (since -1+1=0). new A6 = [0,2,-3,-4,-1,3]; I6 <- I6 + I1 = [0+1,0+0,0+0,0+0,0+0,1+0] = [1,0,0,0,0,1].
+
+Now after these operations, the augmented matrix (left part) is:
+
+R1: [1,2,-2,-2,2,0 | 1,0,0,0,0,0] (I1 unchanged)
+R2: [0,-1,2,1,1,-2 | -1,1,0,0,0,0]
+R3: [0,1,-1,-3,-2,0 | -2,0,1,0,0,0]
+R4: [0,1,0,-4,-4,-3 | -2,0,0,1,0,0]
+R5: [0,0,0,-1,-1,1 | -2,0,0,0,1,0]
+R6: [0,2,-3,-4,-1,3 | 1,0,0,0,0,1]
+
+Now we performed the column2 eliminations:
+
+6. R3 <- R3 + R2: (since we did R3 + R2 to zero column2). new A3: [0,0,1,-2,-1,-2]; I3 <- I3 + I2 = [-2,0,1,0,0,0] + [-1,1,0,0,0,0] = [-3,1,1,0,0,0].
+
+7. R4 <- R4 + R2: new A4: [0,0,2,-3,-3,-5]; I4 <- I4 + I2 = [-2,0,0,1,0,0] + [-1,1,0,0,0,0] = [-3,1,0,1,0,0].
+
+8. R6 <- R6 + 2*R2: new A6: [0,0,1,-2,1,-1]; I6 <- I6 + 2*I2 = [1,0,0,0,0,1] + 2*[-1,1,0,0,0,0] = [1-2,0+2,0+0,0+0,0+0,1+0] = [-1,2,0,0,0,1].
+
+R5 unchanged, R2 unchanged, R1 unchanged.
+
+Now matrix:
+
+R1: [1,2,-2,-2,2,0 | 1,0,0,0,0,0]
+R2: [0,-1,2,1,1,-2 | -1,1,0,0,0,0]
+R3: [0,0,1,-2,-1,-2 | -3,1,1,0,0,0]
+R4: [0,0,2,-3,-3,-5 | -3,1,0,1,0,0]
+R5: [0,0,0,-1,-1,1 | -2,0,0,0,1,0]
+R6: [0,0,1,-2,1,-1 | -1,2,0,0,0,1]
+
+Now column3 eliminations:
+
+9. R4 <- R4 - 2*R3: new A4: [0,0,0,1,-1,-1]; I4 <- I4 - 2*I3 = [-3,1,0,1,0,0] - 2*[-3,1,1,0,0,0] = [-3+6,1-2,0-2,1-0,0-0,0-0] = [3,-1,-2,1,0,0].
+
+10. R6 <- R6 - R3: new A6: [0,0,0,0,2,1]; I6 <- I6 - I3 = [-1,2,0,0,0,1] - [-3,1,1,0,0,0] = [-1+3,2-1,0-1,0-0,0-0,1-0] = [2,1,-1,0,0,1].
+
+Now matrix:
+
+R1: [1,2,-2,-2,2,0 | 1,0,0,0,0,0]
+R2: [0,-1,2,1,1,-2 | -1,1,0,0,0,0]
+R3: [0,0,1,-2,-1,-2 | -3,1,1,0,0,0]
+R4: [0,0,0,1,-1,-1 | 3,-1,-2,1,0,0]
+R5: [0,0,0,-1,-1,1 | -2,0,0,0,1,0]
+R6: [0,0,0,0,2,1 | 2,1,-1,0,0,1]
+
+Now column4 eliminations:
+
+11. R5 <- R5 + R4: because R5[4] = -1, pivot=1, so R5 + R4: new A5: [0,0,0,0,-2,0]; I5 <- I5 + I4 = [-2,0,0,0,1,0] + [3,-1,-2,1,0,0] = [1,-1,-2,1,1,0].
+
+Now matrix:
+
+R1: [1,2,-2,-2,2,0 | 1,0,0,0,0,0]
+R2: [0,-1,2,1,1,-2 | -1,1,0,0,0,0]
+R3: [0,0,1,-2,-1,-2 | -3,1,1,0,0,0]
+R4: [0,0,0,1,-1,-1 | 3,-1,-2,1,0,0]
+R5: [0,0,0,0,-2,0 | 1,-1,-2,1,1,0]
+R6: [0,0,0,0,2,1 | 2,1,-1,0,0,1]
+
+Now column5 eliminations:
+
+12. R6 <- R6 + R5? Because R6[5]=2, pivot=-2, we want to zero it. R6 + R5 gives: A6: [0,0,0,0,2+(-2)=0, 1+0=1] -> [0,0,0,0,0,1]; I6 <- I6 + I5 = [2,1,-1,0,0,1] + [1,-1,-2,1,1,0] = [3,0,-3,1,1,1].
+
+Now matrix is upper triangular:
+
+R1: [1,2,-2,-2,2,0 | 1,0,0,0,0,0]
+R2: [0,-1,2,1,1,-2 | -1,1,0,0,0,0]
+R3: [0,0,1,-2,-1,-2 | -3,1,1,0,0,0]
+R4: [0,0,0,1,-1,-1 | 3,-1,-2,1,0,0]
+R5: [0,0,0,0,-2,0 | 1,-1,-2,1,1,0]
+R6: [0,0,0,0,0,1 | 3,0,-3,1,1,1]
+
+Now we need to perform back substitution to get reduced row echelon form (identity on left). We'll eliminate above the diagonal as well.
+
+Start from the last row and work upwards.
+
+First, we can scale rows to make pivots 1. But we need to keep track; we can also eliminate above without scaling, but final inverse will be from the right side after making left side identity. Since we plan to multiply by det=2 later, we can keep integers as much as possible. However, we might have fractions if we divide by pivots. Since det=2, we expect the inverse to have denominators 2. So we might have to divide by pivots. Alternatively, we can continue with row operations that avoid fractions by using integer combinations, but eventually we need to reduce to I. Since pivots are -1, 1, -2, etc., we can scale rows by factors to make pivots 1. But scaling rows would change determinant; but we are doing Gauss-Jordan on augmented matrix, scaling rows is allowed, but we must apply the same scaling to the right side. That's fine; we are solving for inverse. So we can scale rows to make pivots 1. However, then the resulting right side will be A^{-1} (since we have performed row operations that reduce A to I). So we can do that.
+
+Let's proceed.
+
+We have pivot in row6: a66=1, already 1. So no scaling needed.
+
+Now eliminate above in column6: rows 1-5 have entries in column6. For each row i (i=1..5), we need to zero the entry in column6. We'll use row6.
+
+R5: column6 = 0 (since R5[6]=0). So fine.
+R4: column6 = -1. To zero: R4 <- R4 + R6 (since -1+1=0). So do R4 <- R4 + R6.
+R3: column6 = -2. To zero: R3 <- R3 + 2*R6.
+R2: column6 = -2. R2 <- R2 + 2*R6.
+R1: column6 = 0. So fine.
+
+Apply these operations to both left and right parts.
+
+First, update R4: left: R4: [0,0,0,1,-1,-1] + [0,0,0,0,0,1] = [0,0,0,1,-1,0]. Right: I4 = [3,-1,-2,1,0,0] + [3,0,-3,1,1,1] = [6,-1,-5,2,1,1].
+
+Update R3: left: R3: [0,0,1,-2,-1,-2] + 2*[0,0,0,0,0,1] = [0,0,1,-2,-1,0]. Right: I3 = [-3,1,1,0,0,0] + 2*[3,0,-3,1,1,1] = [-3+6,1+0,1-6,0+2,0+2,0+2] = [3,1,-5,2,2,2].
+
+Update R2: left: R2: [0,-1,2,1,1,-2] + 2*R6 = [0,-1,2,1,1,-2] + [0,0,0,0,0,2] = [0,-1,2,1,1,0]. Right: I2 = [-1,1,0,0,0,0] + 2*[3,0,-3,1,1,1] = [-1+6,1+0,0-6,0+2,0+2,0+2] = [5,1,-6,2,2,2].
+
+R1: left unchanged: [1,2,-2,-2,2,0]; right: [1,0,0,0,0,0].
+
+Now matrix:
+
+R1: [1,2,-2,-2,2,0 | 1,0,0,0,0,0]
+R2: [0,-1,2,1,1,0 | 5,1,-6,2,2,2]
+R3: [0,0,1,-2,-1,0 | 3,1,-5,2,2,2]
+R4: [0,0,0,1,-1,0 | 6,-1,-5,2,1,1]
+R5: [0,0,0,0,-2,0 | 1,-1,-2,1,1,0]  (unchanged)
+R6: [0,0,0,0,0,1 | 3,0,-3,1,1,1]   (unchanged)
+
+Now column5: pivot in R5 is -2. We can scale R5 to make pivot 1: multiply R5 by -1/2? That would introduce fractions. Instead, we can eliminate above using R5 without scaling first. But to zero column5 in rows 1-4, we need to add appropriate multiples of R5. Since pivot is -2, we can do operations: For each row i with entry c in column5, we can do R_i <- R_i + (c/2)*R5? Since we want to zero, we could use integer operations if we multiply by something. Because the pivot is -2, we could multiply R5 by 1 and add to R_i, but that may not zero if c is not a multiple of 2? But from our matrix, column5 entries: R1:2, R2:1, R3:-1, R4:-1, R5:-2, R6:0. So we want to zero R1[5]=2, R2[5]=1, R3[5]=-1, R4[5]=-1. Since pivot is -2, we can do: R1 <- R1 + R5? That would give 2 + (-2)=0. So R1 + R5 works. R2: 1, we need to add (1/2)*R5? That would be fraction because 1/2 * (-2) = -1, so 1 + (-1)=0. So we can do R2 <- R2 + (1/2)R5, but that introduces fractions. To avoid fractions, we could delay scaling. Alternatively, we can continue with integer operations by using the fact that we will eventually multiply by 2 to get adj(A). So we can work with fractions and then multiply by 2 at the end. That might be easier: we can perform Gauss-Jordan with rational numbers, compute A^{-1} exactly as fractions, then multiply by 2 to get integer adj(A). Since det=2, the denominators will be at most 2. So we can handle fractions.
+
+Alternatively, we can continue without scaling by using the pivot row to eliminate above, but we might need to multiply rows by factors to keep integers. Since we want the inverse, we can do the back substitution using exactly the same row operations as we did forward, but now we need to eliminate above. Instead, we can treat the upper triangular matrix and perform back substitution to solve for the inverse columns. That is, we can solve A * X = I, where X = A^{-1}. Since we have A in upper triangular form U (after forward elimination), and we have the transformed right-hand side B (the result of applying the same row operations to I). Then we need to solve U X = B. Then X = A^{-1}. Since U is upper triangular, we can solve by back substitution. That might be simpler: we have U and B from our forward elimination (the left part is now upper triangular, and the right part is the transformed identity). Then we solve for the columns of X. Since we only need X, then adj(A)=2X. We can do this systematically.
+
+Our current left matrix after forward elimination (before back substitution) is:
+
+U = 
+[1, 2, -2, -2, 2, 0]
+[0, -1, 2, 1, 1, -2]  but note we already eliminated column6 above? Wait, we used R6 to eliminate column6 above, so our matrix is now not the original upper triangular from forward elimination; we have already performed some back substitution (eliminating column6). But that's okay; we can continue. Actually we have already performed operations to zero column6 above. So currently left matrix is:
+
+R1: [1,2,-2,-2,2,0]
+R2: [0,-1,2,1,1,0]
+R3: [0,0,1,-2,-1,0]
+R4: [0,0,0,1,-1,0]
+R5: [0,0,0,0,-2,0]
+R6: [0,0,0,0,0,1]
+
+This is upper triangular but with a zero in the last column for rows 1-5? Actually column6 only has R6[6]=1, others 0. Good. Now we need to eliminate column5 above R5, column4 above R4, column3 above R3, column2 above R2, column1 above R1. We also need to possibly scale rows to get identity.
+
+Now we have pivots: R2[2]=-1, R3[3]=1, R4[4]=1, R5[5]=-2, R6[6]=1. We can scale rows to make pivots 1, but again fractions may appear. Since we will later multiply by 2, we can avoid fractions by keeping rows scaled appropriately. Let's continue with rational numbers.
+
+We want to get identity on left. Let's perform row scaling and elimination.
+
+We can start by scaling rows to make pivots 1.
+
+Scale R2: multiply R2 by -1 (since pivot -1 -> 1). So R2 <- -R2. But scaling row multiplies determinant of left, but we are doing row operations on the augmented matrix, we need to apply same scaling to right side. This is allowed and will give the inverse when left becomes identity. So we can do that. Similarly, scale R5: multiply R5 by -1/2? Actually pivot -2, to become 1 we multiply by -1/2. That introduces fractions. We could instead keep R5 as is and later scale. But since we need to eliminate above, maybe we can use elimination without scaling and then at the end scale the whole row to make pivot 1. But if we don't scale, the left matrix will have diagonal entries not 1, but after eliminating above, we can then divide each row by its pivot to get identity. That's fine; we just need to do division at the end, which will give fractions. Since we are going to multiply by 2 later, we can keep fractions as fractions.
+
+Thus, let's proceed with back elimination using rational arithmetic. We'll treat the left matrix as having pivots; we want to zero entries above each pivot. We'll do it column by column from rightmost to leftmost.
+
+Currently, column6 is already eliminated above (all zeros). So move to column5. Pivot at row5, column5 = -2. We need to zero entries in column5 for rows 1-4. The entries: R1[5]=2, R2[5]=1, R3[5]=-1, R4[5]=-1. To zero them, we can do:
+
+For each row i, R_i <- R_i - (A_i5 / pivot5) * R5. Since pivot is -2, we have:
+For R1: factor = 2 / (-2) = -1. So R1 <- R1 - (-1)*R5 = R1 + R5? Actually R1 - (-1)*R5 = R1 + R5. For R2: factor = 1 / (-2) = -1/2. So R2 <- R2 - (-1/2)*R5 = R2 + (1/2)R5. For R3: factor = -1 / (-2) = 1/2. So R3 <- R3 - (1/2)*R5 = R3 - (1/2)R5. For R4: factor = -1 / (-2) = 1/2. So R4 <- R4 - (1/2)R5 = R4 - (1/2)R5.
+
+These operations involve fractions. We can keep fractions. Let's do them, applying to both left and right.
+
+First, compute the effect on left and right.
+
+We have current rows (left and right):
+
+R1: left: [1,2,-2,-2,2,0]; right: [1,0,0,0,0,0]
+R2: left: [0,-1,2,1,1,0]; right: [5,1,-6,2,2,2]
+R3: left: [0,0,1,-2,-1,0]; right: [3,1,-5,2,2,2]
+R4: left: [0,0,0,1,-1,0]; right: [6,-1,-5,2,1,1]
+R5: left: [0,0,0,0,-2,0]; right: [1,-1,-2,1,1,0]
+R6: left: [0,0,0,0,0,1]; right: [3,0,-3,1,1,1]
+
+Now do:
+
+R1 <- R1 + R5: (since +R5) 
+Left: [1,2,-2,-2,2+(-2)=0,0] = [1,2,-2,-2,0,0]
+Right: [1+1,0+(-1),0+(-2),0+1,0+1,0+0] = [2,-1,-2,1,1,0]
+
+R2 <- R2 + (1/2)R5: 
+Left: [0,-1,2,1,1,0] + (1/2)[0,0,0,0,-2,0] = [0,-1,2,1,1 + (1/2)*(-2)=1-1=0,0] = [0,-1,2,1,0,0]
+Right: [5,1,-6,2,2,2] + (1/2)[1,-1,-2,1,1,0] = [5+0.5, 1-0.5, -6-1, 2+0.5, 2+0.5, 2+0] = [5.5, 0.5, -7, 2.5, 2.5, 2]. But we prefer fractions: (1/2)*R5 = [0.5, -0.5, -1, 0.5, 0.5, 0]. So sum: [5+0.5=5.5 = 11/2, 1-0.5=0.5=1/2, -6-1=-7, 2+0.5=2.5=5/2, 2+0.5=2.5=5/2, 2+0=2]. So right: [11/2, 1/2, -7, 5/2, 5/2, 2]. Can also write as fractions: [11/2, 1/2, -14/2, 5/2, 5/2, 4/2]? But keep as fractions.
+
+R3 <- R3 - (1/2)R5: 
+Left: [0,0,1,-2,-1,0] - (1/2)[0,0,0,0,-2,0] = [0,0,1,-2,-1 - (1/2)*(-2)= -1 +1 =0, 0] = [0,0,1,-2,0,0]
+Right: [3,1,-5,2,2,2] - (1/2)[1,-1,-2,1,1,0] = [3-0.5, 1-(-0.5)=1+0.5, -5-(-1)= -5+1, 2-0.5, 2-0.5, 2-0] = [2.5, 1.5, -4, 1.5, 1.5, 2] = [5/2, 3/2, -4, 3/2, 3/2, 2]. Note: -5 - (-1) = -4, correct. So right: [5/2, 3/2, -4, 3/2, 3/2, 2].
+
+R4 <- R4 - (1/2)R5:
+Left: [0,0,0,1,-1,0] - (1/2)[0,0,0,0,-2,0] = [0,0,0,1,-1 - (1/2)*(-2)= -1+1=0,0] = [0,0,0,1,0,0]
+Right: [6,-1,-5,2,1,1] - (1/2)[1,-1,-2,1,1,0] = [6-0.5, -1-(-0.5)=-1+0.5, -5-(-1)= -5+1, 2-0.5, 1-0.5, 1-0] = [5.5, -0.5, -4, 1.5, 0.5, 1] = [11/2, -1/2, -4, 3/2, 1/2, 1].
+
+Now after column5 elimination, left matrix becomes:
+
+R1: [1,2,-2,-2,0,0]
+R2: [0,-1,2,1,0,0]
+R3: [0,0,1,-2,0,0]
+R4: [0,0,0,1,0,0]
+R5: [0,0,0,0,-2,0] (unchanged)
+R6: [0,0,0,0,0,1]
+
+Now we need to eliminate column4 above pivot at row4 (col4=1). Entries above: R1[4]=-2, R2[4]=1, R3[4]=-2, R4[4]=1, R5[4]=0, R6[4]=0. So we zero R1, R2, R3 using R4.
+
+Operations:
+
+R1 <- R1 + 2*R4? Because -2 + 2*1 = 0. So R1 <- R1 + 2R4.
+R2 <- R2 - 1*R4? Because 1 - 1 =0, so R2 <- R2 - R4.
+R3 <- R3 + 2*R4? Because -2 + 2*1 =0, so R3 <- R3 + 2R4.
+
+Apply to left and right.
+
+First, left:
+R4 is [0,0,0,1,0,0].
+R1: [1,2,-2,-2,0,0] + 2*[0,0,0,1,0,0] = [1,2,-2,0,0,0].
+R2: [0,-1,2,1,0,0] - [0,0,0,1,0,0] = [0,-1,2,0,0,0].
+R3: [0,0,1,-2,0,0] + 2*[0,0,0,1,0,0] = [0,0,1,0,0,0].
+R4 unchanged: [0,0,0,1,0,0].
+R5, R6 unchanged.
+
+Now update right sides using the same operations:
+
+Right sides:
+R4 right: [11/2, -1/2, -4, 3/2, 1/2, 1] (from before we had R4 right after column5 elimination: [11/2, -1/2, -4, 3/2, 1/2, 1] ? Wait we had R4 right = [11/2, -1/2, -4, 3/2, 1/2, 1]. Yes.
+R1 right: current R1 right = [2,-1,-2,1,1,0]. Then R1 <- R1 + 2*R4: so new R1 right = [2 + 2*(11/2)=2+11=13, -1 + 2*(-1/2)= -1 -1 = -2, -2 + 2*(-4)= -2 -8 = -10, 1 + 2*(3/2)=1+3=4, 1 + 2*(1/2)=1+1=2, 0+2*1=2]. So R1 right = [13, -2, -10, 4, 2, 2].
+R2 right: current R2 right = [11/2, 1/2, -7, 5/2, 5/2, 2]. Then R2 <- R2 - R4: so new R2 right = [11/2 - 11/2=0, 1/2 - (-1/2)=1/2+1/2=1, -7 - (-4)= -7+4=-3, 5/2 - 3/2=2/2=1, 5/2 - 1/2=4/2=2, 2-1=1]. So R2 right = [0, 1, -3, 1, 2, 1].
+R3 right: current R3 right = [5/2, 3/2, -4, 3/2, 3/2, 2]. Then R3 <- R3 + 2*R4: new R3 right = [5/2 + 2*(11/2)=5/2+11= (5+22)/2=27/2, 3/2 + 2*(-1/2)=3/2 -1 = 3/2-2/2=1/2, -4 + 2*(-4)= -4 -8 = -12, 3/2 + 2*(3/2)=3/2+3= (3+6)/2=9/2, 3/2 + 2*(1/2)=3/2+1=5/2, 2 + 2*1=4]. So R3 right = [27/2, 1/2, -12, 9/2, 5/2, 4].
+R4 right unchanged: [11/2, -1/2, -4, 3/2, 1/2, 1].
+R5 right unchanged: [1,-1,-2,1,1,0].
+R6 right unchanged: [3,0,-3,1,1,1].
+
+Now left matrix after column4 elimination:
+
+R1: [1,2,-2,0,0,0]
+R2: [0,-1,2,0,0,0]
+R3: [0,0,1,0,0,0]
+R4: [0,0,0,1,0,0]
+R5: [0,0,0,0,-2,0]
+R6: [0,0,0,0,0,1]
+
+Now column3: pivot at row3 col3=1. Entries above: R1[3]=-2, R2[3]=2. Zero them using R3.
+
+Operations:
+R1 <- R1 + 2*R3? Because -2 + 2*1=0 -> R1 + 2R3.
+R2 <- R2 - 2*R3? Because 2 - 2*1=0 -> R2 - 2R3.
+
+Apply:
+
+Left:
+R1: [1,2,-2,0,0,0] + 2*[0,0,1,0,0,0] = [1,2,0,0,0,0].
+R2: [0,-1,2,0,0,0] - 2*[0,0,1,0,0,0] = [0,-1,0,0,0,0].
+R3 unchanged: [0,0,1,0,0,0].
+Others unchanged.
+
+Right:
+R1 right: [13, -2, -10, 4, 2, 2] + 2*R3 right: R3 right = [27/2, 1/2, -12, 9/2, 5/2, 4]. So 2*R3 right = [27, 1, -24, 9, 5, 8]. Then new R1 right = [13+27=40, -2+1=-1, -10-24=-34, 4+9=13, 2+5=7, 2+8=10]. So R1 right = [40, -1, -34, 13, 7, 10].
+R2 right: [0,1,-3,1,2,1] - 2*R3 right: 2*R3 right = [27,1,-24,9,5,8]. So subtract: [0-27=-27, 1-1=0, -3-(-24)= -3+24=21, 1-9=-8, 2-5=-3, 1-8=-7]. So R2 right = [-27, 0, 21, -8, -3, -7].
+R3 right unchanged: [27/2, 1/2, -12, 9/2, 5/2, 4].
+R4 right unchanged: [11/2, -1/2, -4, 3/2, 1/2, 1].
+R5 right unchanged: [1,-1,-2,1,1,0].
+R6 right unchanged: [3,0,-3,1,1,1].
+
+Now left matrix:
+
+R1: [1,2,0,0,0,0]
+R2: [0,-1,0,0,0,0]
+R3: [0,0,1,0,0,0]
+R4: [0,0,0,1,0,0]
+R5: [0,0,0,0,-2,0]
+R6: [0,0,0,0,0,1]
+
+Now column2: pivot at row2 col2 = -1. We can scale R2 to make pivot 1, but we'll do elimination above first. Entries above: R1[2]=2. We need to zero it. Use R2.
+
+Operation: R1 <- R1 + 2*R2? Because 2 + 2*(-1)=0? Actually R2[2]=-1, so to cancel 2, we can do R1 <- R1 + 2*R2? That gives 2+2*(-1)=0. So R1 <- R1 + 2R2.
+
+Left:
+R1: [1,2,0,0,0,0] + 2*[0,-1,0,0,0,0] = [1,2+(-2)=0,0,0,0,0] = [1,0,0,0,0,0].
+R2 remains [0,-1,0,0,0,0].
+
+Right: R1 right = [40, -1, -34, 13, 7, 10] + 2*R2 right = 2*[-27,0,21,-8,-3,-7] = [-54,0,42,-16,-6,-14]. So new R1 right = [40-54=-14, -1+0=-1, -34+42=8, 13-16=-3, 7-6=1, 10-14=-4]. So R1 right = [-14, -1, 8, -3, 1, -4].
+
+R2 right unchanged: [-27,0,21,-8,-3,-7].
+
+Now left matrix:
+
+R1: [1,0,0,0,0,0]
+R2: [0,-1,0,0,0,0]
+R3: [0,0,1,0,0,0]
+R4: [0,0,0,1,0,0]
+R5: [0,0,0,0,-2,0]
+R6: [0,0,0,0,0,1]
+
+Now we need to scale rows to get identity. Scale R2: multiply by -1 (since pivot -1). Also scale R5: multiply by -1/2 to make pivot 1. Also R1, R3, R4, R6 already have pivot 1. So we do scaling:
+
+R2 <- -R2: left becomes [0,1,0,0,0,0]; right becomes -[-27,0,21,-8,-3,-7] = [27,0,-21,8,3,7].
+
+R5 <- (-1/2)*R5: but we need to be careful: R5 left = [0,0,0,0,-2,0]; multiply by -1/2 gives [0,0,0,0,1,0]. Right: R5 right = [1,-1,-2,1,1,0]; multiply by -1/2: gives [-1/2, 1/2, 1, -1/2, -1/2, 0]. That introduces fractions. However, we earlier had det=2, and we want adj(A)=2*A^{-1}. So if we keep A^{-1} as fractions, we'll multiply by 2 later. So we can keep fractions for now. So let's record R5 after scaling: left: [0,0,0,0,1,0]; right: [-1/2, 1/2, 1, -1/2, -1/2, 0].
+
+Now also we might need to scale R2 we already did. R6 already pivot 1. So now left matrix is identity:
+
+R1: [1,0,0,0,0,0]
+R2: [0,1,0,0,0,0]
+R3: [0,0,1,0,0,0]
+R4: [0,0,0,1,0,0]
+R5: [0,0,0,0,1,0]
+R6: [0,0,0,0,0,1]
+
+Thus the right side is now A^{-1}. So A^{-1} is the matrix whose rows are the right sides after these operations? Wait careful: In augmented matrix [A | I], after performing row operations, when A becomes I, the right side becomes A^{-1}. So the right side we have now (after all operations) is the inverse matrix, but note that the rows correspond to the same row indices. So the inverse matrix is the 6x6 matrix where each row is the right side vector for that row. So we have:
+
+A^{-1} = 
+Row1: [-14, -1, 8, -3, 1, -4]
+Row2: [27, 0, -21, 8, 3, 7]   (from R2 after scaling)
+Row3: [27/2, 1/2, -12, 9/2, 5/2, 4]   (R3 right unscaled? Wait we haven't scaled R3? R3 already had pivot 1, so we didn't scale R3. So R3 right is [27/2, 1/2, -12, 9/2, 5/2, 4]. That is from earlier.
+Row4: [11/2, -1/2, -4, 3/2, 1/2, 1]   (R4 right)
+Row5: [-1/2, 1/2, 1, -1/2, -1/2, 0]   (R5 right after scaling)
+Row6: [3, 0, -3, 1, 1, 1]   (R6 right, no scaling)
+
+But we need to check if any other rows need scaling: R3 and R4 have pivot 1 already, so they are fine. However, we must ensure that the left matrix became identity; we have R3 left = [0,0,1,0,0,0]; yes. R4 left = [0,0,0,1,0,0]; yes. R6 left = [0,0,0,0,0,1]; yes. So the right sides are as above.
+
+Thus A^{-1} = 
+[ -14,      -1,       8,     -3,       1,      -4 ]
+[ 27,       0,     -21,      8,       3,       7 ]
+[ 27/2,   1/2,     -12,    9/2,     5/2,      4 ]
+[ 11/2,  -1/2,      -4,    3/2,     1/2,      1 ]
+[ -1/2,   1/2,       1,   -1/2,    -1/2,      0 ]
+[ 3,       0,      -3,      1,       1,       1 ]
+
+Now we need adj(A) = det(A) * A^{-1} = 2 * A^{-1}. Multiply each entry by 2:
+
+adj(A) = 
+Row1: 2*[-14, -1, 8, -3, 1, -4] = [-28, -2, 16, -6, 2, -8]
+Row2: 2*[27, 0, -21, 8, 3, 7] = [54, 0, -42, 16, 6, 14]
+Row3: 2*[27/2, 1/2, -12, 9/2, 5/2, 4] = [27, 1, -24, 9, 5, 8]
+Row4: 2*[11/2, -1/2, -4, 3/2, 1/2, 1] = [11, -1, -8, 3, 1, 2]
+Row5: 2*[-1/2, 1/2, 1, -1/2, -1/2, 0] = [-1, 1, 2, -1, -1, 0]
+Row6: 2*[3, 0, -3, 1, 1, 1] = [6, 0, -6, 2, 2, 2]
+
+Thus adj(A) = 
+Row1: -28, -2, 16, -6, 2, -8
+Row2: 54, 0, -42, 16, 6, 14
+Row3: 27, 1, -24, 9, 5, 8
+Row4: 11, -1, -8, 3, 1, 2
+Row5: -1, 1, 2, -1, -1, 0
+Row6: 6, 0, -6, 2, 2, 2
+
+We need to output all 36 entries as a comma-separated list row by row. So the list would be: -28, -2, 16, -6, 2, -8, 54, 0, -42, 16, 6, 14, 27, 1, -24, 9, 5, 8, 11, -1, -8, 3, 1, 2, -1, 1, 2, -1, -1, 0, 6, 0, -6, 2, 2, 2.
+
+But we should double-check if there are any mistakes in the arithmetic. Possibly errors in the row operations. Since this is a 6x6 integer matrix, the adjugate should be integer, and we got integers. We should verify that A * adj(A) = det(A)*I = 2I. We can test a few entries quickly, maybe compute the dot product of first row of A with first column of adj(A) to see if it equals 2. Let's do a quick check.
+
+A row1: [1,2,-2,-2,2,0]
+adj(A) column1: from adj rows: first column: -28, 54, 27, 11, -1, 6. Compute dot: 1*(-28) + 2*54 + (-2)*27 + (-2)*11 + 2*(-1) + 0*6 = -28 + 108 -54 -22 -2 = 2? Let's compute: -28+108=80; 80-54=26; 26-22=4; 4-2=2. Yes gives 2. Good.
+
+Check another: row1 * column2: adj col2: -2,0,1,-1,1,0. Dot: 1*(-2)+2*0+(-2)*1+(-2)*(-1)+2*1+0*0 = -2 +0 -2 +2 +2 =0. Good. column3: 16, -42, -24, -8, 2, -6. Dot: 1*16+2*(-42)+(-2)*(-24)+(-2)*(-8)+2*2+0*(-6)=16-84+48+16+4=0? 16-84=-68; -68+48=-20; -20+16=-4; -4+4=0. Good. column4: -6,16,9,3,-1,2: 1*(-6)+2*16+(-2)*9+(-2)*3+2*(-1)+0*2 = -6+32-18-6-2=0? -6+32=26; 26-18=8; 8-6=2; 2-2=0. Good. column5: 2,6,5,1,-1,2: 1*2+2*6+(-2)*5+(-2)*1+2*(-1)+0*2 =2+12-10-2-2=0. Good. column6: -8,14,8,2,0,2: 1*(-8)+2*14+(-2)*8+(-2)*2+2*0+0*2 = -8+28-16-4+0=0. Good. So first row checks out.
+
+Now check second row of A with first column of adj: A row2 = [1,1,0,-1,3,-2]; adj col1 = [-28,54,27,11,-1,6]. Dot: 1*(-28)+1*54+0*27+(-1)*11+3*(-1)+(-2)*6 = -28+54-11-3-12 =0? -28+54=26; 26-11=15; 15-3=12; 12-12=0. Good. Should be 0 off-diagonal. For diagonal (row2 * col2): adj col2 = [-2,0,1,-1,1,0]; dot: 1*(-2)+1*0+0*1+(-1)*(-1)+3*1+(-2)*0 = -2+0+0+1+3=2. Yes. So it seems correct.
+
+Thus adj(A) is as computed.
+
+Therefore the answer list: -28, -2, 16, -6, 2, -8, 54, 0, -42, 16, 6, 14, 27, 1, -24, 9, 5, 8, 11, -1, -8, 3, 1, 2, -1, 1, 2, -1, -1, 0, 6, 0, -6, 2, 2, 2.
+
+We should present it as a comma-separated list. The problem says "Give all 36 entries of adj(A) row by row (first row left to right, then the second row, and so on) as one comma-separated list of integers." So the output format: ANSWER: -28, -2, 16, -6, 2, -8, 54, 0, -42, 16, 6, 14, 27, 1, -24, 9, 5, 8, 11, -1, -8, 3, 1, 2, -1, 1, 2, -1, -1, 0, 6, 0, -6, 2, 2, 2
+
+We should double-check if any row operations introduced errors in the later rows? Let's do a quick sanity check for row3 with column1: A row3 = [2,5,-5,-7,2,0]; adj col1 = [-28,54,27,11,-1,6]; dot: 2*(-28)+5*54+(-5)*27+(-7)*11+2*(-1)+0*6 = -56+270-135-77-2 =0? -56+270=214; 214-135=79; 79-77=2; 2-2=0. Good. For diagonal (row3*col3): adj col3 = [16,-42,-24,-8,2,-6]; dot: 2*16 +5*(-42)+(-5)*(-24)+(-7)*(-8)+2*2+0*(-6) =32 -210 +120 +56 +4 =2? 32-210=-178; -178+120=-58; -58+56=-2; -2+4=2. Yes. So seems consistent.
+
+Thus final answer.
+
+Now output accordingly.

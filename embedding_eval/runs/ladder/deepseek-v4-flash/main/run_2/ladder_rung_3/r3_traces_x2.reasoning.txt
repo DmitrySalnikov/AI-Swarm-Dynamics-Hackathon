@@ -1,0 +1,2109 @@
+We are given an 8x8 integer matrix A. We need to compute the traces of its powers: tr(A), tr(A^2), tr(A^3), tr(A^4). So we need to compute these four numbers. Since the matrix is given, we can either compute directly by matrix multiplication (since it's 8x8, we could do it manually or with systematic reasoning). But perhaps there is a pattern or we can compute eigenvalues? However, computing eigenvalues of an 8x8 matrix might be difficult. Instead, we can compute traces via sums of diagonal entries of powers. Since tr(A^k) = sum of eigenvalues^k, but we don't have eigenvalues. Alternatively, we can compute powers directly using matrix multiplication. Since it's only up to A^4, and matrix entries are small integers, we could do it step by step. Let's denote the matrix A as given.
+
+We need to be careful with indices. Let's write A explicitly as rows from top to bottom:
+
+Row1: [0, 0, 0, 0, 0, 1, 0, 2]
+Row2: [0, -2, 1, 0, 0, 0, 1, 0]
+Row3: [0, 0, 0, 1, -2, 0, 0, -1]
+Row4: [0, -1, 0, 0, 2, 0, 0, 0]
+Row5: [0, 2, -1, -2, 0, 2, 2, 0]
+Row6: [0, 0, 2, 0, -2, -1, 0, 0]
+Row7: [0, 0, 0, -2, 0, 0, 0, 0]
+Row8: [1, 0, 2, 2, -1, 0, 0, 0]
+
+Let's label columns 1 to 8.
+
+First, compute tr(A) = sum of diagonal entries: (1,1)=0, (2,2)=-2, (3,3)=0, (4,4)=0, (5,5)=0, (6,6)=-1, (7,7)=0, (8,8)=0. So tr(A) = -2 + -1 = -3? Actually -2 + (-1) = -3. So tr(A) = -3.
+
+Now we need tr(A^2). That is sum of diagonal entries of A^2. Alternatively, tr(A^2) = sum_{i,j} A_{ij} A_{ji}. So we can compute by summing over all i,j the product of A_{ij} and A_{ji}. Since A is 8x8, we could compute each diagonal entry of A^2 as sum_{k} A_{ik} A_{ki}. But we can compute all entries of A^2 if needed, but we only need the diagonal. However, we might compute A^2 explicitly or compute the sum of squares of all entries? Because tr(A^2) = sum_i (A^2)_{ii} = sum_i sum_k A_{ik} A_{ki}. That is not the sum of squares; it's sum over i,k of A_{ik} A_{ki}. So we need the product of symmetric pairs. So we can compute by iterating over all pairs (i,k) and summing A_{ik} * A_{ki}. This might be easier than computing full matrix multiplication, especially since many entries are zero. Let's do that.
+
+We need all ordered pairs (i,j). For each i,j, we add A_{ij} * A_{ji} to the sum. Since we sum over i and j, we can do it systematically.
+
+Let me write the matrix entries row by row with column indices.
+
+Define A[r][c] where r=row index (1..8), c=col index (1..8). I'll use 1-index.
+
+Row1: c1=0, c2=0, c3=0, c4=0, c5=0, c6=1, c7=0, c8=2.
+Row2: [0, -2, 1, 0, 0, 0, 1, 0]
+Row3: [0, 0, 0, 1, -2, 0, 0, -1]
+Row4: [0, -1, 0, 0, 2, 0, 0, 0]
+Row5: [0, 2, -1, -2, 0, 2, 2, 0]
+Row6: [0, 0, 2, 0, -2, -1, 0, 0]
+Row7: [0, 0, 0, -2, 0, 0, 0, 0]
+Row8: [1, 0, 2, 2, -1, 0, 0, 0]
+
+Now compute tr(A^2) = sum_{i=1}^8 sum_{j=1}^8 A_{ij} A_{ji}.
+
+We can compute by scanning all entries, but note that we need both (i,j) and (j,i). It's symmetric in the sense that we sum over all unordered pairs but with both orderings (i,j and j,i) since they are separate terms? Actually the sum is over all i,j; if we consider i and j distinct, then A_{ij}A_{ji} appears once for (i,j) and once for (j,i)? Wait careful: The sum is over i and j. For a given ordered pair (i,j), we add A_{ij}A_{ji}. For the swapped pair (j,i), we add A_{ji}A_{ij} which is the same product. So essentially, for i≠j, the product appears twice if both (i,j) and (j,i) are considered; but note that the sum runs over all i,j, so indeed both terms are included. So total contribution from unordered pair {i,j} with i≠j is 2 * A_{ij}A_{ji}. For i=j, contribution is A_{ii}A_{ii} = (A_{ii})^2. So we can compute tr(A^2) = sum_i (A_{ii})^2 + 2 * sum_{i<j} A_{ij}A_{ji}.
+
+Thus we need to compute all off-diagonal products and sum them.
+
+Let's list all non-zero entries. We'll go row by row and note entries A_{ij} and then also look at A_{ji}. We can compute systematically.
+
+First, compute diagonal squares: diag entries: A11=0, A22=-2, A33=0, A44=0, A55=0, A66=-1, A77=0, A88=0. Their squares: 0, 4, 0, 0, 0, 1, 0, 0 => sum = 5.
+
+Now off-diagonal: For each unordered pair i<j, we need A_{ij} and A_{ji}. We can compute both by scanning rows.
+
+Better to construct the matrix in a structured way. Write entries as a list of non-zero entries with coordinates.
+
+Let's list all non-zero A_{ij}:
+
+Row1: (1,6)=1, (1,8)=2.
+Row2: (2,2)=-2 (diag), (2,3)=1, (2,7)=1.
+Row3: (3,4)=1, (3,5)=-2, (3,8)=-1.
+Row4: (4,2)=-1, (4,5)=2.
+Row5: (5,2)=2, (5,3)=-1, (5,4)=-2, (5,6)=2, (5,7)=2.
+Row6: (6,3)=2, (6,5)=-2, (6,6)=-1 (diag).
+Row7: (7,4)=-2.
+Row8: (8,1)=1, (8,3)=2, (8,4)=2, (8,5)=-1.
+
+Also row2 col2 and row6 col6 are diagonals we already accounted. Also note row? Are there any other non-zero? Check row2 col? no; row3 col? no; row4 col? maybe (4,? ) only (4,2) and (4,5); row5 col? (5,2),(5,3),(5,4),(5,6),(5,7); row6 col? (6,3),(6,5),(6,6); row7 col? (7,4); row8 col? (8,1),(8,3),(8,4),(8,5). Also row1 col? only (1,6),(1,8). Row2 col? (2,3),(2,7). Row3 col? (3,4),(3,5),(3,8). Row4 col? (4,2),(4,5). Row5 col? as above. Row6 col? (6,3),(6,5). Row7 col? (7,4). Row8 col? (8,1),(8,3),(8,4),(8,5). That seems all.
+
+Now for each ordered pair (i,j) with i≠j, we need product A_{ij} A_{ji}. So we need to consider both directions. For each unordered pair (i,j), compute product and double it. So we should list all unordered pairs (i,j) where at least one of A_{ij} or A_{ji} is non-zero. Then compute A_{ij} * A_{ji} and multiply by 2 if i≠j? Actually careful: The formula is sum_{i,j} A_{ij}A_{ji} = sum_i A_{ii}^2 + sum_{i≠j} A_{ij}A_{ji}. But for i≠j, we sum over ordered pairs, so each unordered pair contributes A_{ij}A_{ji} + A_{ji}A_{ij} = 2 A_{ij}A_{ji}. So indeed we can compute for each unordered pair (i<j) the product P = A_{ij} * A_{ji} and then add 2P to the total (after diagonal squares). But note that if one of A_{ij} or A_{ji} is zero, the product is zero, so we only care about pairs where both are non-zero. So we need to find all unordered pairs (i,j) such that both A_{ij} and A_{ji} are non-zero. Then compute product and double it. Also note that if both are non-zero, we need to compute the product correctly.
+
+Thus, list all non-zero entries and see which have symmetric non-zero counterpart.
+
+Let's create a list of all non-zero off-diagonal entries (i,j) with i≠j. I'll list them along with values:
+
+(1,6):1
+(1,8):2
+
+(2,3):1
+(2,7):1
+
+(3,4):1
+(3,5):-2
+(3,8):-1
+
+(4,2):-1
+(4,5):2
+
+(5,2):2
+(5,3):-1
+(5,4):-2
+(5,6):2
+(5,7):2
+
+(6,3):2
+(6,5):-2
+
+(7,4):-2
+
+(8,1):1
+(8,3):2
+(8,4):2
+(8,5):-1
+
+Now we need to see which have symmetric counterpart: For each (i,j), we need to check if (j,i) is also in the list. So let's check systematically.
+
+Pairs:
+
+(1,6): value 1. What about (6,1)? (6,1) is not in list (row6 col1 is 0). So no.
+(1,8):2. (8,1):1. Yes! (8,1)=1. So we have pair (1,8) and (8,1). So unordered pair (1,8) has A_{1,8}=2, A_{8,1}=1. Product = 2*1=2. So contribution to tr(A^2) from this unordered pair is 2*2 = 4? Wait careful: For unordered pair (1,8), we have i=1,j=8: A_{1,8}=2, A_{8,1}=1. Then sum over ordered pairs includes (1,8): 2*1=2 and (8,1):1*2=2, total 4. So indeed we add 2 * (2*1) = 4. So contribution = 2 * product = 2*2=4.
+
+(2,3):1. Is (3,2)? (3,2) is 0? Row3 col2 is 0. So no.
+(2,7):1. (7,2)? (7,2) is 0. So no.
+
+(3,4):1. (4,3)? Row4 col3 is 0? Row4: [0,-1,0,0,2,0,0,0] so col3=0. So no.
+(3,5):-2. (5,3):-1. Yes! (5,3) = -1. So unordered pair (3,5): A_{3,5}=-2, A_{5,3}=-1. Product = (-2)*(-1)=2. Contribution = 2*2=4.
+(3,8):-1. (8,3):2. Yes! (8,3)=2. Product = (-1)*2 = -2. Contribution = 2*(-2) = -4.
+
+(4,2):-1. (2,4)? Row2 col4 is 0? Row2: [0,-2,1,0,0,0,1,0] so col4=0. So no.
+(4,5):2. (5,4):-2. Yes! (5,4)=-2. Product = 2*(-2) = -4. Contribution = 2*(-4) = -8.
+(5,2):2. (2,5)? Row2 col5 is 0. So no.
+(5,3):-1 already considered with (3,5).
+(5,4):-2 already considered with (4,5).
+(5,6):2. (6,5):-2. Yes! (5,6)=2, (6,5)=-2. Product = 2*(-2) = -4. Contribution = 2*(-4) = -8.
+(5,7):2. (7,5)? Row7 col5 is 0. So no.
+(6,3):2. (3,6)? Row3 col6 is 0? Row3: [0,0,0,1,-2,0,0,-1] so col6=0. So no.
+(6,5):-2 already considered with (5,6).
+(7,4):-2. (4,7)? Row4 col7 is 0. So no.
+(8,1):1 already considered with (1,8).
+(8,3):2 already considered with (3,8).
+(8,4):2. (4,8)? Row4 col8 is 0. So no.
+(8,5):-1. (5,8)? Row5 col8 is 0? Row5: [0,2,-1,-2,0,2,2,0] so col8=0. So no.
+
+Also we might have (2,?) etc. Also check (5,?) we did. Also (6,?) we did. Also (7,?) only (7,4). Also (8,?) we did. Also (1,?) we did.
+
+Thus we have the following unordered pairs with both non-zero: (1,8), (3,5), (3,8), (4,5), (5,6). Also note (5,3) already covered as (3,5). (5,4) as (4,5). (5,6) is symmetric because (6,5) exists. (1,8) symmetric. (3,8) symmetric. Also check (2,?) none. (4,?) none other. (6,?) none other. (7,?) none. (8,?) we have (8,1),(8,3) already, (8,4) not symmetric, (8,5) not symmetric. So total 5 unordered pairs.
+
+Now compute contributions:
+
+(1,8): product 2*1=2 -> 2*2=4
+(3,5): product (-2)*(-1)=2 -> 2*2=4
+(3,8): product (-1)*2=-2 -> 2*(-2)=-4
+(4,5): product 2*(-2)=-4 -> 2*(-4)=-8
+(5,6): product 2*(-2)=-4 -> 2*(-4)=-8
+
+Sum these: 4+4=8, minus 4 gives 4, minus 8 gives -4, minus 8 gives -12. So total off-diagonal contribution = -12.
+
+Now add diagonal sum = 5. So tr(A^2) = 5 + (-12) = -7.
+
+Thus tr(A^2) = -7.
+
+Now we need tr(A^3) and tr(A^4). We could compute A^3 = A * A^2, but we need only diagonal entries of A^3. Alternatively, we can use the formula: tr(A^3) = sum_{i,j,k} A_{ij} A_{jk} A_{ki}. That is sum over all cycles of length 3. Similarly for tr(A^4) = sum_{i,j,k,l} A_{ij} A_{jk} A_{kl} A_{li}. Since the matrix is sparse, we can compute these sums combinatorially by considering non-zero entries and their connections. This might be manageable. We need to compute the sum over all triples (i,j,k) of A_{ij} A_{jk} A_{ki}. Essentially, we need to find all directed 3-cycles in the graph defined by non-zero entries, weighted by product of the entries. Similarly for 4-cycles. Since the matrix entries are integer, we can compute these sums by enumerating all possible paths of length 3 that return to start, and sum the products.
+
+We have a list of non-zero entries (ordered pairs with values). Let's call them edges from i to j with weight w = A_{ij}. We need to compute sum over all i,j,k of w_{ij} w_{jk} w_{ki}. That is sum over all directed cycles of length 3 (allowing self-loops? But diagonal entries also count: if i=j or j=k or k=i, we include those. But note that the formula includes all i,j,k, so we must consider cases where indices may be equal. So we need to sum over all ordered triples (i,j,k) (1..8) of A_{ij}A_{jk}A_{ki}. This includes terms where some indices coincide. For example, when i=j=k, we get A_{ii}^3. But we have diagonal entries: A22=-2, A66=-1, others 0. So contributions: i=2: (-2)^3 = -8; i=6: (-1)^3 = -1; others 0 => sum = -9. Also when two indices are equal but not all three, e.g., i=j≠k, then term becomes A_{ii} A_{ik} A_{ki}. Similarly i=k≠j gives A_{ij} A_{jk} A_{ii} etc. Also j=k≠i gives A_{ij} A_{jj} A_{ji}. So we need to include all such terms.
+
+Thus we need to compute the sum over all triples, including those with repetitions. The cyclic nature means we can break it down into contributions from distinct indices and those with coincidences.
+
+Given the sparsity, we can systematically enumerate all possible ordered triples (i,j,k) that yield non-zero product. Since entries are mostly zero, only when each of the three pairs (i,j), (j,k), (k,i) are non-zero (including possibly diagonal) will the product be non-zero. So we need to find all combinations where each edge exists.
+
+Alternatively, we can compute tr(A^3) by first computing A^2 and then taking dot product with A? Actually tr(A^3) = sum_i (A^3)_{ii} = sum_i sum_j A_{ij} (A^2)_{ji}. That might be easier if we compute A^2 entries fully. Since we already have a list of non-zero entries and possibly we can compute A^2 matrix (all entries) and then multiply by A to get A^3 diagonal? But that might be a lot of work. However, we can compute A^2 entries systematically using the list of non-zero edges. Since A is sparse, A^2 may have many non-zero entries. But we can compute all entries of A^2 by considering pairs of edges: (A^2)_{ik} = sum_j A_{ij} A_{jk}. So we can compute for each i,k, the sum over j of products. Then we can compute tr(A^3) = sum_i (A^3)_{ii} = sum_i sum_j A_{ij} (A^2)_{ji}. That is similar to before but using computed A^2. Since we need also tr(A^4), we might need A^3 or A^2 squared? Actually tr(A^4) = sum_i (A^4)_{ii} = sum_i sum_j A_{ij} (A^3)_{ji} or sum_i (A^2)_{ij} (A^2)_{ji}? Because (A^4)_{ii} = sum_k (A^2)_{ik} (A^2)_{ki}. So tr(A^4) = sum_{i,k} (A^2)_{ik} (A^2)_{ki} = sum_{i,k} (A^2)_{ik} (A^2)_{ki}. This is similar to tr((A^2)^2) = sum of squares of entries? Wait careful: (A^4)_{ii} = sum_j (A^2)_{ij} (A^2)_{ji}? Actually (A^4) = (A^2)*(A^2). So (A^4)_{ii} = sum_k (A^2)_{ik} (A^2)_{ki}. So tr(A^4) = sum_i sum_k (A^2)_{ik} (A^2)_{ki} = sum_{i,k} (A^2)_{ik} (A^2)_{ki}. That is similar to tr(A^2) but with A^2 instead of A. So if we compute all entries of A^2, then we can compute tr(A^4) as sum_{i,k} (A^2)_{ik} (A^2)_{ki}. This might be easier than computing A^3 and A^4 directly. So plan: Compute A^2 matrix entries. Then compute tr(A^3) using A^2 and A? Actually tr(A^3) = sum_i (A^3)_{ii} = sum_i sum_j A_{ij} (A^2)_{ji}. So we need A and A^2. So if we compute A^2, we can compute tr(A^3) by summing over i,j A_{ij} * (A^2)_{ji}. That is similar to earlier method for tr(A^2) but with A and A^2. And then compute tr(A^4) using A^2 and A^2: sum_{i,k} (A^2)_{ik} (A^2)_{ki}. So the main task is to compute A^2 matrix. Since matrix is 8x8, we can compute all entries by summing over j for each (i,k). There are only 64 entries, many will be zero. We can compute them systematically using the list of non-zero entries of A.
+
+Let's denote the non-zero entries of A as edges. We'll list them again with coordinates and values:
+
+Edges (i->j, weight):
+
+1->6:1
+1->8:2
+
+2->2:-2 (diag)
+2->3:1
+2->7:1
+
+3->4:1
+3->5:-2
+3->8:-1
+
+4->2:-1
+4->5:2
+
+5->2:2
+5->3:-1
+5->4:-2
+5->6:2
+5->7:2
+
+6->3:2
+6->5:-2
+6->6:-1 (diag)
+
+7->4:-2
+
+8->1:1
+8->3:2
+8->4:2
+8->5:-1
+
+Also note we have diagonal entries: 2->2, 6->6. Also we might have other diagonals? Row1 col1 is 0, row3 col3=0, row4 col4=0, row5 col5=0, row7 col7=0, row8 col8=0. So only those two.
+
+Now to compute (A^2)_{ik} = sum_j A_{ij} A_{jk}. So for each ordered pair (i,k), we need to sum over j such that A_{ij} and A_{jk} are both non-zero. So we need to consider all possible intermediate nodes j that connect i to k.
+
+We can compute by iterating over all i and then for each edge from i to j, and then for each edge from j to k, add product to (A^2)_{ik}. That is, we can use the list of edges to compute contributions. Since the graph is small, we can enumerate all directed paths of length 2. Let's do that.
+
+We'll make a list of all outgoing edges from each node. Also we might want to compute A^2 entries systematically. We'll create an 8x8 matrix B = A^2, initially zeros. Then for each edge (i,j) with weight w1, and for each edge (j,k) with weight w2, we add w1*w2 to B[i][k]. This will compute all entries. Since there are only about 20 edges, the number of pairs is manageable.
+
+Let's list all edges (directed) as source -> target with weight:
+
+Edges:
+
+From 1: (1,6,1), (1,8,2)
+From 2: (2,2,-2), (2,3,1), (2,7,1)
+From 3: (3,4,1), (3,5,-2), (3,8,-1)
+From 4: (4,2,-1), (4,5,2)
+From 5: (5,2,2), (5,3,-1), (5,4,-2), (5,6,2), (5,7,2)
+From 6: (6,3,2), (6,5,-2), (6,6,-1)
+From 7: (7,4,-2)
+From 8: (8,1,1), (8,3,2), (8,4,2), (8,5,-1)
+
+Now we consider each source i, and for each edge from i to j, then for each edge from j to k, we add product to B[i][k]. Let's do it systematically.
+
+We'll create a table for B (8x8) initially zeros.
+
+We'll go through each i from 1 to 8.
+
+Start with i=1:
+Edges from 1: (1->6, w=1), (1->8, w=2)
+
+For (1->6) w=1:
+Now consider edges from j=6: (6->3,2), (6->5,-2), (6->6,-1)
+So for each:
+- k=3: add 1*2=2 to B[1][3]
+- k=5: add 1*(-2)=-2 to B[1][5]
+- k=6: add 1*(-1)=-1 to B[1][6]
+
+For (1->8) w=2:
+Edges from j=8: (8->1,1), (8->3,2), (8->4,2), (8->5,-1)
+So:
+- k=1: add 2*1=2 to B[1][1]
+- k=3: add 2*2=4 to B[1][3]
+- k=4: add 2*2=4 to B[1][4]
+- k=5: add 2*(-1)=-2 to B[1][5]
+
+Now B[1] entries: 
+B[1][1]=2, B[1][3]=2+4=6, B[1][4]=4, B[1][5]= -2 + (-2) = -4, B[1][6]= -1.
+Also other k: 2,7,8 remain 0 so far.
+
+Now i=2:
+Edges from 2: (2->2,-2), (2->3,1), (2->7,1)
+
+For (2->2) w=-2:
+Edges from j=2: (2->2,-2), (2->3,1), (2->7,1)
+So:
+- k=2: add (-2)*(-2)=4 to B[2][2]
+- k=3: add (-2)*1=-2 to B[2][3]
+- k=7: add (-2)*1=-2 to B[2][7]
+
+For (2->3) w=1:
+Edges from j=3: (3->4,1), (3->5,-2), (3->8,-1)
+So:
+- k=4: add 1*1=1 to B[2][4]
+- k=5: add 1*(-2)=-2 to B[2][5]
+- k=8: add 1*(-1)=-1 to B[2][8]
+
+For (2->7) w=1:
+Edges from j=7: (7->4,-2)
+So:
+- k=4: add 1*(-2)=-2 to B[2][4]
+
+Now B[2] entries:
+B[2][2]=4, B[2][3]= -2, B[2][4]= 1 + (-2) = -1, B[2][5]= -2, B[2][7]= -2, B[2][8]= -1.
+Also B[2][?] others 0.
+
+Now i=3:
+Edges from 3: (3->4,1), (3->5,-2), (3->8,-1)
+
+For (3->4) w=1:
+Edges from j=4: (4->2,-1), (4->5,2)
+So:
+- k=2: add 1*(-1)=-1 to B[3][2]
+- k=5: add 1*2=2 to B[3][5]
+
+For (3->5) w=-2:
+Edges from j=5: (5->2,2), (5->3,-1), (5->4,-2), (5->6,2), (5->7,2)
+So:
+- k=2: add (-2)*2=-4 to B[3][2]
+- k=3: add (-2)*(-1)=2 to B[3][3]
+- k=4: add (-2)*(-2)=4 to B[3][4]
+- k=6: add (-2)*2=-4 to B[3][6]
+- k=7: add (-2)*2=-4 to B[3][7]
+
+For (3->8) w=-1:
+Edges from j=8: (8->1,1), (8->3,2), (8->4,2), (8->5,-1)
+So:
+- k=1: add (-1)*1=-1 to B[3][1]
+- k=3: add (-1)*2=-2 to B[3][3]
+- k=4: add (-1)*2=-2 to B[3][4]
+- k=5: add (-1)*(-1)=1 to B[3][5]
+
+Now B[3] entries:
+B[3][1]= -1
+B[3][2]= -1 + (-4) = -5
+B[3][3]= 2 + (-2) = 0
+B[3][4]= 4 + (-2) = 2
+B[3][5]= 2 + 1 = 3
+B[3][6]= -4
+B[3][7]= -4
+B[3][8]=? (From (3->? ) none? Actually (3->8) gave k=1,3,4,5; no k=8. So B[3][8]=0.
+Also B[3][?] others 0.
+
+Now i=4:
+Edges from 4: (4->2,-1), (4->5,2)
+
+For (4->2) w=-1:
+Edges from j=2: (2->2,-2), (2->3,1), (2->7,1)
+So:
+- k=2: add (-1)*(-2)=2 to B[4][2]
+- k=3: add (-1)*1=-1 to B[4][3]
+- k=7: add (-1)*1=-1 to B[4][7]
+
+For (4->5) w=2:
+Edges from j=5: (5->2,2), (5->3,-1), (5->4,-2), (5->6,2), (5->7,2)
+So:
+- k=2: add 2*2=4 to B[4][2]
+- k=3: add 2*(-1)=-2 to B[4][3]
+- k=4: add 2*(-2)=-4 to B[4][4]
+- k=6: add 2*2=4 to B[4][6]
+- k=7: add 2*2=4 to B[4][7]
+
+Now B[4] entries:
+B[4][2]= 2+4=6
+B[4][3]= -1 + (-2) = -3
+B[4][4]= -4
+B[4][6]= 4
+B[4][7]= -1+4=3
+Others 0: B[4][1]=0, B[4][5]=0, B[4][8]=0.
+
+Now i=5:
+Edges from 5: (5->2,2), (5->3,-1), (5->4,-2), (5->6,2), (5->7,2)
+
+For (5->2) w=2:
+Edges from j=2: (2->2,-2), (2->3,1), (2->7,1)
+So:
+- k=2: add 2*(-2)=-4 to B[5][2]
+- k=3: add 2*1=2 to B[5][3]
+- k=7: add 2*1=2 to B[5][7]
+
+For (5->3) w=-1:
+Edges from j=3: (3->4,1), (3->5,-2), (3->8,-1)
+So:
+- k=4: add (-1)*1=-1 to B[5][4]
+- k=5: add (-1)*(-2)=2 to B[5][5]
+- k=8: add (-1)*(-1)=1 to B[5][8]
+
+For (5->4) w=-2:
+Edges from j=4: (4->2,-1), (4->5,2)
+So:
+- k=2: add (-2)*(-1)=2 to B[5][2]
+- k=5: add (-2)*2=-4 to B[5][5]
+
+For (5->6) w=2:
+Edges from j=6: (6->3,2), (6->5,-2), (6->6,-1)
+So:
+- k=3: add 2*2=4 to B[5][3]
+- k=5: add 2*(-2)=-4 to B[5][5]
+- k=6: add 2*(-1)=-2 to B[5][6]
+
+For (5->7) w=2:
+Edges from j=7: (7->4,-2)
+So:
+- k=4: add 2*(-2)=-4 to B[5][4]
+
+Now B[5] entries:
+Let's accumulate:
+B[5][2]: from (5->2): -4, from (5->4): +2 => total -2
+B[5][3]: from (5->2): 2, from (5->6): 4 => total 6
+B[5][4]: from (5->3): -1, from (5->7): -4 => total -5
+B[5][5]: from (5->3): 2, from (5->4): -4, from (5->6): -4 => total 2 -4 -4 = -6
+B[5][6]: from (5->6): -2 => -2
+B[5][7]: from (5->2): 2 => 2
+B[5][8]: from (5->3): 1 => 1
+Also check if any other k: maybe from (5->? ) we covered. So B[5] entries: (2, -2); (3,6); (4,-5); (5,-6); (6,-2); (7,2); (8,1). Others zero.
+
+Now i=6:
+Edges from 6: (6->3,2), (6->5,-2), (6->6,-1)
+
+For (6->3) w=2:
+Edges from j=3: (3->4,1), (3->5,-2), (3->8,-1)
+So:
+- k=4: add 2*1=2 to B[6][4]
+- k=5: add 2*(-2)=-4 to B[6][5]
+- k=8: add 2*(-1)=-2 to B[6][8]
+
+For (6->5) w=-2:
+Edges from j=5: (5->2,2), (5->3,-1), (5->4,-2), (5->6,2), (5->7,2)
+So:
+- k=2: add (-2)*2=-4 to B[6][2]
+- k=3: add (-2)*(-1)=2 to B[6][3]
+- k=4: add (-2)*(-2)=4 to B[6][4]
+- k=6: add (-2)*2=-4 to B[6][6]
+- k=7: add (-2)*2=-4 to B[6][7]
+
+For (6->6) w=-1:
+Edges from j=6: (6->3,2), (6->5,-2), (6->6,-1)
+So:
+- k=3: add (-1)*2=-2 to B[6][3]
+- k=5: add (-1)*(-2)=2 to B[6][5]
+- k=6: add (-1)*(-1)=1 to B[6][6]
+
+Now B[6] entries:
+B[6][2]: -4
+B[6][3]: from (6->5): 2, from (6->6): -2 => total 0
+B[6][4]: from (6->3): 2, from (6->5): 4 => total 6
+B[6][5]: from (6->3): -4, from (6->6): 2 => total -2
+B[6][6]: from (6->5): -4, from (6->6): 1 => total -3
+B[6][7]: -4
+B[6][8]: -2
+Also check B[6][1]? none, B[6][?] others 0.
+
+Now i=7:
+Edges from 7: (7->4,-2)
+
+For (7->4) w=-2:
+Edges from j=4: (4->2,-1), (4->5,2)
+So:
+- k=2: add (-2)*(-1)=2 to B[7][2]
+- k=5: add (-2)*2=-4 to B[7][5]
+Thus B[7][2]=2, B[7][5]=-4, others 0.
+
+Now i=8:
+Edges from 8: (8->1,1), (8->3,2), (8->4,2), (8->5,-1)
+
+For (8->1) w=1:
+Edges from j=1: (1->6,1), (1->8,2)
+So:
+- k=6: add 1*1=1 to B[8][6]
+- k=8: add 1*2=2 to B[8][8]
+
+For (8->3) w=2:
+Edges from j=3: (3->4,1), (3->5,-2), (3->8,-1)
+So:
+- k=4: add 2*1=2 to B[8][4]
+- k=5: add 2*(-2)=-4 to B[8][5]
+- k=8: add 2*(-1)=-2 to B[8][8]
+
+For (8->4) w=2:
+Edges from j=4: (4->2,-1), (4->5,2)
+So:
+- k=2: add 2*(-1)=-2 to B[8][2]
+- k=5: add 2*2=4 to B[8][5]
+
+For (8->5) w=-1:
+Edges from j=5: (5->2,2), (5->3,-1), (5->4,-2), (5->6,2), (5->7,2)
+So:
+- k=2: add (-1)*2=-2 to B[8][2]
+- k=3: add (-1)*(-1)=1 to B[8][3]
+- k=4: add (-1)*(-2)=2 to B[8][4]
+- k=6: add (-1)*2=-2 to B[8][6]
+- k=7: add (-1)*2=-2 to B[8][7]
+
+Now B[8] entries:
+Let's accumulate:
+B[8][2]: from (8->4): -2, from (8->5): -2 => total -4
+B[8][3]: from (8->5): 1 => 1
+B[8][4]: from (8->3): 2, from (8->5): 2 => total 4
+B[8][5]: from (8->3): -4, from (8->4): 4 => total 0? Wait -4+4=0, also any other? No. So B[8][5]=0.
+B[8][6]: from (8->1): 1, from (8->5): -2 => total -1
+B[8][7]: from (8->5): -2 => -2
+B[8][8]: from (8->1): 2, from (8->3): -2 => total 0
+Also maybe B[8][1]? None. So B[8] entries: (2,-4); (3,1); (4,4); (6,-1); (7,-2). Others zero.
+
+Now we have computed all entries of A^2 (B). Let's list them clearly in matrix form for reference:
+
+Rows 1 to 8:
+
+Row1: 
+B[1][1]=2
+B[1][3]=6
+B[1][4]=4
+B[1][5]= -4
+B[1][6]= -1
+others 0.
+
+So row1: [2,0,6,4,-4,-1,0,0]? Wait careful: columns 1..8: col1=2, col2=0, col3=6, col4=4, col5=-4, col6=-1, col7=0, col8=0.
+
+Row2:
+B[2][2]=4
+B[2][3]= -2
+B[2][4]= -1
+B[2][5]= -2
+B[2][7]= -2
+B[2][8]= -1
+others 0.
+So row2: [0,4,-2,-1,-2,0,-2,-1]? Check col1=0, col2=4, col3=-2, col4=-1, col5=-2, col6=0, col7=-2, col8=-1.
+
+Row3:
+B[3][1]= -1
+B[3][2]= -5
+B[3][3]=0? we had 0 (from earlier)
+B[3][4]=2
+B[3][5]=3
+B[3][6]= -4
+B[3][7]= -4
+B[3][8]=0
+So row3: [-1, -5, 0, 2, 3, -4, -4, 0].
+
+Row4:
+B[4][2]=6
+B[4][3]= -3
+B[4][4]= -4
+B[4][6]=4
+B[4][7]=3
+others 0.
+So row4: [0,6,-3,-4,0,4,3,0]? col1=0, col2=6, col3=-3, col4=-4, col5=0, col6=4, col7=3, col8=0.
+
+Row5:
+B[5][2]= -2
+B[5][3]=6
+B[5][4]= -5
+B[5][5]= -6
+B[5][6]= -2
+B[5][7]=2
+B[5][8]=1
+others 0.
+So row5: [0,-2,6,-5,-6,-2,2,1]? col1=0, col2=-2, col3=6, col4=-5, col5=-6, col6=-2, col7=2, col8=1.
+
+Row6:
+B[6][2]= -4
+B[6][3]=0
+B[6][4]=6
+B[6][5]= -2
+B[6][6]= -3
+B[6][7]= -4
+B[6][8]= -2
+others 0.
+So row6: [0,-4,0,6,-2,-3,-4,-2]? col1=0, col2=-4, col3=0, col4=6, col5=-2, col6=-3, col7=-4, col8=-2.
+
+Row7:
+B[7][2]=2
+B[7][5]= -4
+others 0.
+So row7: [0,2,0,0,-4,0,0,0]? Also col? col2=2, col5=-4; rest 0.
+
+Row8:
+B[8][2]= -4
+B[8][3]=1
+B[8][4]=4
+B[8][6]= -1
+B[8][7]= -2
+others 0.
+So row8: [0,-4,1,4,0,-1,-2,0]? col1=0, col2=-4, col3=1, col4=4, col5=0, col6=-1, col7=-2, col8=0.
+
+Now we have A^2 (B). Let's double-check some entries for consistency. For instance, we could verify tr(A^2) using diagonal of B: B[1][1]=2, B[2][2]=4, B[3][3]=0, B[4][4]=-4, B[5][5]=-6, B[6][6]=-3, B[7][7]=0, B[8][8]=0. Sum = 2+4+0+(-4)+(-6)+(-3)+0+0 = -7. Yes matches earlier computed tr(A^2) = -7. Good.
+
+Now we can compute tr(A^3) = sum_{i,j} A_{ij} (A^2)_{ji} = sum_{i,j} A_{ij} * B_{ji}. That is similar to earlier: we need to sum over all ordered pairs (i,j) product of A_{ij} and B_{ji}. Since we have A (sparse) and B (computed entries), we can compute this sum. Alternatively, we can compute tr(A^3) = sum_i (A^3)_{ii} = sum_i sum_j A_{ij} B_{ji}. So we need to go through all non-zero entries of A (i,j) and multiply by B_{ji} (the (j,i) entry of B). Then sum them. Note that B_{ji} may be zero for many. So we can compute by iterating over all edges (i,j) of A, look up B[j][i], multiply, and sum. Also note that when i=j, we also include diagonal entries of A. So we should include all (i,i) diagonal entries as well: A_{ii} * B_{ii}. So we need to consider all i for which A_{ii} non-zero (2 and 6) and multiply by B_{ii} (which we have). Then for off-diagonal edges (i,j) with i≠j, multiply A_{ij} by B_{ji}. Also note that for each ordered pair (i,j) we include exactly once because we sum over i,j. So it's straightforward.
+
+Let's list all non-zero entries of A (including diagonals) with coordinates and values. We already have the list above. Let's write them again clearly:
+
+A non-zero entries (ordered pairs i->j, value):
+
+Diagonals:
+(2,2): -2
+(6,6): -1
+
+Off-diagonals:
+(1,6):1
+(1,8):2
+(2,3):1
+(2,7):1
+(3,4):1
+(3,5):-2
+(3,8):-1
+(4,2):-1
+(4,5):2
+(5,2):2
+(5,3):-1
+(5,4):-2
+(5,6):2
+(5,7):2
+(6,3):2
+(6,5):-2
+(7,4):-2
+(8,1):1
+(8,3):2
+(8,4):2
+(8,5):-1
+
+That's all. Now we need B_{ji} for each such (i,j). That is, for each edge (i,j), we need the entry at row j, column i of B. So we need to have B matrix available. Let's rewrite B matrix with row and column indices clearly. I'll construct B as a 2D array:
+
+Rows: 1 to 8, columns 1 to 8. We have:
+
+Row1: col1=2, col2=0, col3=6, col4=4, col5=-4, col6=-1, col7=0, col8=0.
+Row2: col1=0, col2=4, col3=-2, col4=-1, col5=-2, col6=0, col7=-2, col8=-1.
+Row3: col1=-1, col2=-5, col3=0, col4=2, col5=3, col6=-4, col7=-4, col8=0.
+Row4: col1=0, col2=6, col3=-3, col4=-4, col5=0, col6=4, col7=3, col8=0.
+Row5: col1=0, col2=-2, col3=6, col4=-5, col5=-6, col6=-2, col7=2, col8=1.
+Row6: col1=0, col2=-4, col3=0, col4=6, col5=-2, col6=-3, col7=-4, col8=-2.
+Row7: col1=0, col2=2, col3=0, col4=0, col5=-4, col6=0, col7=0, col8=0.
+Row8: col1=0, col2=-4, col3=1, col4=4, col5=0, col6=-1, col7=-2, col8=0.
+
+Now for each A_{ij} we need B_{ji}. Let's go through each A entry and compute contribution.
+
+First, diagonals:
+i=2,j=2: A_{22}=-2, B_{22}= B[2][2] = 4. Contribution = (-2)*4 = -8.
+i=6,j=6: A_{66}=-1, B_{66}= B[6][6] = -3. Contribution = (-1)*(-3)=3.
+So diagonal sum = -8+3 = -5.
+
+Now off-diagonals:
+We'll list each (i,j) with A value and then B_{j,i} = B at row=j, col=i. We'll compute product and sum.
+
+(1,6): A=1. Need B_{6,1} = B[6][1] = row6 col1 = 0. So product=0.
+(1,8): A=2. Need B_{8,1} = B[8][1] = row8 col1 = 0. So 0.
+(2,3): A=1. Need B_{3,2} = B[3][2] = row3 col2 = -5. So product = 1 * (-5) = -5.
+(2,7): A=1. Need B_{7,2} = B[7][2] = row7 col2 = 2. So product = 1*2 = 2.
+(3,4): A=1. Need B_{4,3} = B[4][3] = row4 col3 = -3. So product = 1*(-3) = -3.
+(3,5): A=-2. Need B_{5,3} = B[5][3] = row5 col3 = 6. So product = (-2)*6 = -12.
+(3,8): A=-1. Need B_{8,3} = B[8][3] = row8 col3 = 1. So product = (-1)*1 = -1.
+(4,2): A=-1. Need B_{2,4} = B[2][4] = row2 col4 = -1. So product = (-1)*(-1) = 1.
+(4,5): A=2. Need B_{5,4} = B[5][4] = row5 col4 = -5. So product = 2*(-5) = -10.
+(5,2): A=2. Need B_{2,5} = B[2][5] = row2 col5 = -2. So product = 2*(-2) = -4.
+(5,3): A=-1. Need B_{3,5} = B[3][5] = row3 col5 = 3. So product = (-1)*3 = -3.
+(5,4): A=-2. Need B_{4,5} = B[4][5] = row4 col5 = 0. So product = (-2)*0 = 0.
+(5,6): A=2. Need B_{6,5} = B[6][5] = row6 col5 = -2. So product = 2*(-2) = -4.
+(5,7): A=2. Need B_{7,5} = B[7][5] = row7 col5 = -4. So product = 2*(-4) = -8.
+(6,3): A=2. Need B_{3,6} = B[3][6] = row3 col6 = -4. So product = 2*(-4) = -8.
+(6,5): A=-2. Need B_{5,6} = B[5][6] = row5 col6 = -2. So product = (-2)*(-2) = 4.
+(7,4): A=-2. Need B_{4,7} = B[4][7] = row4 col7 = 3. So product = (-2)*3 = -6.
+(8,1): A=1. Need B_{1,8} = B[1][8] = row1 col8 = 0. So 0.
+(8,3): A=2. Need B_{3,8} = B[3][8] = row3 col8 = 0. So 0.
+(8,4): A=2. Need B_{4,8} = B[4][8] = row4 col8 = 0. So 0.
+(8,5): A=-1. Need B_{5,8} = B[5][8] = row5 col8 = 1. So product = (-1)*1 = -1.
+
+Now sum all these off-diagonal products:
+Let's list them with values:
+(2,3): -5
+(2,7): 2
+(3,4): -3
+(3,5): -12
+(3,8): -1
+(4,2): 1
+(4,5): -10
+(5,2): -4
+(5,3): -3
+(5,4): 0
+(5,6): -4
+(5,7): -8
+(6,3): -8
+(6,5): 4
+(7,4): -6
+(8,5): -1
+Also (1,6):0, (1,8):0, (5,4):0, (8,1):0, (8,3):0, (8,4):0.
+Now sum:
+-5 +2 = -3
+-3 + (-12) = -15
+-15 + (-1) = -16
+-16 + 1 = -15
+-15 + (-10) = -25
+-25 + (-4) = -29
+-29 + (-3) = -32
+-32 + 0 = -32
+-32 + (-4) = -36
+-36 + (-8) = -44
+-44 + (-8) = -52
+-52 + 4 = -48
+-48 + (-6) = -54
+-54 + (-1) = -55
+So off-diagonal sum = -55.
+Now add diagonal sum (-5) gives total tr(A^3) = -5 + (-55) = -60.
+
+Thus tr(A^3) = -60.
+
+Now we need tr(A^4). We can compute using A^2: tr(A^4) = sum_{i,k} (A^2)_{ik} (A^2)_{ki} = sum_{i,k} B_{ik} B_{ki}. This is similar to tr(A^2) but with matrix B. So we need to compute sum_{i,k} B_{ik} B_{ki}. That is sum over all ordered pairs (i,k) of product of B_{ik} and B_{ki}. Equivalent to sum_i (B^2)_{ii}? Actually (B^2)_{ii} = sum_k B_{ik} B_{ki}, so tr(A^4) = tr(B^2). But we can compute directly by summing over i,k: Since B is known, we can compute this sum as sum_i (B^2)_{ii} or directly sum over i,k.
+
+We can compute by iterating over all i,k. Because B has many non-zero entries, but we can compute systematically similar to how we computed tr(A^2) but with B. That is, compute sum of squares of diagonal entries of B plus twice sum over i<k of B_{ik} B_{ki}. But careful: tr(A^4) = sum_{i,k} B_{ik} B_{ki} = sum_i B_{ii}^2 + 2 * sum_{i<k} B_{ik} B_{ki}. So we need to compute B's diagonal squares and off-diagonal symmetric products.
+
+So first, list all diagonal entries of B: B_{11}=2, B_{22}=4, B_{33}=0, B_{44}=-4, B_{55}=-6, B_{66}=-3, B_{77}=0, B_{88}=0. Their squares: 4,16,0,16,36,9,0,0. Sum = 4+16+0+16+36+9 = 81? Let's compute: 4+16=20, +16=36, +36=72, +9=81. So diagonal part = 81.
+
+Now we need to compute sum over unordered pairs i<k of B_{ik} * B_{ki}. Then double it and add to diagonal sum. So we need to find all unordered pairs (i,k) such that both B_{ik} and B_{ki} are non-zero. Then compute product and double.
+
+We have B matrix entries. Let's write B in a structured way. I'll create a list of non-zero off-diagonal entries of B. Since B is 8x8, we can list all non-zero entries (i,k) with i != k. Then for each unordered pair (i,k), we need to check if both (i,k) and (k,i) are non-zero. Then compute product.
+
+So first, list all non-zero entries of B (excluding diagonal). We'll go row by row.
+
+Row1: (1,3)=6, (1,4)=4, (1,5)=-4, (1,6)=-1. Also (1,1) is diagonal, ignore. So off-diagonals: (1,3):6; (1,4):4; (1,5):-4; (1,6):-1.
+Row2: (2,3)=-2; (2,4)=-1; (2,5)=-2; (2,7)=-2; (2,8)=-1. Also (2,2) diagonal. So off: (2,3):-2; (2,4):-1; (2,5):-2; (2,7):-2; (2,8):-1.
+Row3: (3,1)=-1; (3,2)=-5; (3,4)=2; (3,5)=3; (3,6)=-4; (3,7)=-4. Also (3,3)=0. So off: (3,1):-1; (3,2):-5; (3,4):2; (3,5):3; (3,6):-4; (3,7):-4.
+Row4: (4,2)=6; (4,3)=-3; (4,4) diagonal? Actually (4,4) is -4 diagonal, but we exclude diagonal for off-diagonal list. So off: (4,2):6; (4,3):-3; (4,6)=4; (4,7)=3.
+Row5: (5,2)=-2; (5,3)=6; (5,4)=-5; (5,5) diagonal -6; (5,6)=-2; (5,7)=2; (5,8)=1. So off: (5,2):-2; (5,3):6; (5,4):-5; (5,6):-2; (5,7):2; (5,8):1.
+Row6: (6,2)=-4; (6,3)=0? Actually (6,3)=0; (6,4)=6; (6,5)=-2; (6,6) diagonal -3; (6,7)=-4; (6,8)=-2. So off: (6,2):-4; (6,4):6; (6,5):-2; (6,7):-4; (6,8):-2.
+Row7: (7,2)=2; (7,5)=-4; (7,? ) others zero. So off: (7,2):2; (7,5):-4.
+Row8: (8,2)=-4; (8,3)=1; (8,4)=4; (8,6)=-1; (8,7)=-2. So off: (8,2):-4; (8,3):1; (8,4):4; (8,6):-1; (8,7):-2.
+
+Now we need to find all unordered pairs (i,k) with i<k such that both B_{ik} and B_{ki} are non-zero. For each such pair, compute product P = B_{ik} * B_{ki} and then add 2P to the sum (since ordered pairs contribute 2P). Alternatively, we can compute sum_{i,k} B_{ik}B_{ki} by summing over all ordered pairs, but it's easier to consider symmetric pairs.
+
+So we need to check for each unordered pair (i,k) whether both entries exist. Let's list all possible pairs (i,k) with i<k. Since B is 8x8, we have 28 unordered pairs. We'll go through systematically.
+
+We'll list all non-zero entries from row i and column k, and also from row k and column i. It might be easier to create a matrix of B entries to see symmetric pairs. Let's write B matrix as a grid with rows and columns. I'll create a table with rows and columns 1..8:
+
+      1   2   3   4   5   6   7   8
+1:   2   0   6   4  -4  -1   0   0
+2:   0   4  -2  -1  -2   0  -2  -1
+3:  -1  -5   0   2   3  -4  -4   0
+4:   0   6  -3  -4   0   4   3   0
+5:   0  -2   6  -5  -6  -2   2   1
+6:   0  -4   0   6  -2  -3  -4  -2
+7:   0   2   0   0  -4   0   0   0
+8:   0  -4   1   4   0  -1  -2   0
+
+Now we need to find all pairs (i,k) with i<k such that both B[i][k] and B[k][i] are non-zero. Let's go through i=1..7.
+
+i=1:
+k=2: B[1][2]=0, B[2][1]=0 => no.
+k=3: B[1][3]=6, B[3][1]=-1 => both non-zero! So pair (1,3): product = 6 * (-1) = -6. Contribution = 2 * (-6) = -12.
+k=4: B[1][4]=4, B[4][1]=0 => no (B[4][1]=0). So skip.
+k=5: B[1][5]=-4, B[5][1]=0 => no.
+k=6: B[1][6]=-1, B[6][1]=0 => no.
+k=7: B[1][7]=0, B[7][1]=0 => no.
+k=8: B[1][8]=0, B[8][1]=0 => no.
+
+So only (1,3) contributes.
+
+i=2:
+k=3: B[2][3]=-2, B[3][2]=-5 => both non-zero. Product = (-2)*(-5)=10. Contribution = 2*10=20.
+k=4: B[2][4]=-1, B[4][2]=6 => both non-zero. Product = (-1)*6 = -6. Contribution = 2*(-6)= -12.
+k=5: B[2][5]=-2, B[5][2]=-2 => both non-zero. Product = (-2)*(-2)=4. Contribution = 2*4=8.
+k=6: B[2][6]=0, B[6][2]=-4 => only one non-zero? B[2][6]=0, so no.
+k=7: B[2][7]=-2, B[7][2]=2 => both non-zero. Product = (-2)*2 = -4. Contribution = 2*(-4)= -8.
+k=8: B[2][8]=-1, B[8][2]=-4 => both non-zero. Product = (-1)*(-4)=4. Contribution = 2*4=8.
+
+i=2 done.
+
+i=3:
+k=4: B[3][4]=2, B[4][3]=-3 => both non-zero. Product = 2*(-3) = -6. Contribution = 2*(-6)= -12.
+k=5: B[3][5]=3, B[5][3]=6 => both non-zero. Product = 3*6=18. Contribution = 2*18=36.
+k=6: B[3][6]=-4, B[6][3]=0 => B[6][3]=0? In row6 col3 is 0 (from table: row6 col3=0). So only one non-zero? Actually B[3][6] = -4, but B[6][3] = 0, so no.
+k=7: B[3][7]=-4, B[7][3]=0 => B[7][3]=0, so no.
+k=8: B[3][8]=0, B[8][3]=1 => only one non-zero? B[3][8]=0, so no.
+
+i=4:
+k=5: B[4][5]=0, B[5][4]=-5 => only one? B[4][5]=0, so no.
+k=6: B[4][6]=4, B[6][4]=6 => both non-zero. Product = 4*6=24. Contribution = 2*24=48.
+k=7: B[4][7]=3, B[7][4]=0 => B[7][4]=0 (row7 col4=0). So no.
+k=8: B[4][8]=0, B[8][4]=4 => only one? B[4][8]=0, so no.
+
+i=5:
+k=6: B[5][6]=-2, B[6][5]=-2 => both non-zero. Product = (-2)*(-2)=4. Contribution = 2*4=8.
+k=7: B[5][7]=2, B[7][5]=-4 => both non-zero. Product = 2*(-4) = -8. Contribution = 2*(-8)= -16.
+k=8: B[5][8]=1, B[8][5]=0 => B[8][5]=0 (row8 col5=0). So no.
+
+i=6:
+k=7: B[6][7]=-4, B[7][6]=0 => B[7][6]=0, so no.
+k=8: B[6][8]=-2, B[8][6]=-1 => both non-zero. Product = (-2)*(-1)=2. Contribution = 2*2=4.
+
+i=7:
+k=8: B[7][8]=0, B[8][7]=-2 => only one? B[7][8]=0, so no.
+
+Thus we have contributions from the following unordered pairs:
+(1,3): -12
+(2,3): 20
+(2,4): -12
+(2,5): 8
+(2,7): -8
+(2,8): 8
+(3,4): -12
+(3,5): 36
+(4,6): 48
+(5,6): 8
+(5,7): -16
+(6,8): 4
+
+Now sum these contributions: Let's compute step by step:
+Start: -12
++20 = 8
++ (-12) = -4
++8 = 4
++ (-8) = -4
++8 = 4
++ (-12) = -8
++36 = 28
++48 = 76
++8 = 84
++ (-16) = 68
++4 = 72
+
+So total off-diagonal contribution (2 * sum_{i<k} B_{ik}B_{ki}) = 72.
+
+Now add diagonal part: 81. So tr(A^4) = 81 + 72 = 153.
+
+Thus tr(A^4) = 153.
+
+Now we have all traces: tr(A) = -3, tr(A^2) = -7, tr(A^3) = -60, tr(A^4) = 153.
+
+Thus answer: -3, -7, -60, 153.
+
+We should double-check for possible errors. Since calculations were manual, we need to ensure no mistakes in computing A^2 entries or in the sums. Let's verify some steps.
+
+We can also compute tr(A^3) by another method maybe using eigenvalues? But not easy. We can compute A^3 diagonal entries directly using A and A^2? We already did sum over i,j A_{ij}B_{ji}. That sum looked plausible. However, we might have missed some contributions. Let's recalc the off-diagonal contributions for tr(A^3) carefully.
+
+Alternatively, we could compute tr(A^3) by computing (A^3) diagonal entries individually using the cycles method, but it's more work. But we can cross-check by computing a few entries manually or using alternative approach: sum_{i,j,k} A_{ij}A_{jk}A_{ki}. That might be easier to verify with list of edges? Let's attempt to compute tr(A^3) by enumerating all directed 3-cycles (including those with repeats) using the edge list. That may serve as a check.
+
+We have list of edges (including self-loops) with weights. The sum is over all ordered triples (i,j,k) of product A_{ij}A_{jk}A_{ki}. We can categorize by distinctness. We can compute:
+
+- Cases where i=j=k: contributions from self-loops: (2,2,2): A22^3 = (-2)^3 = -8; (6,6,6): (-1)^3 = -1; total -9.
+
+- Cases where two indices equal but not all three: There are three types: i=j≠k, i=k≠j, j=k≠i. For each such pattern, we need to sum over appropriate indices.
+
+Let's compute them systematically.
+
+We have list of edges. Let's denote edges as pairs (u,v,w). We'll compute contributions for each pattern.
+
+First, pattern i=j≠k: i = j, and k different. Then product = A_{ii} * A_{ik} * A_{ki}. For each i with diagonal A_{ii} non-zero (i=2,6), and for each k ≠ i such that A_{ik} and A_{ki} are both non-zero? Actually product requires A_{ii} (diag), A_{ik} (edge i->k), and A_{ki} (edge k->i). So we need i with diagonal, and k such that both edges between i and k exist (both directions). For i=2: A22=-2. Need k such that A_{2k} and A_{k2} are non-zero. Check which k have edges to/from 2. From list: edges from 2: (2,3):1, (2,7):1. Edges to 2: (4,2):-1, (5,2):2, (8,2)? Actually (8,2) doesn't exist? (8,2) is? In A, (8,2) is 0. Also (2,2) is diagonal but k≠i. So possible k: 3? A23=1, A32? A32 is 0 (row3 col2=0). So no. k=7? A27=1, A72? A72 is 0 (row7 col2=0). So no. Also k=4? A24=0, but A42=-1, but need both, so no. k=5? A25=0, A52=2, but need both, so no. So no k for i=2. For i=6: A66=-1. Edges from 6: (6,3):2, (6,5):-2. Edges to 6: (1,6):1, (5,6):2. So check k=3: A63=2, A36? A36 is 0 (row3 col6=0). So no. k=5: A65=-2, A56=2, so both exist! A65 = -2, A56 = 2. So for i=6, k=5: product = A66 * A65 * A56 = (-1)*(-2)*2 = 4? Wait careful: pattern i=j≠k means i=j, so product = A_{ii} * A_{ik} * A_{ki}. Here i=6, k=5: A66=-1, A65=-2, A56=2. So product = (-1)*(-2)*2 = 4. Also we need to consider that this pattern includes both ordered triples? In the sum over i,j,k, each combination appears once. So for i=j=6, k=5, it's one term. Similarly, we might have k other? k=1? A61=0, A16=1, but A61=0 so no. So only k=5. So contribution = 4.
+
+Now pattern i=k≠j: i = k, j different. Then product = A_{ij} * A_{jj} * A_{ji}? Actually if i=k, then product = A_{ij} * A_{jj} * A_{ji} (since A_{jk} becomes A_{j i} and A_{ki}=A_{ii}). Wait check: For i=k, triple (i,j,i): product = A_{ij} * A_{j i} * A_{i i} = A_{ij} A_{ji} A_{ii}. So it's symmetric to previous but with different ordering. So for each i with diagonal non-zero, and j ≠ i such that both A_{ij} and A_{ji} exist. So again for i=2: need j with both edges between 2 and j. As before, none. For i=6: need j such that A_{6j} and A_{j6} exist. j=5: A65=-2, A56=2, so product = A65 * A56 * A66 = (-2)*2*(-1)=4? Wait product = A_{ij} A_{ji} A_{ii} with i=6, j=5: A65=-2, A56=2, A66=-1 => (-2)*2*(-1)=4. So another contribution 4. Also j=3? A63=2 but A36=0, so no. j=1? A61=0, A16=1, no. So only j=5 gives 4. Also j=??? maybe j=? So contribution = 4.
+
+Now pattern j=k≠i: j = k, i different. Then product = A_{ij} * A_{jj} * A_{ji}. Actually if j=k, then triple (i,j,j): product = A_{ij} * A_{jj} * A_{j i} = A_{ij} A_{jj} A_{ji}. So again similar. For each j with diagonal, and i ≠ j such that both A_{ij} and A_{ji} exist. So j=2: need i such that A_{i2} and A_{2i} exist. Which i? For i=4: A42=-1, A24=0? A24=0. So no. i=5: A52=2, A25=0? A25=0. So no. i=3? A32=0, A23=1. So no. i=7? A72=0, A27=1. So no. So none for j=2. For j=6: need i such that A_{i6} and A_{6i} exist. i=1: A16=1, A61=0? A61=0. So no. i=5: A56=2, A65=-2, so both exist! So product = A_{i6} * A_{66} * A_{6i}? Wait careful: For j=k=6, i=5: product = A_{i j} * A_{j j} * A_{j i} = A_{5,6} * A_{6,6} * A_{6,5} = 2 * (-1) * (-2) = 4. So another contribution 4. Also i=? i=3? A36=0, A63=2, no. So only i=5 gives 4.
+
+Thus total contributions from patterns with exactly two equal indices: we have three patterns: i=j≠k gave 4, i=k≠j gave 4, j=k≠i gave 4, total 12.
+
+Now we also need contributions from all distinct indices (i,j,k all different). That is sum over ordered triples of distinct indices of A_{ij}A_{jk}A_{ki}. This is the sum over directed 3-cycles (including cyclic permutations). Since each cycle of three distinct indices will appear in 3 different orders? Actually for a given set of three distinct indices, say a,b,c, there are 3! = 6 ordered triples that are permutations, but the product A_{ij}A_{jk}A_{ki} is only non-zero when the edges form a directed cycle. Specifically, if we consider a directed cycle a->b->c->a, then the ordered triple (i,j,k) = (a,b,c) gives product A_{ab}A_{bc}A_{ca}. Similarly, (b,c,a) gives A_{bc}A_{ca}A_{ab} same product; (c,a,b) gives same product. Also the reverse cycle (a,c,b) would give A_{ac}A_{cb}A_{ba} which may be different if edges exist in opposite direction. So we need to count all possible directed 3-cycles among distinct vertices. Additionally, there might be cycles where the indices are not all distinct? We already covered those with repeats. So we need to find all sets of three distinct vertices {i,j,k} such that there is a directed cycle of length 3 (i->j, j->k, k->i) and also possibly other permutations. Since the sum over ordered triples includes all permutations, we need to sum over each ordered triple that yields a non-zero product. So we can enumerate all ordered triples (i,j,k) with i,j,k distinct such that all three edges exist. That might be easier by listing all edges and finding cycles.
+
+Given the graph is small, we can list all directed edges and see possible 2-step paths that return to start. Alternatively, we can use the A^2 matrix we computed; note that (A^3)_{ii} = sum_{j,k} A_{ij}A_{jk}A_{ki}. So diagonal entries of A^3 give sum over all j,k (including repeats) for fixed i. But we already computed tr(A^3) = sum_i (A^3)_{ii} = -60. So we can also compute the contributions from distinct indices by subtracting the contributions from repeated indices from the total. We already have total tr(A^3) = -60. Contributions from diagonal (i=j=k) = -9. Contributions from exactly two equal indices = we computed 12? Wait we computed three patterns sum to 12? But careful: In the sum over all ordered triples, the contributions from cases where exactly two indices are equal: There are three types, each counted separately. We computed for each type the sum of products. Let's verify those sums more carefully because we might have missed some. For i=j≠k, we found only (i=6,k=5) giving 4. For i=k≠j, we found only (i=6,j=5) giving 4. For j=k≠i, we found only (j=6,i=5) giving 4. So total 12. But is there any other case? For i=2, maybe there is? Let's double-check all possibilities.
+
+Check i=2: For i=j≠k: i=j=2, need A22, A2k, Ak2 all non-zero. A22=-2. Need k such that A2k and Ak2 exist. A2k: from 2 we have edges to 3 and 7. Ak2: edges to 2 are from 4 (A42=-1) and from 5 (A52=2). So we need k such that both A2k and Ak2 non-zero. k=3: A23=1 but A32=0. k=7: A27=1 but A72=0. k=4: A24=0 but A42=-1. k=5: A25=0 but A52=2. So none. So no contribution.
+
+For i=2 in i=k≠j: i=k=2, need A2j, Aj2, A22. A22=-2. Need j such that A2j and Aj2 exist. Same conditions as above: no j. So none.
+
+For j=2 in j=k≠i: j=k=2, need Ai2, A22, A2i. Need i such that Ai2 and A2i exist. Same conditions: no i. So none.
+
+What about i=6? We found (6,5) works. Are there any other? For i=6, i=j≠k: i=j=6, need A66=-1, A6k and Ak6. A6k: edges from 6: to 3 (2), to 5 (-2). Ak6: edges to 6: from 1 (1), from 5 (2). So k=3: A63=2, A36=0 → no. k=5: A65=-2, A56=2 → yes. k=1: A61=0, A16=1 → no. So only k=5. So product = (-1)*(-2)*2=4. Good.
+
+For i=6, i=k≠j: i=k=6, need A6j, Aj6, A66. A66=-1. j such that A6j and Aj6 exist: j=5 works: A65=-2, A56=2 → product = (-2)*2*(-1)=4. j=3: A63=2, A36=0 → no. j=1: A61=0, A16=1 → no. So only j=5 gives 4.
+
+For j=6, j=k≠i: j=k=6, need A i6, A66, A6i. i such that A i6 and A6i exist: i=5 works: A56=2, A65=-2 → product = 2*(-1)*(-2)=4. i=1: A16=1, A61=0 → no. i=3: A36=0, A63=2 → no. So only i=5 gives 4.
+
+Thus total from two-equal cases = 12.
+
+Now contributions from all three distinct indices we need to sum over ordered triples (i,j,k) with i,j,k all distinct. Then tr(A^3) = (i=j=k) + (two equal) + (all distinct) = -9 + 12 + (distinct sum) = 3 + distinct sum? Wait -9+12=3. So distinct sum = tr(A^3) - 3 = -60 - 3 = -63. So sum over distinct ordered triples should be -63.
+
+Now we can try to verify this by enumerating all directed 3-cycles among distinct vertices. This could serve as a check for our earlier computation of tr(A^3) via A and A^2. If we can find all cycles and compute their contributions, we can see if they sum to -63.
+
+Let's list all directed cycles of length 3 (ordered triples i->j->k->i) with distinct i,j,k. Since each cycle gives three ordered triples (cyclic permutations) that produce the same product (since product is the same for the cycle direction). Also the reverse cycle (i->k->j->i) would give a different product if edges exist. So we need to find all possible directed 3-cycles. Let's list all edges (directed) and try to find cycles.
+
+We have edges list. Let's create adjacency list:
+
+1: out to 6,8
+2: out to 2 (self),3,7
+3: out to 4,5,8
+4: out to 2,5
+5: out to 2,3,4,6,7
+6: out to 3,5,6 (self)
+7: out to 4
+8: out to 1,3,4,5
+
+Now we need cycles of length 3: i->j, j->k, k->i, all distinct. We can look for paths of length 2 and check if there is an edge from third back to first.
+
+We can enumerate all possible i, then all j such that i->j exists (j!=i), then all k such that j->k exists (k!=i and k!=j), and then check if k->i exists. Then add the product A_{ij} A_{jk} A_{ki}. Also we need to consider all ordered triples, so each cycle will be counted three times? Actually if we sum over all ordered triples (i,j,k) with i,j,k distinct, then each directed cycle of length 3 (say a->b->c->a) will appear as (a,b,c), (b,c,a), (c,a,b). That's three ordered triples, each with the same product. So if we enumerate all such cycles by starting from a fixed i and then following j,k and checking k->i, we will count each cycle three times? Let's think: For a given directed cycle a->b->c->a, when we set i=a, j=b, k=c, we get that triple. When we set i=b, j=c, k=a, we also get that triple because b->c, c->a, a->b exists. Similarly i=c, j=a, k=b. So indeed each cycle yields three ordered triples. So if we enumerate all ordered triples by iterating i, then j, then k, we will count each cyclic permutation separately. Our sum over all distinct ordered triples is exactly the sum of products over all such permutations. So we can compute it by iterating over all i, then all j (j!=i) with edge i->j, then all k (k!=i,j) with edge j->k, and if edge k->i exists, add product. That will count each ordered triple exactly once. So we can compute that sum manually.
+
+Let's do that. We'll list all possible paths of length 2, then check return edge.
+
+We'll go through each i from 1 to 8.
+
+i=1:
+Out from 1: to 6 (w1=1), to 8 (w1=2)
+
+First i=1, j=6 (w1=1):
+From 6 out: edges to 3 (2), to 5 (-2), to 6 (self but j=6, k cannot be j? We need distinct i,j,k, so k cannot be i or j. So k can be 3 or 5, but also k cannot be i=1. So k=3,5.
+- k=3: w2=2. Check if edge from 3 to 1 exists? A31? From list, 3->1? No. So no.
+- k=5: w2=-2. Check 5->1? A51? No. So no.
+
+Now i=1, j=8 (w1=2):
+From 8 out: edges to 1 (1), to 3 (2), to 4 (2), to 5 (-1). But k cannot be i=1, so possible k=3,4,5 (since k=1 is i, exclude). Also must be distinct from j=8, so k=3,4,5 are not 8, fine.
+- k=3: w2=2. Check edge 3->1? A31? No.
+- k=4: w2=2. Check 4->1? A41? No.
+- k=5: w2=-1. Check 5->1? No.
+So no cycles from i=1.
+
+i=2:
+Out from 2: to 3 (1), to 7 (1), also self-loop but skip j not equal i? Actually j must be distinct from i? For distinct i,j,k, we require i,j,k all different, so j must be different from i. So j can be 3 or 7 (and also maybe other? 2->2 is self but j=i, not allowed because j must be distinct from i? Actually we are considering all distinct i,j,k, so j cannot equal i. So yes, j=3,7.
+Also note 2->? also to? Only those.
+
+First i=2, j=3 (w1=1):
+From 3 out: edges to 4 (1), to 5 (-2), to 8 (-1). (skip self? j=3, k must be distinct from i=2 and j=3, so k can be 4,5,8).
+- k=4: w2=1. Check 4->2? A42 = -1. Yes! So product = A23 * A34 * A42 = 1 * 1 * (-1) = -1. This is one ordered triple (2,3,4). Add to sum.
+- k=5: w2=-2. Check 5->2? A52 = 2. Yes! Product = 1 * (-2) * 2 = -4. Triple (2,3,5) contributes -4.
+- k=8: w2=-1. Check 8->2? A82? A82? From list, 8->2? No, 8->2 is 0. So no.
+
+Now i=2, j=7 (w1=1):
+From 7 out: edges to 4 (-2). (only one). k=4: w2=-2. Check 4->2? A42=-1. Yes! Product = 1 * (-2) * (-1) = 2. Triple (2,7,4) contributes 2.
+Also any other k? None.
+
+Thus contributions from i=2: -1, -4, 2. Sum = -3.
+
+i=3:
+Out from 3: to 4 (1), to 5 (-2), to 8 (-1). (j distinct from i=3)
+i=3, j=4 (w1=1):
+From 4 out: edges to 2 (-1), to 5 (2). (k distinct from i=3 and j=4)
+- k=2: w2=-1. Check 2->3? A23 = 1. Yes! Product = 1 * (-1) * 1 = -1. Triple (3,4,2) contributes -1.
+- k=5: w2=2. Check 5->3? A53 = -1. Yes! Product = 1 * 2 * (-1) = -2. Triple (3,4,5) contributes -2.
+
+i=3, j=5 (w1=-2):
+From 5 out: edges to 2 (2), to 3 (-1) (but k cannot be j=5? Also k distinct from i=3, j=5, so k can be 2,4,6,7? Actually 5->3 is to j? Wait j=5, so edges from 5: to 2,3,4,6,7. But k cannot be j (5) nor i (3). So possible k: 2,4,6,7. Also check k=3 is i, so exclude.
+- k=2: w2=2. Check 2->3? A23=1. Yes! Product = (-2)*2*1 = -4. Triple (3,5,2) contributes -4.
+- k=4: w2=-2. Check 4->3? A43? A43 =? From list, 4->3 is 0? Actually row4 col3 is 0 (4->? only 2 and 5). So no.
+- k=6: w2=2. Check 6->3? A63 = 2. Yes! Product = (-2)*2*2 = -8. Triple (3,5,6) contributes -8.
+- k=7: w2=2. Check 7->3? A73? No (row7 col3=0). So no.
+i=3, j=8 (w1=-1):
+From 8 out: edges to 1 (1), to 3 (2) (but k=3 is i, exclude), to 4 (2), to 5 (-1). So possible k: 1,4,5 (since k=3 is i, exclude; also k cannot be j=8, but those are fine).
+- k=1: w2=1. Check 1->3? A13? 1->3? No (row1 col3=0). So no.
+- k=4: w2=2. Check 4->3? None. So no.
+- k=5: w2=-1. Check 5->3? A53=-1. Yes! Product = (-1)*(-1)*(-1) = -1? Wait compute: A38 = -1, A85 = -1? Actually careful: i=3, j=8, k=5: A38 = -1, A85 = A8,5 = -1 (from list: 8->5 = -1), A53 = -1. So product = (-1)*(-1)*(-1) = -1. Triple (3,8,5) contributes -1.
+Thus contributions from i=3: -1, -2, -4, -8, -1. Sum = -1-2=-3; -3-4=-7; -7-8=-15; -15-1=-16.
+
+So sum from i=3 = -16.
+
+i=4:
+Out from 4: to 2 (-1), to 5 (2). (j distinct from i=4)
+i=4, j=2 (w1=-1):
+From 2 out: edges to 3 (1), to 7 (1). (k distinct from i=4 and j=2)
+- k=3: w2=1. Check 3->4? A34 = 1. Yes! Product = (-1)*1*1 = -1. Triple (4,2,3) contributes -1.
+- k=7: w2=1. Check 7->4? A74 = -2. Yes! Product = (-1)*1*(-2) = 2. Triple (4,2,7) contributes 2.
+i=4, j=5 (w1=2):
+From 5 out: edges to 2 (2), to 3 (-1), to 4 (-2), to 6 (2), to 7 (2). k distinct from i=4 and j=5: possible k=2,3,6,7 (k=4 is i, exclude; k=5 is j, exclude).
+- k=2: w2=2. Check 2->4? A24? A24? Row2 col4 = 0. So no.
+- k=3: w2=-1. Check 3->4? A34=1. Yes! Product = 2*(-1)*1 = -2. Triple (4,5,3) contributes -2.
+- k=6: w2=2. Check 6->4? A64? Row6 col4 =? A64? From list, 6->4? No, 6->3,5,6 only. So no.
+- k=7: w2=2. Check 7->4? A74=-2. Yes! Product = 2*2*(-2) = -8. Triple (4,5,7) contributes -8.
+Thus contributions from i=4: -1+2=1; then -2-8=-10; total = 1-10 = -9.
+
+i=5:
+Out from 5: to 2 (2), to 3 (-1), to 4 (-2), to 6 (2), to 7 (2). (j distinct from i=5)
+i=5, j=2 (w1=2):
+From 2 out: to 3 (1), to 7 (1). k distinct from i=5, j=2: possible k=3,7.
+- k=3: w2=1. Check 3->5? A35 = -2. Yes! Product = 2*1*(-2) = -4. Triple (5,2,3) contributes -4.
+- k=7: w2=1. Check 7->5? A75? Row7 col5 = -4? Wait A75? From list, 7->5? No, 7->4 only. So 7->5 is 0. So no.
+i=5, j=3 (w1=-1):
+From 3 out: to 4 (1), to 5 (-2), to 8 (-1). k distinct from i=5, j=3: possible k=4,8 (k=5 is i, exclude; k=3 is j).
+- k=4: w2=1. Check 4->5? A45 = 2. Yes! Product = (-1)*1*2 = -2. Triple (5,3,4) contributes -2.
+- k=8: w2=-1. Check 8->5? A85 = -1. Yes! Product = (-1)*(-1)*(-1) = -1. Triple (5,3,8) contributes -1.
+i=5, j=4 (w1=-2):
+From 4 out: to 2 (-1), to 5 (2). k distinct from i=5, j=4: possible k=2 (k=5 is i, exclude; k=4 is j; k=2 allowed).
+- k=2: w2=-1. Check 2->5? A25? Row2 col5 = 0. So no.
+Also could k= something else? 4->5 is to j? but k cannot be j=4? Actually k=5 is i, so no. So none.
+i=5, j=6 (w1=2):
+From 6 out: to 3 (2), to 5 (-2), to 6 (self). k distinct from i=5, j=6: possible k=3 (k=5 is i, exclude; k=6 is j; k=3 allowed). Also k=5 is i, exclude; k=6 is j; so only k=3.
+- k=3: w2=2. Check 3->5? A35 = -2. Yes! Product = 2*2*(-2) = -8. Triple (5,6,3) contributes -8.
+i=5, j=7 (w1=2):
+From 7 out: to 4 (-2). k distinct from i=5, j=7: possible k=4.
+- k=4: w2=-2. Check 4->5? A45=2. Yes! Product = 2*(-2)*2 = -8. Triple (5,7,4) contributes -8.
+Now sum contributions from i=5: -4 + (-2) + (-1) + (-8) + (-8) = -4-2=-6; -6-1=-7; -7-8=-15; -15-8=-23. So sum = -23.
+
+i=6:
+Out from 6: to 3 (2), to 5 (-2), also self-loop but skip. j distinct from i=6: j=3,5.
+i=6, j=3 (w1=2):
+From 3 out: to 4 (1), to 5 (-2), to 8 (-1). k distinct from i=6, j=3: possible k=4,5,8.
+- k=4: w2=1. Check 4->6? A46? Row4 col6 =? A46? From list, 4->6? No (4->2,5 only). So no.
+- k=5: w2=-2. Check 5->6? A56 = 2. Yes! Product = 2*(-2)*2 = -8. Triple (6,3,5) contributes -8.
+- k=8: w2=-1. Check 8->6? A86? Row8 col6 = -1. Yes! Product = 2*(-1)*(-1) = 2? Wait: A68? Actually i=6, j=3, k=8: product = A63 * A38 * A86 = 2 * (-1) * (-1) = 2. So triple (6,3,8) contributes 2.
+i=6, j=5 (w1=-2):
+From 5 out: to 2 (2), to 3 (-1), to 4 (-2), to 6 (2), to 7 (2). k distinct from i=6, j=5: possible k=2,3,4,7 (k=6 is i, exclude; k=5 is j).
+- k=2: w2=2. Check 2->6? A26? Row2 col6 = 0. So no.
+- k=3: w2=-1. Check 3->6? A36? Row3 col6 = 0. So no.
+- k=4: w2=-2. Check 4->6? A46? 0. So no.
+- k=7: w2=2. Check 7->6? A76? Row7 col6 = 0. So no.
+Thus only contributions from i=6: -8 + 2 = -6.
+But wait, also check maybe other? For i=6, j=5, k=? Possibly 5->? Actually 5->6 is self? But k=6 is i, not allowed. So none. So sum = -6.
+
+i=7:
+Out from 7: to 4 (-2). j=4 (w1=-2). j distinct from i=7.
+From 4 out: to 2 (-1), to 5 (2). k distinct from i=7, j=4: possible k=2,5.
+- k=2: w2=-1. Check 2->7? A27=1. Yes! Product = (-2)*(-1)*1 = 2. Triple (7,4,2) contributes 2.
+- k=5: w2=2. Check 5->7? A57=2. Yes! Product = (-2)*2*2 = -8. Triple (7,4,5) contributes -8.
+Sum from i=7: 2-8 = -6.
+
+i=8:
+Out from 8: to 1 (1), to 3 (2), to 4 (2), to 5 (-1). j distinct from i=8.
+i=8, j=1 (w1=1):
+From 1 out: to 6 (1), to 8 (2). k distinct from i=8, j=1: possible k=6 (k=8 is i, exclude; k=1 is j). Also k=?? 1->8 is to i, but k=8 is i, not allowed. So only k=6.
+- k=6: w2=1. Check 6->8? A68? Row6 col8 = -2. Yes! Product = 1*1*(-2) = -2. Triple (8,1,6) contributes -2.
+i=8, j=3 (w1=2):
+From 3 out: to 4 (1), to 5 (-2), to 8 (-1). k distinct from i=8, j=3: possible k=4,5 (k=8 is i, exclude; k=3 is j).
+- k=4: w2=1. Check 4->8? A48? Row4 col8=0. So no.
+- k=5: w2=-2. Check 5->8? A58? Row5 col8=1. Yes! Product = 2*(-2)*1 = -4. Triple (8,3,5) contributes -4.
+i=8, j=4 (w1=2):
+From 4 out: to 2 (-1), to 5 (2). k distinct from i=8, j=4: possible k=2,5.
+- k=2: w2=-1. Check 2->8? A28? Row2 col8 = -1. Yes! Product = 2*(-1)*(-1) = 2. Triple (8,4,2) contributes 2.
+- k=5: w2=2. Check 5->8? A58=1. Yes! Product = 2*2*1 = 4. Triple (8,4,5) contributes 4.
+i=8, j=5 (w1=-1):
+From 5 out: to 2 (2), to 3 (-1), to 4 (-2), to 6 (2), to 7 (2). k distinct from i=8, j=5: possible k=2,3,4,6,7.
+- k=2: w2=2. Check 2->8? A28=-1. Yes! Product = (-1)*2*(-1)=2? Wait compute: A85 = -1, A52 = 2, A28 = -1 -> product = (-1)*2*(-1)=2. Triple (8,5,2) contributes 2.
+- k=3: w2=-1. Check 3->8? A38=-1. Yes! Product = (-1)*(-1)*(-1) = -1. Triple (8,5,3) contributes -1.
+- k=4: w2=-2. Check 4->8? A48=0 -> no.
+- k=6: w2=2. Check 6->8? A68=-2. Yes! Product = (-1)*2*(-2)=4. Triple (8,5,6) contributes 4.
+- k=7: w2=2. Check 7->8? A78? Row7 col8=0 -> no.
+So contributions from i=8: -2 + (-4) + 2 + 4 + 2 + (-1) + 4 = sum: -2-4=-6; -6+2=-4; -4+4=0; 0+2=2; 2-1=1; 1+4=5. So sum = 5.
+
+Now sum over all i: i=1:0, i=2:-3, i=3:-16, i=4:-9, i=5:-23, i=6:-6, i=7:-6, i=8:5. Let's add: -3-16=-19; -19-9=-28; -28-23=-51; -51-6=-57; -57-6=-63; -63+5=-58? Wait -57-6 = -63, then +5 = -58? Actually careful: -57 (from i=1..6 sum? Let's recalc stepwise:
+
+i=2: -3
+i=3: -16 -> total -19
+i=4: -9 -> total -28
+i=5: -23 -> total -51
+i=6: -6 -> total -57
+i=7: -6 -> total -63
+i=8: 5 -> total -58? That would be -63+5 = -58. But earlier we expected -63 from distinct ordered triples. So there is a discrepancy: our sum over i of contributions from distinct ordered triples (i,j,k) computed by this enumeration gave -58, not -63. But we must have made an error in counting or in the earlier expectation. Perhaps we missed some cycles or double counted? Let's check the total sum we computed for distinct triples should equal the sum of all products for i,j,k all distinct. Our enumeration gave -58. Then tr(A^3) would be diagonal (-9) + two-equal (12) + distinct (-58) = -55, not -60. But we computed tr(A^3) as -60 via A and A^2 method. So there is a discrepancy of 5. So either our enumeration of distinct cycles is missing some triples, or our two-equal sum is off, or our tr(A^3) from A and A^2 is wrong. Let's double-check the A and A^2 method with more care.
+
+We computed tr(A^3) = sum_{i,j} A_{ij} B_{ji}. We computed diagonal contribution -5 and off-diagonal -55, total -60. Let's recompute that sum more carefully, maybe we missed some A entries or B entries.
+
+First, list all A entries (including diagonals) with values, and then B_{ji} from the B matrix we computed. We'll recompute each product and sum.
+
+First, let's list all A entries again with coordinates (i,j) and value a. Then find B_{j,i} from our B matrix. We need to ensure B matrix is correct. So let's first verify B matrix entries. We computed A^2 by summing over paths of length 2. That could have errors. So we should double-check B matrix thoroughly. Because if B is wrong, tr(A^3) and tr(A^4) will be wrong. So we need to verify A^2 calculations.
+
+Let's recompute A^2 using a systematic approach: maybe compute by matrix multiplication manually with matrix representation. Since it's 8x8, we can compute each entry by summing over k. But we can also use the edge list to recompute each entry carefully. It might be easier to recompute B using a different method: compute B = A^2 by taking the matrix and doing multiplication, perhaps with a spreadsheet mentally. But we can also compute using the list of edges and double-check each B entry.
+
+Alternatively, we can compute tr(A^3) directly using the cycle enumeration as a check, and if it gives a different number, we need to find the mistake. Since we already enumerated distinct cycles and got -58, and two-equal gave 12, and diagonal gave -9, total = -55. So that would give tr(A^3) = -55. But our earlier computation gave -60. So which is correct? Let's verify the two-equal contributions more carefully. Perhaps there are more contributions from two-equal cases besides the ones we found. For i=j≠k, we considered i=2 and i=6. For i=6, we found k=5 gave product 4. But what about k=1? For i=6, k=1: A66=-1, A61=0, A16=1, but A61=0 so product zero. So only k=5. But also possibility i=2? We saw none. But what about i= other diagonal? Only these two. So sum for i=j≠k = 4. For i=k≠j, similarly only (i=6,j=5) gave 4. For j=k≠i, only (j=6,i=5) gave 4. So total 12. That seems correct.
+
+Now diagonal i=j=k: A22^3 = -8, A66^3 = -1, sum -9. So total from repeats = -9+12 = 3.
+
+Thus if distinct sum = -58, total = -55. If distinct sum = -63, total = -60. So we need to determine which is right.
+
+Maybe we missed some distinct cycles in our enumeration. Let's go through the enumeration again more systematically, perhaps using adjacency list and checking all paths of length 2. We'll list all possible directed paths i->j->k with i,j,k distinct, and then check if k->i exists. We'll compute product and sum. We'll do it in an organized way, perhaps using a table.
+
+We'll go over each i from 1 to 8. For each i, list all outgoing edges to j (j≠i). For each j, list all outgoing edges to k (k≠i, k≠j). Then if edge k->i exists, add product. We'll do it systematically.
+
+Let's list all edges (non-self) again:
+
+1: ->6,8
+2: ->3,7 (ignore self)
+3: ->4,5,8
+4: ->2,5
+5: ->2,3,4,6,7
+6: ->3,5 (ignore self)
+7: ->4
+8: ->1,3,4,5
+
+Now we'll go through each i.
+
+Start i=1:
+Out from 1: j=6,8.
+- j=6: from 6 out: k=3,5. Check if k->1 exists? 3->1? No. 5->1? No. So none.
+- j=8: from 8 out: k=1,3,4,5. But k cannot be i=1, so k=3,4,5. Check:
+  k=3: 3->1? No.
+  k=4: 4->1? No.
+  k=5: 5->1? No.
+So none.
+
+i=2:
+Out from 2: j=3,7.
+- j=3: from 3 out: k=4,5,8. (k≠i=2 and k≠j=3). Check:
+  k=4: 4->2? Yes, A42=-1. So product = A23 * A34 * A42 = 1 * 1 * (-1) = -1.
+  k=5: 5->2? Yes, A52=2. product = 1 * (-2) * 2 = -4.
+  k=8: 8->2? No (8->2=0). So ignore.
+- j=7: from 7 out: k=4 (only). Check 4->2? Yes, A42=-1. product = A27 * A74 * A42 = 1 * (-2) * (-1) = 2.
+So sum from i=2: -1 -4 +2 = -3. Good.
+
+i=3:
+Out from 3: j=4,5,8.
+- j=4: from 4 out: k=2,5. (k≠i=3, k≠j=4). Check:
+  k=2: 2->3? Yes, A23=1. product = A34 * A42 * A23 = 1 * (-1) * 1 = -1.
+  k=5: 5->3? Yes, A53=-1. product = 1 * 2 * (-1) = -2.
+- j=5: from 5 out: k=2,3,4,6,7. (k≠i=3, k≠j=5). So k can be 2,4,6,7 (since k=3 is i, exclude). Check:
+  k=2: 2->3? Yes, A23=1. product = A35 * A52 * A23 = (-2) * 2 * 1 = -4.
+  k=4: 4->3? No (A43=0).
+  k=6: 6->3? Yes, A63=2. product = (-2) * 2 * 2 = -8? Wait careful: A35 = -2, A56? Actually we need A_{j,k} = A_{5,6} = 2? From list, 5->6=2. And A_{k,i}=A_{6,3}=2. So product = (-2)*2*2 = -8.
+  k=7: 7->3? No.
+- j=8: from 8 out: k=1,3,4,5. Exclude k=i=3, and k=j=8, so k=1,4,5. Check:
+  k=1: 1->3? No.
+  k=4: 4->3? No.
+  k=5: 5->3? Yes, A53=-1. product = A38 * A85 * A53 = (-1) * (-1) * (-1) = -1.
+So sum from i=3: -1-2 = -3; then -4 = -7; then -8 = -15; then -1 = -16. Same as before.
+
+i=4:
+Out from 4: j=2,5.
+- j=2: from 2 out: k=3,7. (k≠i=4, k≠j=2). Check:
+  k=3: 3->4? Yes, A34=1. product = A42 * A23 * A34 = (-1)*1*1 = -1.
+  k=7: 7->4? Yes, A74=-2. product = (-1)*1*(-2) = 2.
+- j=5: from 5 out: k=2,3,4,6,7. Exclude k=i=4, k=j=5, so k=2,3,6,7. Check:
+  k=2: 2->4? No.
+  k=3: 3->4? Yes, A34=1. product = A45 * A53 * A34 = 2 * (-1) * 1 = -2.
+  k=6: 6->4? No.
+  k=7: 7->4? Yes, A74=-2. product = 2 * 2 * (-2) = -8? Wait A45=2, A57=2, A74=-2 => 2*2*(-2) = -8.
+So sum: -1+2=1; plus -2 = -1; plus -8 = -9. So sum = -9. Good.
+
+i=5:
+Out from 5: j=2,3,4,6,7.
+- j=2: from 2 out: k=3,7. (k≠i=5, k≠j=2). Check:
+  k=3: 3->5? Yes, A35=-2. product = A52 * A23 * A35 = 2 * 1 * (-2) = -4.
+  k=7: 7->5? No.
+- j=3: from 3 out: k=4,5,8. Exclude k=i=5, k=j=3, so k=4,8. Check:
+  k=4: 4->5? Yes, A45=2. product = A53 * A34 * A45 = (-1)*1*2 = -2.
+  k=8: 8->5? Yes, A85=-1. product = (-1)*(-1)*(-1) = -1? Actually A53=-1, A38=-1, A85=-1 => (-1)*(-1)*(-1) = -1.
+- j=4: from 4 out: k=2,5. Exclude k=i=5, k=j=4, so k=2. Check:
+  k=2: 2->5? No.
+- j=6: from 6 out: k=3,5. Exclude k=i=5, k=j=6, so k=3. Check:
+  k=3: 3->5? Yes, A35=-2. product = A56 * A63 * A35 = 2 * 2 * (-2) = -8? Wait A56=2, A63=2, A35=-2 => 2*2*(-2) = -8.
+- j=7: from 7 out: k=4. Exclude k=i=5, k=j=7, so k=4. Check:
+  k=4: 4->5? Yes, A45=2. product = A57 * A74 * A45 = 2 * (-2) * 2 = -8.
+Sum: -4 + (-2) = -6; -6-1=-7; -7-8=-15; -15-8=-23. So sum = -23. Good.
+
+i=6:
+Out from 6: j=3,5.
+- j=3: from 3 out: k=4,5,8. (k≠i=6, k≠j=3). So k=4,5,8. Check:
+  k=4: 4->6? No.
+  k=5: 5->6? Yes, A56=2. product = A63 * A35 * A56 = 2 * (-2) * 2 = -8.
+  k=8: 8->6? Yes, A86=-1. product = A63 * A38 * A86 = 2 * (-1) * (-1) = 2.
+- j=5: from 5 out: k=2,3,4,6,7. Exclude k=i=6, k=j=5, so k=2,3,4,7. Check:
+  k=2: 2->6? No.
+  k=3: 3->6? No.
+  k=4: 4->6? No.
+  k=7: 7->6? No.
+So sum: -8+2 = -6. Good.
+
+i=7:
+Out from 7: j=4.
+- j=4: from 4 out: k=2,5. (k≠i=7, k≠j=4). So k=2,5. Check:
+  k=2: 2->7? Yes, A27=1. product = A74 * A42 * A27 = (-2) * (-1) * 1 = 2.
+  k=5: 5->7? Yes, A57=2. product = (-2) * 2 * 2 = -8.
+Sum: 2-8 = -6. Good.
+
+i=8:
+Out from 8: j=1,3,4,5.
+- j=1: from 1 out: k=6,8. Exclude k=i=8, k=j=1, so k=6. Check:
+  k=6: 6->8? Yes, A68=-2. product = A81 * A16 * A68 = 1 * 1 * (-2) = -2.
+- j=3: from 3 out: k=4,5,8. Exclude k=i=8, k=j=3, so k=4,5. Check:
+  k=4: 4->8? No.
+  k=5: 5->8? Yes, A58=1. product = A83 * A35 * A58 = 2 * (-2) * 1 = -4.
+- j=4: from 4 out: k=2,5. Exclude k=i=8, k=j=4, so k=2,5. Check:
+  k=2: 2->8? Yes, A28=-1. product = A84 * A42 * A28 = 2 * (-1) * (-1) = 2.
+  k=5: 5->8? Yes, A58=1. product = A84 * A45 * A58 = 2 * 2 * 1 = 4.
+- j=5: from 5 out: k=2,3,4,6,7. Exclude k=i=8, k=j=5, so k=2,3,4,6,7. Check:
+  k=2: 2->8? Yes, A28=-1. product = A85 * A52 * A28 = (-1)*2*(-1)=2.
+  k=3: 3->8? Yes, A38=-1. product = (-1)*(-1)*(-1) = -1.
+  k=4: 4->8? No.
+  k=6: 6->8? Yes, A68=-2. product = (-1)*2*(-2)=4.
+  k=7: 7->8? No.
+So sum: -2 + (-4) = -6; +2 = -4; +4 = 0; +2 = 2; -1 = 1; +4 = 5. So sum = 5.
+
+Thus total sum over distinct ordered triples = sum over i of these sums = i=1:0, i=2:-3, i=3:-16, i=4:-9, i=5:-23, i=6:-6, i=7:-6, i=8:5. Total = -3-16=-19; -19-9=-28; -28-23=-51; -51-6=-57; -57-6=-63; -63+5=-58. Wait -57-6 = -63, then +5 = -58? Actually -63 + 5 = -58. But earlier we had i=6:-6, i=7:-6 sum to -12, so after i=5 total -51, then -6 = -57, then -6 = -63, then +5 = -58. Yes total -58. So distinct sum = -58.
+
+Now we also need to consider that in the triple sum, we also should include cases where indices are not all distinct? We already accounted for those separately. So total tr(A^3) from cycle method = diagonal (-9) + two-equal (12) + distinct (-58) = -55. That suggests tr(A^3) = -55, not -60. So either our diagonal or two-equal sums are wrong, or the A and A^2 method gave -60 due to error in B matrix or in the sum over A_{ij}B_{ji}. Let's double-check the two-equal contributions.
+
+We computed i=j≠k: only (i=6,k=5) gave 4. But maybe there are also contributions from i=j=2? Let's re-examine i=j=2: need A22=-2, A2k, Ak2. We need k such that A2k and Ak2 both non-zero. List all possible k: from 2, edges to 3 and 7. For k=3: A23=1, but A32? A32 is 0. So no. k=7: A27=1, A72=0. So no. Also k= ? What about k=2? Not allowed because k≠i. So none. For i=j=6: we had k=5 works. Also check k=3? A63=2, but A36=0. k=1? A61=0, A16=1. So only k=5. So product = A66 * A65 * A56 = (-1)*(-2)*2 = 4. So correct.
+
+Now i=k≠j: i=6, j=5 gave 4. Also could i=2? No. Could i=6, j=3? A63=2, A36=0, so no. Could i=6, j=1? A61=0, A16=1, no. So only i=6,j=5: product = A65 * A56 * A66 = (-2)*2*(-1)=4. So correct.
+
+Now j=k≠i: j=6, i=5 gave 4. Could j=2? No. Could j=6, i=1? A16=1, A61=0, no. So only 4. So total 12.
+
+Thus two-equal sum = 12, diagonal = -9, sum = 3. So if distinct sum = -58, total = -55. So there is a discrepancy of 5 with the A^2 method. So maybe the A^2 method gave -60 because we made an error in computing B or in the sum over A_{ij}B_{ji}. Let's recalc the A^2 (B) matrix more carefully. Perhaps we made mistakes in some entries. Let's recompute B from scratch using a different approach: compute A^2 by direct matrix multiplication using the explicit matrix A. Since A is given, we can compute each entry of A^2 by summing over k=1..8 A_{ik} A_{kj}. We can do this systematically with the matrix entries.
+
+Let's write A matrix explicitly as 8x8 with rows. I'll write it as a list of rows:
+
+Row1: [0,0,0,0,0,1,0,2]
+Row2: [0,-2,1,0,0,0,1,0]
+Row3: [0,0,0,1,-2,0,0,-1]
+Row4: [0,-1,0,0,2,0,0,0]
+Row5: [0,2,-1,-2,0,2,2,0]
+Row6: [0,0,2,0,-2,-1,0,0]
+Row7: [0,0,0,-2,0,0,0,0]
+Row8: [1,0,2,2,-1,0,0,0]
+
+Now compute A^2 = A * A. Let's denote B[i][j] = sum_{k=1..8} A[i][k] * A[k][j]. We'll compute each row of B.
+
+We can compute systematically row by row. Given the sparsity, we can compute each B[i][j] by considering only non-zero A[i][k] and A[k][j].
+
+Let's list for each row i, the non-zero columns k in row i (i.e., A[i][k] ≠ 0). Then for each such k, we add A[i][k] times row k of A to the result row i. So B[i] = sum_{k: A[i][k]≠0} A[i][k] * (row k of A). This is similar to what we did but we can recompute more carefully.
+
+We already have the list of non-zero entries of A. Let's do row by row.
+
+First, row1 of A: non-zero at col6 (value 1) and col8 (value 2). So B[1] = 1 * (row6 of A) + 2 * (row8 of A).
+
+Row6 of A: row6 = [0,0,2,0,-2,-1,0,0] (since row6: [0,0,2,0,-2,-1,0,0] from given)
+Row8 of A: row8 = [1,0,2,2,-1,0,0,0]
+
+Thus B[1] = 1*row6 + 2*row8 = row6 + 2*row8.
+Compute: row6: (0,0,2,0,-2,-1,0,0)
+2*row8: (2,0,4,4,-2,0,0,0)
+Sum: (2,0,6,4,-4,-1,0,0). So B[1] = [2,0,6,4,-4,-1,0,0]. This matches our earlier row1. Good.
+
+Row2 of A: non-zero at col2 (-2), col3 (1), col7 (1). So B[2] = (-2)*row2 + 1*row3 + 1*row7.
+
+Row2: [0,-2,1,0,0,0,1,0]
+Row3: [0,0,0,1,-2,0,0,-1]
+Row7: [0,0,0,-2,0,0,0,0]
+
+Compute: (-2)*row2 = (0,4,-2,0,0,0,-2,0)
+1*row3 = (0,0,0,1,-2,0,0,-1)
+1*row7 = (0,0,0,-2,0,0,0,0)
+Sum: (0,4,-2,0+1-2=-1? Let's add element-wise:
+col1: 0+0+0=0
+col2: 4+0+0=4
+col3: -2+0+0=-2
+col4: 0+1-2=-1
+col5: 0+(-2)+0=-2
+col6: 0+0+0=0
+col7: -2+0+0=-2
+col8: 0+(-1)+0=-1
+So B[2] = [0,4,-2,-1,-2,0,-2,-1]. This matches earlier. Good.
+
+Row3 of A: non-zero at col4 (1), col5 (-2), col8 (-1). So B[3] = 1*row4 + (-2)*row5 + (-1)*row8.
+
+Row4: [0,-1,0,0,2,0,0,0]
+Row5: [0,2,-1,-2,0,2,2,0]
+Row8: [1,0,2,2,-1,0,0,0]
+
+Compute:
+1*row4 = (0,-1,0,0,2,0,0,0)
+(-2)*row5 = (0,-4,2,4,0,-4,-4,0) because multiply each: 0* -2=0; 2*-2=-4; -1*-2=2; -2*-2=4; 0*-2=0; 2*-2=-4; 2*-2=-4; 0*-2=0.
+(-1)*row8 = (-1,0,-2,-2,1,0,0,0)
+Now sum:
+col1: 0+0+(-1) = -1
+col2: -1 + (-4) + 0 = -5
+col3: 0+2+(-2)=0
+col4: 0+4+(-2)=2
+col5: 2+0+1=3
+col6: 0+(-4)+0=-4
+col7: 0+(-4)+0=-4
+col8: 0+0+0=0
+So B[3] = [-1, -5, 0, 2, 3, -4, -4, 0]. This matches earlier.
+
+Row4 of A: non-zero at col2 (-1), col5 (2). So B[4] = (-1)*row2 + 2*row5.
+
+Row2: [0,-2,1,0,0,0,1,0]
+Row5: [0,2,-1,-2,0,2,2,0]
+Compute:
+(-1)*row2 = (0,2,-1,0,0,0,-1,0)
+2*row5 = (0,4,-2,-4,0,4,4,0)
+Sum:
+col1:0+0=0
+col2:2+4=6
+col3:-1+(-2)=-3
+col4:0+(-4)=-4
+col5:0+0=0
+col6:0+4=4
+col7:-1+4=3
+col8:0+0=0
+So B[4] = [0,6,-3,-4,0,4,3,0]. Matches.
+
+Row5 of A: non-zero at col2 (2), col3 (-1), col4 (-2), col6 (2), col7 (2). So B[5] = 2*row2 + (-1)*row3 + (-2)*row4 + 2*row6 + 2*row7? Wait: careful: B[5] = sum over k A[5][k]*row_k. So:
+ A[5][2]=2 -> +2*row2
+ A[5][3]=-1 -> +(-1)*row3
+ A[5][4]=-2 -> +(-2)*row4
+ A[5][6]=2 -> +2*row6
+ A[5][7]=2 -> +2*row7
+
+Now we have rows:
+row2: [0,-2,1,0,0,0,1,0]
+row3: [0,0,0,1,-2,0,0,-1]
+row4: [0,-1,0,0,2,0,0,0]
+row6: [0,0,2,0,-2,-1,0,0]
+row7: [0,0,0,-2,0,0,0,0]
+
+Now compute each contribution:
+2*row2 = (0, -4, 2, 0, 0, 0, 2, 0)
+(-1)*row3 = (0,0,0,-1,2,0,0,1) because multiply by -1: (0,0,0,-1,2,0,0,1)
+(-2)*row4 = (0,2,0,0,-4,0,0,0) because -2*row4: (0,2,0,0,-4,0,0,0)
+2*row6 = (0,0,4,0,-4,-2,0,0)
+2*row7 = (0,0,0,-4,0,0,0,0)
+
+Now sum column by column:
+col1: 0+0+0+0+0=0
+col2: -4+0+2+0+0 = -2
+col3: 2+0+0+4+0 = 6
+col4: 0+(-1)+0+0+(-4) = -5? Wait: from 2*row2:0; (-1)*row3: -1; (-2)*row4:0; 2*row6:0; 2*row7: -4 => total -1-4=-5.
+col5: from 2*row2:0; (-1)*row3:2; (-2)*row4:-4; 2*row6:-4; 2*row7:0 => 2-4-4 = -6.
+col6: from 2*row2:0; (-1)*row3:0; (-2)*row4:0; 2*row6:-2; 2*row7:0 => -2.
+col7: from 2*row2:2; others:0; so 2.
+col8: from 2*row2:0; (-1)*row3:1; others:0; so 1.
+So B[5] = [0,-2,6,-5,-6,-2,2,1]. Matches.
+
+Row6 of A: non-zero at col3 (2), col5 (-2), col6 (-1). So B[6] = 2*row3 + (-2)*row5 + (-1)*row6.
+
+row3: [0,0,0,1,-2,0,0,-1]
+row5: [0,2,-1,-2,0,2,2,0]
+row6: [0,0,2,0,-2,-1,0,0]
+Compute:
+2*row3 = (0,0,0,2,-4,0,0,-2)
+(-2)*row5 = (0,-4,2,4,0,-4,-4,0)
+(-1)*row6 = (0,0,-2,0,2,1,0,0) because -1*row6: (0,0,-2,0,2,1,0,0)
+Now sum:
+col1:0
+col2:0-4+0=-4
+col3:0+2-2=0
+col4:2+4+0=6
+col5:-4+0+2=-2
+col6:0-4+1=-3
+col7:0-4+0=-4
+col8:-2+0+0=-2
+So B[6] = [0,-4,0,6,-2,-3,-4,-2]. Matches.
+
+Row7 of A: non-zero at col4 (-2). So B[7] = (-2)*row4.
+row4: [0,-1,0,0,2,0,0,0]
+(-2)*row4 = (0,2,0,0,-4,0,0,0). So B[7] = [0,2,0,0,-4,0,0,0]. Matches.
+
+Row8 of A: non-zero at col1 (1), col3 (2), col4 (2), col5 (-1). So B[8] = 1*row1 + 2*row3 + 2*row4 + (-1)*row5.
+row1: [0,0,0,0,0,1,0,2]
+row3: [0,0,0,1,-2,0,0,-1]
+row4: [0,-1,0,0,2,0,0,0]
+row5: [0,2,-1,-2,0,2,2,0]
+Compute:
+1*row1 = (0,0,0,0,0,1,0,2)
+2*row3 = (0,0,0,2,-4,0,0,-2)
+2*row4 = (0,-2,0,0,4,0,0,0)
+(-1)*row5 = (0,-2,1,2,0,-2,-2,0) because multiply by -1: (0,-2,1,2,0,-2,-2,0)
+Now sum:
+col1:0
+col2:0+0-2-2 = -4? Actually from row1:0, row3:0, row4:-2, row5:-2 => total -4.
+col3:0+0+0+1=1
+col4:0+2+0+2=4
+col5:0-4+4+0=0
+col6:1+0+0-2=-1
+col7:0+0+0-2=-2
+col8:2-2+0+0=0
+So B[8] = [0,-4,1,4,0,-1,-2,0]. Matches earlier.
+
+Thus B matrix is correct. So the error must be in the summation of A_{ij} B_{ji} for tr(A^3). Let's recompute that sum carefully, perhaps we missed some A entries or misread B_{ji}. We'll recompute the sum systematically using the A list and B matrix.
+
+We'll list all A entries (including diagonal) with their (i,j) and value a. Then for each, we look up B[j][i] from B. We'll compute product and sum. We'll do it in a table.
+
+First, list all A entries:
+
+From our earlier list, including diagonals:
+
+(1,6):1
+(1,8):2
+(2,2):-2
+(2,3):1
+(2,7):1
+(3,4):1
+(3,5):-2
+(3,8):-1
+(4,2):-1
+(4,5):2
+(5,2):2
+(5,3):-1
+(5,4):-2
+(5,6):2
+(5,7):2
+(6,3):2
+(6,5):-2
+(6,6):-1
+(7,4):-2
+(8,1):1
+(8,3):2
+(8,4):2
+(8,5):-1
+
+Now we need B[j][i] for each. Let's write B matrix again:
+
+B rows: 
+row1: [2,0,6,4,-4,-1,0,0]
+row2: [0,4,-2,-1,-2,0,-2,-1]
+row3: [-1,-5,0,2,3,-4,-4,0]
+row4: [0,6,-3,-4,0,4,3,0]
+row5: [0,-2,6,-5,-6,-2,2,1]
+row6: [0,-4,0,6,-2,-3,-4,-2]
+row7: [0,2,0,0,-4,0,0,0]
+row8: [0,-4,1,4,0,-1,-2,0]
+
+Now for each A entry, we compute product.
+
+Let's do them one by one with careful indexing.
+
+1. (1,6): i=1, j=6, A=1. Need B[6][1]. B row6, col1 = 0. So product=0.
+2. (1,8): i=1, j=8, A=2. Need B[8][1]. B row8, col1 = 0. So 0.
+3. (2,2): i=2, j=2, A=-2. Need B[2][2] = row2 col2 = 4. Product = (-2)*4 = -8.
+4. (2,3): i=2, j=3, A=1. Need B[3][2] = row3 col2 = -5. Product = 1*(-5) = -5.
+5. (2,7): i=2, j=7, A=1. Need B[7][2] = row7 col2 = 2. Product = 1*2 = 2.
+6. (3,4): i=3, j=4, A=1. Need B[4][3] = row4 col3 = -3. Product = 1*(-3) = -3.
+7. (3,5): i=3, j=5, A=-2. Need B[5][3] = row5 col3 = 6. Product = (-2)*6 = -12.
+8. (3,8): i=3, j=8, A=-1. Need B[8][3] = row8 col3 = 1. Product = (-1)*1 = -1.
+9. (4,2): i=4, j=2, A=-1. Need B[2][4] = row2 col4 = -1. Product = (-1)*(-1)=1.
+10. (4,5): i=4, j=5, A=2. Need B[5][4] = row5 col4 = -5. Product = 2*(-5) = -10.
+11. (5,2): i=5, j=2, A=2. Need B[2][5] = row2 col5 = -2. Product = 2*(-2) = -4.
+12. (5,3): i=5, j=3, A=-1. Need B[3][5] = row3 col5 = 3. Product = (-1)*3 = -3.
+13. (5,4): i=5, j=4, A=-2. Need B[4][5] = row4 col5 = 0. Product = (-2)*0 = 0.
+14. (5,6): i=5, j=6, A=2. Need B[6][5] = row6 col5 = -2. Product = 2*(-2) = -4.
+15. (5,7): i=5, j=7, A=2. Need B[7][5] = row7 col5 = -4. Product = 2*(-4) = -8.
+16. (6,3): i=6, j=3, A=2. Need B[3][6] = row3 col6 = -4. Product = 2*(-4) = -8.
+17. (6,5): i=6, j=5, A=-2. Need B[5][6] = row5 col6 = -2. Product = (-2)*(-2) = 4.
+18. (6,6): i=6, j=6, A=-1. Need B[6][6] = row6 col6 = -3. Product = (-1)*(-3) = 3.
+19. (7,4): i=7, j=4, A=-2. Need B[4][7] = row4 col7 = 3. Product = (-2)*3 = -6.
+20. (8,1): i=8, j=1, A=1. Need B[1][8] = row1 col8 = 0. Product = 0.
+21. (8,3): i=8, j=3, A=2. Need B[3][8] = row3 col8 = 0. Product = 0.
+22. (8,4): i=8, j=4, A=2. Need B[4][8] = row4 col8 = 0. Product = 0.
+23. (8,5): i=8, j=5, A=-1. Need B[5][8] = row5 col8 = 1. Product = (-1)*1 = -1.
+
+Now sum all these products: 
+-8 + (-5) = -13
+-13 + 2 = -11
+-11 + (-3) = -14
+-14 + (-12) = -26
+-26 + (-1) = -27
+-27 + 1 = -26
+-26 + (-10) = -36
+-36 + (-4) = -40
+-40 + (-3) = -43
+-43 + 0 = -43
+-43 + (-4) = -47
+-47 + (-8) = -55
+-55 + (-8) = -63
+-63 + 4 = -59
+-59 + 3 = -56
+-56 + (-6) = -62
+-62 + 0 = -62? Wait we have more: after (6,5) we had 4, then (6,6) 3, then (7,4) -6, then (8,5) -1. Let's re-sum from start carefully with all entries.
+
+Let's list all contributions in order:
+
+1: (2,2): -8
+2: (2,3): -5 -> sum = -13
+3: (2,7): 2 -> sum = -11
+4: (3,4): -3 -> sum = -14
+5: (3,5): -12 -> sum = -26
+6: (3,8): -1 -> sum = -27
+7: (4,2): 1 -> sum = -26
+8: (4,5): -10 -> sum = -36
+9: (5,2): -4 -> sum = -40
+10: (5,3): -3 -> sum = -43
+11: (5,4): 0 -> sum = -43
+12: (5,6): -4 -> sum = -47
+13: (5,7): -8 -> sum = -55
+14: (6,3): -8 -> sum = -63
+15: (6,5): 4 -> sum = -59
+16: (6,6): 3 -> sum = -56
+17: (7,4): -6 -> sum = -62
+18: (8,5): -1 -> sum = -63
+Also we have (1,6),(1,8),(8,1),(8,3),(8,4) all 0, so not added.
+
+So total sum = -63. Wait that gives -63, not -60. Earlier we had diagonal sum -5 and off-diagonal -55 gave -60. But now we got -63. Let's recompute the diagonal sum from this list: diagonal contributions: (2,2) = -8, (6,6) = 3, sum = -5. Off-diagonal contributions: all others sum to? We have total -63, so off-diagonal = -63 - (-5) = -58. So off-diagonal sum is -58, not -55. So my earlier off-diagonal sum was -55, but recalc shows -58. Did I miss some off-diagonal contributions earlier? In the first computation of off-diagonal sum, I had -55. Let's see where the discrepancy arises. In this new recalc, we have included all A entries, and got off-diagonal sum = -58? Actually total minus diagonal gives off-diagonal = -63 - (-5) = -58? Wait -63 - (-5) = -63+5 = -58. So off-diagonal part is -58. That would make tr(A^3) = -63? But we computed total sum as -63, which includes diagonals. So tr(A^3) = -63. But earlier we had total -60. So we need to see which is correct.
+
+In this recalc, we have sum = -63. But we also have entries (1,6),(1,8),(8,1),(8,3),(8,4) zero, and also (5,4) zero. So the sum of products is -63. Let's double-check some of the products we might have miscomputed earlier. For (5,4): A54 = -2, B45? B[4][5] = row4 col5 = 0, good. (6,5): A65 = -2, B56 = -2, product = 4, correct. (6,3): A63 = 2, B36 = -4, product = -8, correct. (5,7): A57=2, B75 = -4, product = -8, correct. (5,6): A56=2, B65 = -2, product = -4, correct. (5,3): A53=-1, B35=3, product = -3, correct. (5,2): A52=2, B25=-2, product = -4, correct. (4,5): A45=2, B54=-5, product = -10, correct. (4,2): A42=-1, B24=-1, product = 1, correct. (3,8): A38=-1, B83=1, product = -1, correct. (3,5): A35=-2, B53=6, product = -12, correct. (3,4): A34=1, B43=-3, product = -3, correct. (2,7): A27=1, B72=2, product = 2, correct. (2,3): A23=1, B32=-5, product = -5, correct. (2,2): A22=-2, B22=4, product = -8, correct. (6,6): A66=-1, B66=-3, product = 3, correct. (7,4): A74=-2, B47=3, product = -6, correct. (8,5): A85=-1, B58=1, product = -1, correct. So total sum = -8-5+2-3-12-1+1-10-4-3+0-4-8-8+4+3-6-1? Wait we need to add all: let's add in order:
+
+-8
+-5 -> -13
++2 -> -11
+-3 -> -14
+-12 -> -26
+-1 -> -27
++1 -> -26
+-10 -> -36
+-4 -> -40
+-3 -> -43
++0 -> -43
+-4 -> -47
+-8 -> -55
+-8 -> -63
++4 -> -59
++3 -> -56
+-6 -> -62
+-1 -> -63
+
+Yes, -63. So tr(A^3) = -63. But earlier we computed tr(A^3) as -60. So we must have made an error in the earlier manual sum when we said off-diagonal sum was -55. Let's revisit that earlier sum. In that earlier sum, we listed off-diagonal contributions and got -55, but we likely missed some entries or miscomputed some products. For instance, we had (5,3) gave -3, (5,2) gave -4, (5,6) gave -4, (5,7) gave -8, (6,3) gave -8, (6,5) gave 4, (7,4) gave -6, (8,5) gave -1, (2,3) gave -5, (2,7) gave 2, (3,4) gave -3, (3,5) gave -12, (3,8) gave -1, (4,2) gave 1, (4,5) gave -10, (5,4) gave 0, (1,6) etc. That's the same list. In that earlier sum, we computed -5 +2 = -3, then -3-12=-15, -15-1=-16, -16+1=-15, -15-10=-25, -25-4=-29, -29-3=-32, -32+0=-32, -32-4=-36, -36-8=-44, -44-8=-52, -52+4=-48, -48-6=-54, -54-1=-55. But look, we omitted the diagonal contributions? Actually we were summing off-diagonal only, and we got -55. But in this new sum, off-diagonal total is -58. The difference is 3. Which off-diagonal contributions might we have missed? In our earlier off-diagonal sum, we had only listed those 16? Actually we listed: (2,3), (2,7), (3,4), (3,5), (3,8), (4,2), (4,5), (5,2), (5,3), (5,4), (5,6), (5,7), (6,3), (6,5), (7,4), (8,5). That's 16 entries. But there are also (1,6),(1,8),(8,1),(8,3),(8,4) which are zero. So we have all. So why did we get -55 earlier? Let's recompute the sum of these 16 numbers carefully:
+
+List with values:
+(2,3): -5
+(2,7): 2
+(3,4): -3
+(3,5): -12
+(3,8): -1
+(4,2): 1
+(4,5): -10
+(5,2): -4
+(5,3): -3
+(5,4): 0
+(5,6): -4
+(5,7): -8
+(6,3): -8
+(6,5): 4
+(7,4): -6
+(8,5): -1
+
+Now let's sum stepwise:
+Start: -5 +2 = -3
+-3 + (-3) = -6
+-6 + (-12) = -18
+-18 + (-1) = -19
+-19 + 1 = -18
+-18 + (-10) = -28
+-28 + (-4) = -32
+-32 + (-3) = -35
+-35 + 0 = -35
+-35 + (-4) = -39
+-39 + (-8) = -47
+-47 + (-8) = -55
+-55 + 4 = -51
+-51 + (-6) = -57
+-57 + (-1) = -58
+
+Ah! In my earlier manual addition, I mistakenly got -55 after adding -8? Let's see: I had -44-8 = -52, then +4 = -48, then -6 = -54, then -1 = -55. But correct is -55? Actually we just got -58. Let's recompute with a calculator in mind:
+
+-5+2 = -3
+-3 + (-3) = -6
+-6 + (-12) = -18
+-18 + (-1) = -19
+-19 + 1 = -18
+-18 + (-10) = -28
+-28 + (-4) = -32
+-32 + (-3) = -35
+-35 + 0 = -35
+-35 + (-4) = -39
+-39 + (-8) = -47
+-47 + (-8) = -55
+-55 + 4 = -51
+-51 + (-6) = -57
+-57 + (-1) = -58
+
+So after adding -8 (from (6,3)) we had -55? Actually we had -47 from previous, then -8 gives -55. Then +4 gives -51. Then -6 gives -57, then -1 gives -58. So I earlier mistakenly thought after -8 we were at -52? Let's see the earlier error: In my first off-diagonal sum, I listed: -5+2=-3; -3-3=-6? Actually I wrote: -5+2 = -3; then -3+(-3)= -6? No, I had -3 after -3? Let's re-read my earlier off-diagonal sum: I had "-5 +2 = -3; -3 + (-3) = -6; -6 + (-12) = -18; -18 + (-1) = -19; -19 + 1 = -18; -18 + (-10) = -28; -28 + (-4) = -32; -32 + (-3) = -35; -35 + 0 = -35; -35 + (-4) = -39; -39 + (-8) = -47; -47 + (-8) = -55; -55 + 4 = -51; -51 + (-6) = -57; -57 + (-1) = -58." So I actually got -58! But earlier I wrote -55 as the sum? Wait, reread my earlier text: I said "So off-diagonal sum = -55." That was a mistake; I must have mis-added. Actually I wrote: "Sum these: 4+4=8, minus 4 gives 4, minus 8 gives -4, minus 8 gives -12. So total off-diagonal contribution = -12." That was for tr(A^2) not tr(A^3). Then later for tr(A^3) I had a different list and I computed -55. Let's find that part: In the tr(A^3) section, I wrote: "Now sum all these off-diagonal products: ... -54 + (-1) = -55". So there I made an arithmetic error. The correct sum is -58. So the total tr(A^3) = diagonal sum (-5) + off-diagonal sum (-58) = -63. That matches the recalc. So tr(A^3) = -63, not -60. So we need to correct that.
+
+Now we have tr(A) = -3, tr(A^2) = -7, tr(A^3) = -63, and tr(A^4) we computed as 153. But we also need to check tr(A^4) because if tr(A^3) changed, maybe tr(A^4) also might have errors? However, tr(A^4) was computed from B = A^2, which we verified is correct. So tr(A^4) should be correct. But we should also verify the sum for tr(A^4) perhaps using an independent method? We can compute tr(A^4) = sum_i (A^4)_{ii} = sum_{i,j,k,l} A_{ij}A_{jk}A_{kl}A_{li}. That's more complicated. We used B^2 method, which should be correct if B is correct. But we can double-check by computing tr(A^4) using the B matrix and the formula sum_{i,k} B_{ik}B_{ki}. We already computed that sum as 153. Let's recompute that sum carefully to avoid arithmetic mistakes.
+
+We computed diagonal squares sum = 81 and off-diagonal contributions sum (2*product) = 72, total 153. Let's verify the off-diagonal contributions by recomputing the list of symmetric pairs and products.
+
+We had B matrix. Let's list all pairs (i,k) with i<k and both B_{ik} and B_{ki} non-zero, and compute product P = B_{ik} * B_{ki}. Then double it. We already computed that sum of 2P = 72. Let's recalc the products and ensure we didn't miss any.
+
+We have B matrix from earlier. Let's write B again clearly:
+
+B = 
+Row1: [2,0,6,4,-4,-1,0,0]
+Row2: [0,4,-2,-1,-2,0,-2,-1]
+Row3: [-1,-5,0,2,3,-4,-4,0]
+Row4: [0,6,-3,-4,0,4,3,0]
+Row5: [0,-2,6,-5,-6,-2,2,1]
+Row6: [0,-4,0,6,-2,-3,-4,-2]
+Row7: [0,2,0,0,-4,0,0,0]
+Row8: [0,-4,1,4,0,-1,-2,0]
+
+Now list all pairs (i,j) with i<j. We can go through i=1..7.
+
+We'll list B_{ij} and B_{ji} and compute product.
+
+i=1:
+j=2: B12=0, B21=0 -> product 0
+j=3: B13=6, B31=-1 -> product -6 -> 2P = -12
+j=4: B14=4, B41=0 -> 0
+j=5: B15=-4, B51=0 -> 0
+j=6: B16=-1, B61=0 -> 0
+j=7: B17=0, B71=0 -> 0
+j=8: B18=0, B81=0 -> 0
+
+i=2:
+j=3: B23=-2, B32=-5 -> product = (-2)*(-5)=10 -> 2P=20
+j=4: B24=-1, B42=6 -> product = (-1)*6 = -6 -> 2P=-12
+j=5: B25=-2, B52=-2 -> product = (-2)*(-2)=4 -> 2P=8
+j=6: B26=0, B62=-4 -> product = 0
+j=7: B27=-2, B72=2 -> product = (-2)*2 = -4 -> 2P=-8
+j=8: B28=-1, B82=-4 -> product = (-1)*(-4)=4 -> 2P=8
+
+i=3:
+j=4: B34=2, B43=-3 -> product = 2*(-3) = -6 -> 2P=-12
+j=5: B35=3, B53=6 -> product = 3*6=18 -> 2P=36
+j=6: B36=-4, B63=0 -> 0
+j=7: B37=-4, B73=0 -> 0
+j=8: B38=0, B83=1 -> 0
+
+i=4:
+j=5: B45=0, B54=-5 -> 0
+j=6: B46=4, B64=6 -> product = 4*6=24 -> 2P=48
+j=7: B47=3, B74=0 -> 0
+j=8: B48=0, B84=4 -> 0
+
+i=5:
+j=6: B56=-2, B65=-2 -> product = (-2)*(-2)=4 -> 2P=8
+j=7: B57=2, B75=-4 -> product = 2*(-4) = -8 -> 2P=-16
+j=8: B58=1, B85=0 -> 0
+
+i=6:
+j=7: B67=-4, B76=0 -> 0
+j=8: B68=-2, B86=-1 -> product = (-2)*(-1)=2 -> 2P=4
+
+i=7:
+j=8: B78=0, B87=-2 -> 0
+
+Now sum all 2P values: 
+i1j3: -12
+i2j3: 20 -> sum 8
+i2j4: -12 -> sum -4
+i2j5: 8 -> sum 4
+i2j7: -8 -> sum -4
+i2j8: 8 -> sum 4
+i3j4: -12 -> sum -8
+i3j5: 36 -> sum 28
+i4j6: 48 -> sum 76
+i5j6: 8 -> sum 84
+i5j7: -16 -> sum 68
+i6j8: 4 -> sum 72
+So total off-diagonal contribution = 72. Diagonal squares sum: B11=2^2=4, B22=4^2=16, B33=0, B44=(-4)^2=16, B55=(-6)^2=36, B66=(-3)^2=9, B77=0, B88=0. Sum = 4+16+16+36+9=81. So total = 153. So tr(A^4)=153.
+
+Now tr(A^3) = -63 from our corrected sum. So we have: tr(A) = -3, tr(A^2) = -7, tr(A^3) = -63, tr(A^4) = 153.
+
+We should also verify tr(A^3) by another method, maybe using the cycle enumeration we did gave -55? But we got -58 from distinct cycles? Actually we computed distinct cycles sum = -58, plus diagonal -9, plus two-equal 12 = -55. That gave -55, not -63. So there is still inconsistency: our cycle enumeration gave -55, but the A^2 method gave -63. So one of them has an error. Let's re-evaluate the cycle enumeration for distinct cycles. Did we include all ordered triples? We enumerated all i, j, k distinct with edges i->j, j->k, k->i and summed products. That sum we computed as -58. But note that in the sum for tr(A^3), we need to sum over all ordered triples (i,j,k) including those where i=j, j=k, etc. For distinct, we got -58. Then we added diagonal -9 and two-equal 12 to get -55. But from A^2 method we got -63. So discrepancy of 8. So maybe our distinct cycle enumeration missed some cycles, or double counted? Let's redo the distinct cycle enumeration more systematically, perhaps using a computer-like approach but manually. Since we have the adjacency list, we can list all directed 3-cycles (ordered triples) by considering all possible paths i->j->k and check if k->i. Our earlier enumeration gave totals per i: i=2:-3, i=3:-16, i=4:-9, i=5:-23, i=6:-6, i=7:-6, i=8:5. Sum = -58. Let's verify each i's sum by recomputing each triple product carefully.
+
+We can also compute the total sum over distinct ordered triples as sum_{i} (A^3)_{ii} minus contributions from repeated indices. Since we have B and A, we can compute (A^3)_{ii} directly from B? Actually (A^3)_{ii} = sum_j A_{ij} B_{ji}. So we can compute each diagonal entry of A^3 and then sum them, which is tr(A^3). We already computed tr(A^3) = -63. So we can compute each (A^3)_{ii} from our A and B to see if they sum to -63, and then we can also compute contributions from repeated indices to see if consistent. Let's compute (A^3)_{ii} for each i using A and B: (A^3)_{ii} = sum_j A_{ij} B_{ji}. We can compute these diagonal entries from the same list we used for tr(A^3) but grouping by i. We have all A entries and corresponding B_{ji} products. Let's compute (A^3)_{ii} for each i:
+
+We list contributions for each i (the row i of A) from our product list:
+
+i=1: A entries: (1,6):0, (1,8):0 => (A^3)_{11}=0? Actually also diagonal A11=0, so total =0.
+i=2: contributions from (2,2): -8, (2,3): -5, (2,7): 2 => total = -8-5+2 = -11.
+i=3: contributions from (3,4): -3, (3,5): -12, (3,8): -1 => total = -3-12-1 = -16.
+i=4: contributions from (4,2): 1, (4,5): -10 => total = 1-10 = -9.
+i=5: contributions from (5,2): -4, (5,3): -3, (5,4):0, (5,6): -4, (5,7): -8 => total = -4-3+0-4-8 = -19? Let's compute: -4-3=-7; -7-4=-11; -11-8=-19.
+i=6: contributions from (6,3): -8, (6,5): 4, (6,6): 3 => total = -8+4+3 = -1.
+i=7: contributions from (7,4): -6 => total = -6.
+i=8: contributions from (8,1):0, (8,3):0, (8,4):0, (8,5): -1 => total = -1.
+
+Sum of these diagonal entries of A^3: 0 + (-11) + (-16) + (-9) + (-19) + (-1) + (-6) + (-1) = -11-16=-27; -27-9=-36; -36-19=-55; -55-1=-56; -56-6=-62; -62-1=-63. Yes, total = -63. So (A^3)_{ii} values are: i1=0, i2=-11, i3=-16, i4=-9, i5=-19, i6=-1, i7=-6, i8=-1. Sum = -63.
+
+Now, these diagonal entries include contributions from all j (including when j=i). They are the full (A^3)_{ii}. Now we can decompose each (A^3)_{ii} into parts from distinct j,k and those with repeats. For a fixed i, (A^3)_{ii} = sum_{j,k} A_{ij}A_{jk}A_{ki}. For each i, we can compute contributions from cycles where indices are all distinct, or where some equal. We already have the total per i from the direct sum. We can also compute contributions from repeats for each i and see if they match.
+
+Let's compute the contributions to (A^3)_{ii} from cases where j=i or k=i or j=k etc. For a fixed i, the sum over j,k includes all possibilities. We can compute the contribution from j=i (i.e., j=i) separately. Similarly, k=i, j=k, etc. But we already computed the global contributions from repeats (diagonal and two-equal) as -9+12=3. That sum is for all i combined. So the sum over i of (A^3)_{ii} from repeats is 3, and from distinct cycles is -63 - 3 = -66? Wait -63 total minus 3 = -66. So distinct sum should be -66, not -58. So our distinct cycle enumeration gave -58, which is off by -8. So we must have missed some distinct cycles summing to -8, or overcounted something? Let's check by computing the distinct contributions per i using the (A^3)_{ii} values and subtracting the repeat contributions for each i. That might help identify missing cycles.
+
+For each i, we can compute the contribution from cycles where all indices are distinct (i, j, k all different). For a given i, the distinct cycles are those with j ≠ i, k ≠ i, and j ≠ k? Actually for a fixed i, the cycles (i,j,k) where i,j,k are all distinct require j ≠ i, k ≠ i, and j ≠ k. Also note that we sum over all j,k (ordered pairs) with these restrictions. So we can compute for each i the sum over j≠i, k≠i, j≠k of A_{ij}A_{jk}A_{ki}. This is the distinct part for that i. We can compute these by taking the total (A^3)_{ii} and subtracting contributions where j=i, k=i, or j=k (including when j=k=i but that's already covered by j=i?). Let's compute the repeat contributions for each i.
+
+For a fixed i, the sum over j,k includes:
+- j=i, k any: then term = A_{ii} A_{ik} A_{ki} (since j=i, A_{ij}=A_{ii}, A_{jk}=A_{ik}, A_{ki}=A_{ki}). For each k, including k=i? But when j=i and k=i, that's the triple (i,i,i) which is diagonal part. So we can separate.
+- k=i, j any: term = A_{ij} A_{ji} A_{ii} (since k=i, A_{ki}=A_{ii}). Note that when j=i, this is same as previous (i,i,i) already counted? Actually if j=i and k=i, it's counted in both, but we need to avoid double counting when subtracting. So it's easier to list all cases with at least two equal indices.
+
+We can compute total contribution from all ordered triples (i,j,k) with at least two equal indices. That sum we already computed globally as -9+12=3. But we need to break it down per i to compare with distinct per i. Alternatively, we can compute distinct per i by directly enumerating all j,k with j≠i, k≠i, j≠k using the edge list. That might be more reliable.
+
+Let's do that for each i, using the same method as before but now we want to sum only over j,k distinct from i and from each other. For each i, we can list all j such that A_{ij} ≠ 0 and j≠i. Then for each j, list all k such that A_{jk} ≠ 0, k≠i, k≠j. Then if A_{ki} ≠ 0, add product. That's exactly what we did earlier for distinct cycles. We did that and got a sum per i: i=2:-3, i=3:-16, i=4:-9, i=5:-23, i=6:-6, i=7:-6, i=8:5, i=1:0. Sum = -58. But according to the total distinct sum should be -66 (since total - repeats = -63 - 3 = -66). So there is a discrepancy of 8. So we must have missed some cycles. Let's double-check each i's distinct cycles more carefully, maybe some edges we overlooked or some k we excluded incorrectly.
+
+We'll go through each i again, but this time we'll list all possible paths i->j->k with j and k distinct from i and each other, and check k->i. We'll compute product carefully.
+
+We already did i=2: gave -3. Let's recompute i=2:
+
+i=2. A2j non-zero: j=3 (1), j=7 (1). Also j=2 self but we exclude because j≠i? Actually for distinct we require j≠i, so only j=3,7.
+
+For j=3: A23=1. Then from 3, possible k: A3k non-zero: k=4 (1),5 (-2),8 (-1). For each k, need k≠i=2 and k≠j=3. So k=4,5,8 all allowed. Check if A_{k,i}=A_{k2} non-zero? 
+- k=4: A42=-1, so product = 1*1*(-1) = -1.
+- k=5: A52=2, product = 1*(-2)*2 = -4.
+- k=8: A82? A82=0, so no.
+So contributions: -1-4 = -5? Wait we had -1 and -4 sum -5. But earlier we had -1 and -4 gave -5, but we also had from j=7 a contribution? Let's continue.
+
+For j=7: A27=1. From 7, A7k non-zero: k=4 (-2). k=4, check k≠i=2, k≠j=7 => allowed. Check A42 = -1, product = 1*(-2)*(-1) = 2. So total for i=2: -5+2 = -3. Good.
+
+So i=2 yields -3, matches.
+
+i=3: we had i=3: j=4,5,8. Compute each.
+
+j=4: A34=1. From 4: A4k: k=2 (-1),5 (2). k must be ≠ i=3, ≠ j=4. So k=2,5 both allowed. Check A_{k3}:
+- k=2: A23=1, product = 1*(-1)*1 = -1.
+- k=5: A53=-1, product = 1*2*(-1) = -2.
+So from j=4: -1-2 = -3.
+
+j=5: A35=-2. From 5: A5k: k=2 (2),3 (-1),4 (-2),6 (2),7 (2). k must be ≠ i=3, ≠ j=5. So allowed k: 2,4,6,7 (k=3 is i, exclude). Check A_{k3}:
+- k=2: A23=1, product = (-2)*2*1 = -4.
+- k=4: A43? A43=0, so no.
+- k=6: A63=2, product = (-2)*2*2 = -8.
+- k=7: A73? 0, no.
+So from j=5: -4-8 = -12.
+
+j=8: A38=-1. From 8: A8k: k=1 (1),3 (2),4 (2),5 (-1). k must be ≠ i=3, ≠ j=8. So allowed k: 1,4,5 (k=3 is i, exclude). Check A_{k3}:
+- k=1: A13? 0, no.
+- k=4: A43? 0, no.
+- k=5: A53=-1, product = (-1)*(-1)*(-1) = -1.
+So from j=8: -1.
+Total for i=3: -3-12-1 = -16. Good.
+
+i=4: i=4: j=2,5.
+
+j=2: A42=-1. From 2: A2k: k=3 (1),7 (1). k≠i=4, k≠j=2: k=3,7 allowed. Check A_{k4}:
+- k=3: A34=1, product = (-1)*1*1 = -1.
+- k=7: A74=-2, product = (-1)*1*(-2)=2.
+So from j=2: -1+2=1.
+
+j=5: A45=2. From 5: A5k: k=2 (2),3 (-1),4 (-2),6 (2),7 (2). k≠i=4, k≠j=5: allowed k=2,3,6,7 (k=4 is i, exclude). Check A_{k4}:
+- k=2: A24? 0, no.
+- k=3: A34=1, product = 2*(-1)*1 = -2.
+- k=6: A64? 0, no.
+- k=7: A74=-2, product = 2*2*(-2) = -8.
+So from j=5: -2-8 = -10.
+Total i=4: 1-10 = -9. Good.
+
+i=5: i=5: j=2,3,4,6,7.
+
+j=2: A52=2. From 2: A2k: k=3,7. k≠i=5, k≠j=2: k=3,7 allowed. Check A_{k5}:
+- k=3: A35=-2, product = 2*1*(-2) = -4.
+- k=7: A75? 0, no.
+So from j=2: -4.
+
+j=3: A53=-1. From 3: A3k: k=4,5,8. k≠i=5, k≠j=3: allowed k=4,8 (k=5 is i, exclude). Check A_{k5}:
+- k=4: A45=2, product = (-1)*1*2 = -2.
+- k=8: A85=-1, product = (-1)*(-1)*(-1) = -1.
+So from j=3: -2-1 = -3.
+
+j=4: A54=-2. From 4: A4k: k=2,5. k≠i=5, k≠j=4: allowed k=2 (k=5 is i, exclude). Check A_{25}? A25=0, so product = (-2)*(-1)*0 = 0. So 0.
+
+j=6: A56=2. From 6: A6k: k=3,5. k≠i=5, k≠j=6: allowed k=3 (k=5 is i, exclude). Check A_{35}=-2, product = 2*2*(-2) = -8. So -8.
+
+j=7: A57=2. From 7: A7k: k=4. k≠i=5, k≠j=7: allowed k=4. Check A_{45}=2, product = 2*(-2)*2 = -8. So -8.
+
+Total i=5: -4-3+0-8-8 = -23. Good.
+
+i=6: i=6: j=3,5.
+
+j=3: A63=2. From 3: A3k: k=4,5,8. k≠i=6, k≠j=3: allowed k=4,5,8. Check A_{k6}:
+- k=4: A46? 0, no.
+- k=5: A56=2, product = 2*(-2)*2 = -8.
+- k=8: A86=-1, product = 2*(-1)*(-1)=2.
+So from j=3: -8+2 = -6.
+
+j=5: A65=-2. From 5: A5k: k=2,3,4,6,7. k≠i=6, k≠j=5: allowed k=2,3,4,7 (k=6 is i, exclude). Check A_{k6}:
+- k=2: A26? 0.
+- k=3: A36? 0.
+- k=4: A46? 0.
+- k=7: A76? 0.
+So none. So total i=6: -6. Good.
+
+i=7: i=7: j=4 only. A74=-2. From 4: A4k: k=2,5. k≠i=7, k≠j=4: allowed k=2,5. Check A_{k7}:
+- k=2: A27=1, product = (-2)*(-1)*1 = 2.
+- k=5: A57=2, product = (-2)*2*2 = -8.
+Total i=7: 2-8 = -6. Good.
+
+i=8: i=8: j=1,3,4,5.
+
+j=1: A81=1. From 1: A1k: k=6,8. k≠i=8, k≠j=1: allowed k=6 (k=8 is i, exclude). Check A_{68}? A68=-2, product = 1*1*(-2) = -2. So -2.
+
+j=3: A83=2. From 3: A3k: k=4,5,8. k≠i=8, k≠j=3: allowed k=4,5 (k=8 is i, exclude). Check A_{k8}:
+- k=4: A48? 0.
+- k=5: A58=1, product = 2*(-2)*1 = -4. So -4.
+
+j=4: A84=2. From 4: A4k: k=2,5. k≠i=8, k≠j=4: allowed k=2,5. Check A_{k8}:
+- k=2: A28=-1, product = 2*(-1)*(-1)=2.
+- k=5: A58=1, product = 2*2*1=4.
+So from j=4: 2+4=6.
+
+j=5: A85=-1. From 5: A5k: k=2,3,4,6,7. k≠i=8, k≠j=5: allowed k=2,3,4,6,7. Check A_{k8}:
+- k=2: A28=-1, product = (-1)*2*(-1)=2.
+- k=3: A38=-1, product = (-1)*(-1)*(-1) = -1.
+- k=4: A48=0, no.
+- k=6: A68=-2, product = (-1)*2*(-2)=4.
+- k=7: A78=0, no.
+So from j=5: 2-1+4 = 5.
+Total i=8: -2-4+6+5 = 5. Good.
+
+So distinct sum = -3-16-9-23-6-6+5 = -58? Let's sum: i2:-3, i3:-16 -> -19; i4:-9 -> -28; i5:-23 -> -51; i6:-6 -> -57; i7:-6 -> -63; i8:5 -> -58. Yes.
+
+So distinct sum is -58. Then total tr(A^3) = diagonal (-9) + two-equal (12) + distinct (-58) = -55. But we computed from A^2 that (A^3)_{ii} sum is -63. So there is inconsistency: either our diagonal and two-equal sums are wrong, or the A^2 method's (A^3)_{ii} values are wrong. But we computed (A^3)_{ii} by summing A_{ij}B_{ji}, which we trust because B is correct. So likely the diagonal and two-equal sums are incorrect. Let's recompute those carefully.
+
+For diagonal (i=j=k): contributions from i=2 and i=6: A22^3 = (-2)^3 = -8, A66^3 = (-1)^3 = -1, sum = -9. That's straightforward.
+
+Now for two-equal indices: we need to sum over all ordered triples (i,j,k) where exactly two of the indices are equal. There are three patterns: i=j≠k, i=k≠j, j=k≠i. We computed only one occurrence each: (i=j=6,k=5), (i=k=6,j=5), (j=k=6,i=5). That gave 4+4+4=12. But maybe there are more? Let's systematically compute all possibilities for exactly two equal indices, using the full set of edges. For each pattern, we need to consider all i,j,k with the given equality and distinctness, and compute product A_{ij}A_{jk}A_{ki}. We'll enumerate all possibilities.
+
+We'll consider each pattern separately.
+
+Pattern 1: i=j≠k. Then product = A_{ii} * A_{ik} * A_{ki}. So for each i with diagonal non-zero (i=2,6), and for each k ≠ i such that both A_{ik} and A_{ki} are non-zero. We already checked i=2: any k? A2k: k=3,7; A_{k2}: for k=3, A32=0; k=7, A72=0. So none. i=6: A6k: k=3,5; A_{k6}: for k=3, A36=0; for k=5, A56=2, so k=5 works. Also maybe k=1? A61=0, so no. So only (i=6,k=5) gives product = A66 * A65 * A56 = (-1)*(-2)*2 = 4. So contribution from this pattern = 4.
+
+Pattern 2: i=k≠j. Then product = A_{ij} * A_{jj} * A_{ji}. For each j with diagonal, and i ≠ j such that A_{ij} and A_{ji} exist. j=2: A2i? i such that A_{i2} and A_{2i} both non-zero? A_{i2}: from 4: A42=-1; from 5: A52=2; from ? also? A_{2i}: from 2: A23=1, A27=1. So need i such that A_{i2} and A_{2i} both non-zero. Check i=3: A32=0, A23=1 -> no. i=4: A42=-1, A24=0 -> no. i=5: A52=2, A25=0 -> no. i=7: A72=0, A27=1 -> no. So none. j=6: A6i? i such that A_{i6} and A_{6i} both non-zero. A_{i6}: from 1: A16=1; from 5: A56=2. A_{6i}: from 6: A63=2, A65=-2. So possible i=1: A16=1, A61=0 -> no. i=5: A56=2, A65=-2 -> yes. So (j=6, i=5) gives product = A_{5,6}? Wait careful: i=k=6? Actually pattern i=k≠j means i and k are equal, j different. So i=k= some value, j different. Here we have j=6? Actually pattern: i=k≠j, so the repeated index is i and k. In the product A_{ij}A_{jj}A_{ji}, j is the distinct one. So we need to pick j with diagonal, and i such that edges exist. We found j=6, i=5 gives product = A_{5,6} * A_{6,6} * A_{6,5} = A56 * A66 * A65 = 2 * (-1) * (-2) = 4. So contribution = 4.
+
+Pattern 3: j=k≠i. Then product = A_{ij} * A_{jj} * A_{ji}. For each j with diagonal, and i ≠ j such that A_{ij} and A_{ji} exist. This is symmetric to pattern 2? Actually pattern 3: j=k≠i, product = A_{ij} A_{jj} A_{ji}. That is same as pattern 2? In pattern 2 we had i=k≠j, product = A_{ij} A_{jj} A_{ji}. Exactly the same expression! But note the roles: In pattern 2, the repeated index is i and k, and the diagonal is at j. In pattern 3, the repeated index is j and k, and the diagonal is at j as well? Wait pattern 3: j=k, so the diagonal is at j (since j=k, we have A_{jj}). So product = A_{ij} * A_{jj} * A_{ji}. That is identical to pattern 2's product. So patterns 2 and 3 actually give the same set of terms? But careful: In pattern 2, we have i=k, so the indices are (i,j,i) with i≠j. In pattern 3, we have (i,j,j) with i≠j. These are different ordered triples. For example, (i=5, j=6) in pattern 2 gives triple (5,6,5). In pattern 3, (i=5, j=6) gives triple (5,6,6). They are different. So we need to consider both.
+
+For pattern 3: j=k≠i, product = A_{ij} A_{jj} A_{ji}. So we need j with diagonal, and i≠j such that A_{ij} and A_{ji} exist. This is the same condition as pattern 2, but now the ordered triple is (i,j,j) instead of (i,j,i). So both patterns will have the same set of (i,j) pairs? For each (i,j) with diagonal j, we get a term for pattern 2 if i=k? Actually pattern 2: i=k, j distinct, so we need i and j such that A_{ij} and A_{ji} exist, and diagonal at j? Wait pattern 2: i=k, so diagonal is at j? Actually pattern 2: i=k≠j, product = A_{ij} A_{jj} A_{ji}. So it uses diagonal at j. So both pattern 2 and pattern 3 involve diagonal at j. So for a given pair (i,j) with j having diagonal, and both edges between i and j exist, we get two contributions: one from pattern 2: triple (i,j,i) and one from pattern 3: triple (i,j,j). But note that pattern 1 also gave a term for diagonal at i and edges between i and k. So overall, for each diagonal node and each other node with mutual edges, we get three contributions? Actually pattern 1: i=j≠k gives (i,i,k) with diagonal at i. Pattern 2: i=k≠j gives (i,j,i) with diagonal at j. Pattern 3: j=k≠i gives (i,j,j) with diagonal at j. So for a pair of distinct nodes i and j where both have diagonals? Only i=6 and j=5? In our case, only node 6 has diagonal and node 5 does not have diagonal. So for pair (6,5), we have:
+- Pattern 1: i=j=6, k=5 gives (6,6,5)
+- Pattern 2: i=k=6, j=5 gives (6,5,6)
+- Pattern 3: j=k=6, i=5 gives (5,6,6)
+That's what we had: 4 each. So that seems correct. But are there any other pairs? What about nodes 2 and something? Node 2 has diagonal, but no mutual edges with any other node. So no. So only pair (6,5). So total from two-equal = 4+4+4 = 12.
+
+Thus the repeat contributions sum to -9+12=3. So distinct should be total -3 = -63-3 = -66. But we got -58. So there is a missing -8 in distinct cycles. That suggests there are some distinct cycles we missed. Perhaps there are cycles involving nodes where i,j,k are distinct but some of the edges are not from our list? Or maybe we missed cycles where i=j? No, distinct means all different. So we need to find additional directed cycles of length 3 among distinct vertices that we overlooked. Let's list all possible directed cycles of length 3 with distinct vertices from the graph. Since the graph is small, we can enumerate all possible triples of distinct vertices (i,j,k) and check if edges i->j, j->k, k->i exist. We can do a brute force mental search.
+
+List all vertices: 1-8.
+
+We can generate all combinations of three distinct vertices (ordered? but we need ordered triples, but we can find all cycles and then multiply by 3 for cyclic permutations? But careful: For a given set of three vertices, there could be multiple directed cycles (like a->b->c->a and a->c->b->a). So we need to consider all ordered triples where edges exist. We can systematically go through all ordered triples (i,j,k) with i,j,k distinct and check edges. Since there are only 8*7*6 = 336 possibilities, but we can narrow by using adjacency.
+
+Better: We can list all directed edges and then look for paths of length 2 that close. We already did that per i and got sum -58. But maybe we missed some because our enumeration assumed that for each i, we considered j such that A_{ij}≠0, then k such that A_{jk}≠0, then check A_{ki}≠0. That should catch all ordered triples. So if we missed some, it would be because we overlooked some edges. Let's double-check the adjacency list and ensure we have all edges.
+
+Recall A matrix entries we listed. Let's verify A matrix again from the given:
+
+Row1: [0,0,0,0,0,1,0,2] -> edges: 1->6 (1), 1->8 (2)
+Row2: [0,-2,1,0,0,0,1,0] -> edges: 2->2 (-2), 2->3 (1), 2->7 (1)
+Row3: [0,0,0,1,-2,0,0,-1] -> edges: 3->4 (1), 3->5 (-2), 3->8 (-1)
+Row4: [0,-1,0,0,2,0,0,0] -> edges: 4->2 (-1), 4->5 (2)
+Row5: [0,2,-1,-2,0,2,2,0] -> edges: 5->2 (2), 5->3 (-1), 5->4 (-2), 5->6 (2), 5->7 (2)
+Row6: [0,0,2,0,-2,-1,0,0] -> edges: 6->3 (2), 6->5 (-2), 6->6 (-1)
+Row7: [0,0,0,-2,0,0,0,0] -> edges: 7->4 (-2)
+Row8: [1,0,2,2,-1,0,0,0] -> edges: 8->1 (1), 8->3 (2), 8->4 (2), 8->5 (-1)
+
+That seems complete. Now, are there any edges we might have missed? For example, row2 col2 is -2, we have. Row6 col6 -1. So that's it.
+
+Now, let's list all ordered triples (i,j,k) distinct that we might have missed. Perhaps there are cycles that involve node 1? Let's try to find any cycle of length 3 that includes node 1. From 1, outgoing to 6 and 8. To have a cycle, we need edges from some node back to 1. Which nodes have edges to 1? Only 8->1 (1). So for a cycle containing 1, we need a path 1->?->?->1. Since only 8 goes to 1, the last edge must be from some node to 1, and that node must be 8. So the cycle must end with ->8->1. So we need 1->x and x->8 for some x, then 8->1. So we need x such that 1->x and x->8. From 1, x can be 6 or 8. If x=8, then edge 1->8 exists, and 8->8? But we need x->8, and 8->1 exists. But then the triple would be (1,8,8?) Not distinct because x=8 would make j=8 and then k=8? Actually for a cycle 1->x->8->1, the ordered triple is (1, x, 8). For distinctness, we need x ≠ 1,8. So x cannot be 8. So x must be 6. Then we need 6->8? Does 6->8 exist? From 6, edges to 3 and 5, but not to 8. So no. So no cycle with 1. That's why i=1 gave 0.
+
+What about node 2? We already got cycles: (2,3,4), (2,3,5), (2,7,4). That's all. Let's see if there is (2,? ) maybe (2,3,8)? Check 2->3, 3->8, 8->2? 8->2? No. (2,7,? ) 7->4, 4->2 works, we have (2,7,4). (2,? ) (2,3,? ) we considered. So that's fine.
+
+Node 3: we have cycles: (3,4,2), (3,4,5), (3,5,2), (3,5,6), (3,8,5). Are there any others? Let's try (3,4,? ) we did. (3,5,? ) we did. (3,8,? ) we did. (3,? ) maybe (3,? ) what about (3,4,? ) we did k=2 and 5. (3,5,? ) we did k=2,4,6,7? We considered k=2,4,6,7; only 2 and 6 worked. Did we consider k=7? 7->3? No. So ok. (3,8,? ) we considered k=5 only. So that's all.
+
+Node 4: cycles: (4,2,3), (4,2,7), (4,5,3), (4,5,7). Did we consider (4,5,? ) from j=5, k=3 gave -2, k=7 gave -8. Also what about (4,2,? ) we did k=3 and 7. So that's all.
+
+Node 5: cycles: (5,2,3), (5,3,4), (5,3,8), (5,6,3), (5,7,4). That's what we had. Did we miss (5,2,? ) only k=3 worked; (5,3,? ) k=4 and 8; (5,4,? ) none; (5,6,? ) k=3; (5,7,? ) k=4. So that's all.
+
+Node 6: cycles: (6,3,5), (6,3,8). Did we consider (6,3,? ) we had k=5 and 8. Also (6,5,? ) none. So that's all.
+
+Node 7: cycles: (7,4,2), (7,4,5). That's it.
+
+Node 8: cycles: (8,1,6), (8,3,5), (8,4,2), (8,4,5), (8,5,2), (8,5,3), (8,5,6). We had (8,1,6)= -2; (8,3,5)= -4; (8,4,2)=2; (8,4,5)=4; (8,5,2)=2; (8,5,3)= -1; (8,5,6)=4. That sums to 5. So that seems complete.
+
+Now the total sum of these distinct cycles (ordered triples) we have: For i=2: -1, -4, 2 = -3; i=3: -1, -2, -4, -8, -1 = -16; i=4: -1,2, -2, -8 = -9; i=5: -4, -2, -1, -8, -8 = -23; i=6: -8,2 = -6; i=7: 2, -8 = -6; i=8: -2, -4,2,4,2,-1,4 = 5; sum = -3-16=-19; -19-9=-28; -28-23=-51; -51-6=-57; -57-6=-63; -63+5=-58. So it's -58. So how can this be -66? Let's compute the total from (A^3)_{ii} given by A^2 method: we had (A^3)_{11}=0, (A^3)_{22}=-11, (A^3)_{33}=-16, (A^3)_{44}=-9, (A^3)_{55}=-19, (A^3)_{66}=-1, (A^3)_{77}=-6, (A^3)_{88}=-1. Sum = -63. Now, the contributions to (A^3)_{ii} from repeats (i,i,i) and two-equal are known. For each i, we can compute the repeat contributions for that i and subtract to get the distinct part for that i. Then we can see if the distinct parts sum to -58 or -66.
+
+Let's compute for each i the contributions from i=j=k (diagonal) and from two-equal that involve that i. Then subtract from (A^3)_{ii} to get the sum over j,k distinct from each other and from i (i.e., all distinct) for that i. We'll do that.
+
+First, diagonal: for i=2: A22^3 = -8; for i=6: A66^3 = -1; others 0.
+
+Now two-equal contributions: we need to compute for each i, the sum over triples where exactly two indices equal, and we need to assign them to the appropriate i (since the triple contributes to (A^3)_{ii} only when the first index is i? Actually (A^3)_{ii} = sum_{j,k} A_{ij}A_{jk}A_{ki}. So the i is fixed. The triple (i,j,k) contributes to the i-th diagonal. So to find distinct part for a fixed i, we need to subtract from (A^3)_{ii} the contributions where j=i or k=i or j=k, but careful not to double subtract the diagonal case where j=i and k=i. So we can compute for each i the sum of all terms where at least two of the indices are equal, with i fixed.
+
+Let's compute for each i the total contribution from triples where not all three indices are distinct (i.e., at least two equal). We'll compute these contributions directly from the definition, using the edges.
+
+We'll do it per i:
+
+For i=2:
+- j=i case: j=2. Then term = sum_k A22 * A2k * A_k2. k can be any, including k=i. So sum over k of A22 * A2k * A_k2. We need to compute that sum.
+- k=i case: k=2. Then term = sum_j A2j * A_j2 * A22. That's the same as above? Actually both are sum over j of A2j * A_j2 * A22, which is same as previous sum over k. So if we just add these two, we would double count the case j=2,k=2 (i=j=k). So we need to subtract that once.
+- j=k case: j=k, and j,k ≠ i? Actually j=k (and could equal i or not). For j=k, then term = sum_{j} A_{2j} * A_{jj} * A_{j2}. Note that this includes j=2 as well, which is the diagonal case. So we need to handle inclusion-exclusion.
+
+Better approach: Compute total contribution from all triples where at least two indices equal for fixed i, by enumerating all possibilities directly from the graph. Since the graph is small, we can list all triples (i,j,k) with i fixed and with at least two equal, and sum products. Then subtract from (A^3)_{ii} to get distinct part. This will be easier.
+
+Let's do that for each i.
+
+We'll compute for i=2:
+List all triples (2,j,k) with j,k any, and at least two equal. Cases:
+- j=k (including j=k=2): then term = A_{2j} * A_{jj} * A_{j2}. So we need to sum over j=1..8.
+- j=2 (but k may be any, and we already include j=2 in j=k? Actually j=2 case includes k any, but that is a separate pattern: j=2, k any. Similarly k=2, j any. We'll handle systematically.
+
+Let's enumerate:
+Case A: j=2. Then term = A22 * A2k * A_{k2} for all k. This includes k=2 as well (which is the diagonal triple).
+Case B: k=2. Then term = A_{2j} * A_{j2} * A22 for all j. This includes j=2 as well, which is the same as when j=2,k=2.
+Case C: j=k, but j≠2 (since j=2 already covered in A and B). So for j=3..8, if j=k, term = A_{2j} * A_{jj} * A_{j2}.
+But note: when j=2, j=k is already in case A (when k=2) and case B (when j=2). So we can compute:
+Sum = (sum over k of A22 A2k A_{k2}) + (sum over j of A_{2j} A_{j2} A22) - (for j=2,k=2 we double counted) + (sum over j≠2 of A_{2j} A_{jj} A_{j2}).
+
+But we can compute each directly.
+
+First, compute sum over k of A22 A2k A_{k2}: A22 = -2. So sum_k = -2 * sum_k A2k A_{k2}. We need to compute sum_k A2k A_{k2}. This sum includes k=2: A22 * A22 = (-2)*(-2)=4; k=3: A23 * A32 = 1*0=0; k=4: A24 * A42 = 0*(-1)=0; k=5: A25 * A52 =0*2=0; k=6: A26 * A62 =0*0=0; k=7: A27 * A72 =1*0=0; k=8: A28 * A82 =0*0=0. So sum_k = 4. So sum over k = -2 * 4 = -8. That's just the diagonal contribution? Actually this sum includes k=2: -2 * (A22^2) = -2*4=-8, which is the triple (2,2,2). For other k, product zero. So this sum gives -8.
+
+Now sum over j of A_{2j} A_{j2} A22: This is same as sum_j A_{2j} A_{j2} * (-2). Sum_j A_{2j} A_{j2} = same as sum_k above = 4. So this sum also = -8. So total from A and B = -8-8 = -16, but the diagonal triple (2,2,2) is counted twice, so we must subtract it once. The diagonal triple's contribution is A22^3 = -8. So after subtracting, we have -16 - (-8) = -8? Actually careful: The diagonal triple is included in both sums, so the sum of A+B is -8 + (-8) = -16, but the diagonal triple should be counted only once. So we need to subtract one copy of the diagonal triple, i.e., subtract (-8) = add +8? Wait, we want the total of all triples where j=2 OR k=2 (including both). That is the union. So we compute sum_{j=2 or k=2} = sum_{j=2} + sum_{k=2} - sum_{j=2 and k=2}. sum_{j=2} = -8, sum_{k=2} = -8, sum_{j=2,k=2} = A22^3 = -8. So total = -8-8 -(-8)? Actually union = A + B - intersection = -8 + (-8) - (-8) = -8. So the sum for j=2 or k=2 is -8.
+
+Now add case C: j=k, j≠2. For each j≠2, term = A_{2j} A_{jj} A_{j2}. We need to sum over j=1,3,4,5,6,7,8. Compute:
+j=1: A21=0, so 0.
+j=3: A23=1, A33=0, A32=0 -> 0.
+j=4: A24=0, so 0.
+j=5: A25=0, so 0.
+j=6: A26=0, so 0.
+j=7: A27=1, A77=0, A72=0 -> 0.
+j=8: A28=0, so 0.
+So case C gives 0. So total contributions from triples where at least two indices equal for i=2 is -8. But note that this includes the diagonal triple (2,2,2) once, and also any other? There is also the triple (2,2,? ) with k≠2? Actually those are covered in j=2 case with k any. For example, (2,2,3) is A22 * A23 * A32 = (-2)*1*0=0. So no. So total = -8. Then the distinct part for i=2 is (A^3)_{22} - (-8) = -11 - (-8) = -3. That matches our distinct cycle sum for i=2, which was -3. Good.
+
+Now i=3:
+(A^3)_{33} = -16.
+Compute contributions from repeats for i=3.
+
+First, sum over j=3 case: j=3, then term = A33 * A3k * A_{k3} for all k. A33=0, so this sum is 0.
+Sum over k=3 case: k=3, then term = A_{3j} * A_{j3} * A33 = 0.
+So no contributions from j=3 or k=3? But there is also j=k case (including j=k=3). For j=k=3: diagonal triple gives A33^3=0. For j=k≠3: terms = A_{3j} * A_{jj} * A_{j3}. So we need to sum over j≠3.
+
+Let's compute sum over j≠3 of A_{3j} * A_{jj} * A_{j3}. A_{jj} non-zero only for j=2 and 6. So we consider j=2 and j=6.
+j=2: A32? A32=0, so product = A32 * A22 * A23? Wait term = A_{3j} * A_{jj} * A_{j3}. For j=2: A32=0, so 0.
+j=6: A36? A36=0, so 0.
+Also j=...? j=... So no j with both A3j and A_{j3} non-zero? Check j=5: A35=-2, A55=0, so product 0. j=4: A34=1, A44=0, product 0. j=8: A38=-1, A88=0, product 0. So no contributions. So total repeat contributions for i=3 = 0? But we also have contributions from j=k? That's zero. Also j=3 or k=3 zero. So total = 0. Then distinct part = (A^3)_{33} - 0 = -16. Our distinct cycle sum for i=3 was -16, matches.
+
+i=4:
+(A^3)_{44} = -9.
+Compute repeats:
+j=4: A44=0, so sum over k A44*A4k*A_{k4}=0.
+k=4: same, 0.
+j=k: sum over j≠4 of A_{4j} * A_{jj} * A_{j4}. Only j with A_{jj} non-zero: j=2,6.
+j=2: A42=-1, A22=-2, A24? A24=0 -> product = (-1)*(-2)*0 = 0.
+j=6: A46? A46=0, so product 0.
+Also j=... j=5? A45=2, A55=0, product 0. So no contributions. So repeat total =0. Distinct = -9. Our distinct sum for i=4 was -9, matches.
+
+i=5:
+(A^3)_{55} = -19.
+Repeats:
+j=5: A55=0, so 0.
+k=5: 0.
+j=k: sum over j≠5 of A_{5j} * A_{jj} * A_{j5}. j with diagonal: 2 and 6.
+j=2: A52=2, A22=-2, A25? A25=0 -> product = 2*(-2)*0 = 0.
+j=6: A56=2, A66=-1, A65=-2 -> product = 2*(-1)*(-2) = 4. So contribution = 4.
+Now also consider j=k=5? That's diagonal, but A55=0, so 0.
+Also is there any other pattern like j=5 or k=5? Already zero. So total repeat contributions = 4. Then distinct = -19 - 4 = -23. That matches our distinct sum for i=5 which was -23. Good.
+
+i=6:
+(A^3)_{66} = -1.
+Repeats:
+j=6: A66=-1. Sum over k: A66 * A6k * A_{k6}. Need compute sum_k A6k A_{k6}. A6k: k=3:2, k=5:-2, k=6:-1. A_{k6}: A36=0, A56=2, A66=-1. So sum_k = A63*A36 + A65*A56 + A66*A66 = 2*0 + (-2)*2 + (-1)*(-1) = 0 -4 +1 = -3. So sum over k = A66 * (-3) = (-1)*(-3)=3. This includes k=6 term: A66*A66*A66 = (-1)^3 = -1? Wait it's included: A66 * A66 * A66 = (-1)*(-1)*(-1) = -1, but our sum gave 3? Let's compute sum_k A6k A_{k6} = A63*A36 + A65*A56 + A66*A66 = 2*0 + (-2)*2 + (-1)*(-1) = 0 -4 +1 = -3. Then multiply by A66 = -1 gives 3. So the sum includes the diagonal triple (6,6,6) which is A66^3 = -1, but we got 3? That suggests that sum over k of A66 * A6k * A_{k6} is not just the diagonal; it includes k=5 giving (-1)*(-2)*2 = 4, and k=3 giving 0, and k=6 giving -1, total 3. So the sum over k (with j=6) gives 3. That includes the diagonal triple and also (6,6,5) which is pattern 1? Actually pattern 1: i=j=6, k=5 gives product = A66 * A65 * A56 = (-1)*(-2)*2 = 4. And diagonal: A66^3 = -1. So total 3. So that's correct.
+
+Now k=6 case: k=6, then sum over j: A_{6j} * A_{j6} * A66. That is same as above: sum_j A6j A_{j6} * A66 = same as before = 3. So that also gives 3. But we must subtract the intersection (j=6,k=6) counted twice. Intersection is diagonal triple: -1. So sum from j=6 or k=6 = 3+3 - (-1) = 7? Wait careful: union = A+B - intersection = 3+3 - (-1) = 7. But we also have j=k case not covered by j=6 or k=6? j=k includes j=k=6 already counted, and j=k with j≠6. So add j=k≠6: sum over j≠6 of A_{6j} * A_{jj} * A_{j6}. j with diagonal: j=2 and j=6 (j=6 excluded). So j=2: A62=-4? Actually A62? From A matrix, row6 col2 = 0? Wait A62 is 0. So product = A62 * A22 * A26? Actually term = A_{6j} * A_{jj} * A_{j6}. For j=2: A62=0, so 0. j=6? excluded. So no. So j=k contributions other than j=6 are zero. So total repeat contributions for i=6 = union from j=6 or k=6 = 7? But we need to include also the triple where j=k=6? That's already in union. So total repeats = 7? But we must also consider that there might be triples where j=k and j=6? That's included. So total repeats = 7. Then distinct = (A^3)_{66} - repeats = -1 - 7 = -8. But our distinct sum for i=6 was -6. So there is a discrepancy: we got distinct -8 from this calculation, but earlier we had -6 from enumeration. So we need to recalc repeats for i=6 more carefully.
+
+Let's compute all triples (6,j,k) where at least two indices equal. We'll enumerate manually:
+
+Possible patterns:
+- j=6 and k arbitrary: triples (6,6,k). Their product = A66 * A6k * A_{k6}. Sum over k.
+- k=6 and j arbitrary: triples (6,j,6). Product = A6j * A_{j6} * A66. Sum over j.
+- j=k and j≠6: triples (6,j,j). Product = A6j * A_{jj} * A_{j6}. Sum over j≠6.
+- j=k=6 is included in both first and second, so we need to handle inclusion-exclusion if we sum the first two and then add the third separately.
+
+Better to compute the total sum of all triples with at least two equal indices directly by listing all possible (j,k) pairs that satisfy j=6 or k=6 or j=k, and sum their products. Since the number is small, we can list all such (j,k) for i=6.
+
+j and k range 1..8. We'll list all (j,k) where at least one of the conditions holds, and compute product.
+
+First, list all possible j,k such that j=6:
+- j=6, k any. So for each k=1..8, product = A66 * A6k * A_{k6} = (-1) * A6k * A_{k6}.
+We have A6k: for k=3:2, k=5:-2, k=6:-1, others 0.
+A_{k6}: A36=0, A56=2, A66=-1.
+So compute:
+k=1: A61=0 => product=0
+k=2: A62=0 =>0
+k=3: A63=2, A36=0 => product=(-1)*2*0=0
+k=4: A64=0 =>0
+k=5: A65=-2, A56=2 => product=(-1)*(-2)*2=4
+k=6: A66=-1, A66=-1 => product=(-1)*(-1)*(-1)= -1
+k=7: A67=0 =>0
+k=8: A68=-2? Wait A68? Row6 col8 = -2 from A? Actually A6,8? Row6: [0,0,2,0,-2,-1,0,0] so col8=0. So A68=0. So product=0.
+So sum over k with j=6: 4 + (-1) = 3.
+
+Now j such that k=6:
+- k=6, j any. Product = A6j * A_{j6} * A66 = A6j * A_{j6} * (-1). So sum over j:
+j=1: A61=0 =>0
+j=2: A62=0 =>0
+j=3: A63=2, A36=0 =>0
+j=4: A64=0 =>0
+j=5: A65=-2, A56=2 =>(-2)*2*(-1)=4? Wait product = A65 * A56 * A66 = (-2)*2*(-1)=4.
+j=6: A66=-1, A66=-1 => (-1)*(-1)*(-1)= -1
+j=7: A67=0 =>0
+j=8: A68=0 =>0
+Sum = 4 + (-1) = 3.
+
+Now j=k (and j not necessarily 6):
+- j=k, any j. Product = A6j * A_{jj} * A_{j6}. We need to sum over j=1..8. For each j, compute.
+j=1: A61=0 =>0
+j=2: A62=0 =>0
+j=3: A63=2, A33=0, A36=0 =>0
+j=4: A64=0 =>0
+j=5: A65=-2, A55=0, A56=2 => product = (-2)*0*2=0
+j=6: A66=-1, A66=-1, A66=-1 => product = (-1)*(-1)*(-1)= -1
+j=7: A67=0 =>0
+j=8: A68=0 =>0
+So sum = -1.
+
+Now we have three sums: S1 (j=6) = 3, S2 (k=6) = 3, S3 (j=k) = -1. However, note that the triple (6,6,6) appears in all three: in S1 (j=6,k=6), in S2 (j=6,k=6), and in S3 (j=6,k=6). So we have counted it multiple times. We need to compute the total sum of all triples where at least two indices equal. This is the union of the sets: {j=6}, {k=6}, {j=k}. Using inclusion-exclusion, we can compute total = S1 + S2 + S3 - (sum over intersections of pairs) + (triple intersection). The intersections:
+- S1 ∩ S2: j=6 and k=6 -> that's the triple (6,6,6). Its product is -1.
+- S1 ∩ S3: j=6 and j=k -> that means j=6 and k=6, same triple.
+- S2 ∩ S3: k=6 and j=k -> same triple.
+- Triple intersection: S1∩S2∩S3: same triple.
+So the intersections all refer to the same triple (6,6,6). So by inclusion-exclusion:
+Total = S1 + S2 + S3 - (|S1∩S2| + |S1∩S3| + |S2∩S3|) + |S1∩S2∩S3|.
+But since all intersections are the same single triple, we have:
+|S1∩S2| = product of that triple = -1, similarly for others. So we subtract 3 * (-1) = -3? Actually we subtract the sum of the intersections: we subtract (value of triple) three times. Then add back the triple intersection once. So total = S1+S2+S3 - 3*(-1) + (-1)? Wait careful: The inclusion-exclusion principle for measures: |A∪B∪C| = |A|+|B|+|C| - |A∩B| - |A∩C| - |B∩C| + |A∩B∩C|. Here the "size" is the sum of products, not counts. So we need to treat the contributions as numbers. So we have:
+T = S1 + S2 + S3 - (I12 + I13 + I23) + I123, where I12 is the sum over elements in A∩B, etc. Since the only common element is the triple (6,6,6) with value v = -1, all intersections are that same element. So I12 = v, I13 = v, I23 = v, I123 = v. Thus T = S1+S2+S3 - 3v + v = S1+S2+S3 - 2v. v = -1, so -2v = -2*(-1)=2. So T = 3+3+(-1) + 2 = 7. So total repeat contributions for i=6 = 7. Then distinct = (A^3)_{66} - T = -1 - 7 = -8. So distinct part for i=6 should be -8, not -6. That means our enumeration of distinct cycles for i=6 gave -6, but we need -8. So we missed some distinct cycles for i=6. Let's revisit the distinct cycles for i=6. We had (6,3,5) and (6,3,8) giving -8 and 2, sum -6. So we must be missing a distinct cycle that contributes -2 (since -8+2 = -6, need -8, so missing -2). Could there be a cycle (6,5,?) something? Let's check all possible distinct cycles for i=6: i=6, j must be from outgoing edges: j=3 or 5. For j=5, we considered k from 5, but we found no k such that A_{k6} exists. But maybe we missed a k? For j=5, k can be 2,3,4,6,7. We checked k=2: A26=0; k=3: A36=0; k=4: A46=0; k=6: not distinct; k=7: A76=0. So none. So j=5 gives none. For j=3, we considered k=4,5,8. We only found k=5 and k=8 with A_{k6}? Actually A_{k6}: for k=5, A56=2; for k=8, A86=-1. That gave -8 and 2. What about k=4? A46=0, so no. So only those two. So we have only two cycles. That gives -6. But we need -8. So maybe there is a cycle (6,5,?) with something else? Or maybe we missed a cycle with j=3 and k= something else? Or perhaps there is a cycle with j= something else? Outgoing from 6: also j=6 but that's self, not allowed for distinct. So only j=3,5. So the distinct cycles we have are exactly two. So sum -6. But distinct should be -8. So perhaps our (A^3)_{66} is wrong? Let's recompute (A^3)_{66} from A and B. We computed (A^3)_{66} as sum_j A_{6j} B_{j6}. A_{6j} non-zero: j=3 (2), j=5 (-2), j=6 (-1). B_{j6} values: B_{36} = row3 col6 = -4; B_{56} = row5 col6 = -2; B_{66} = row6 col6 = -3. So contributions: j=3: 2 * (-4) = -8; j=5: (-2)*(-2)=4; j=6: (-1)*(-3)=3; sum = -1. So (A^3)_{66} = -1. That seems solid. So the repeat contributions we computed gave 7, leading to distinct -8. But we only have -6 from distinct cycles. So there is a missing distinct cycle of value -2. Could there be a cycle (6,3,?) with k= ? we considered 4,5,8. Maybe k= ? Actually from 3, edges to 4,5,8. We checked all. So no. Could there be a cycle with j=5 and some k we missed? Let's double-check the edge from 5 to something that leads back to 6. From 5, edges to 2,3,4,6,7. Which of those have an edge to 6? The edge to 6 is from 5 itself? Actually we need k such that A_{k6} exists. A_{k6} non-zero for k=1 (A16=1), k=5 (A56=2), k=6 (A66=-1). So only k=1,5,6. For j=5, k=1: is there edge 5->1? No. k=5: that's j=k, not distinct (and also j=5,k=5 would be j=k, but then triple would be (6,5,5) which is not all distinct because j=k=5, but i=6, so indices are 6,5,5 -> not all distinct, it's a repeat case. That's the j=k case we already considered? Indeed, (6,5,5) is a j=k triple, which we accounted for in repeats? In our repeats for i=6, we included j=k cases: j=k=5 gave product = A65 * A55 * A56 = (-2)*0*2 = 0, so it contributed 0. So not a distinct cycle. k=6: that would be j=5, k=6, but then k=6 = i, so that's k=i, which is a repeat case (k=i) and we accounted for that in j=5,k=6? Actually k=6 is part of the k=6 set, which we included in repeats. For j=5, k=6, product = A65 * A56 * A66? Actually triple (6,5,6) is i=6,j=5,k=6. That's a repeat case (k=i). Its product = A65 * A56 * A66 = (-2)*2*(-1)=4. That is included in the k=6 sum. So that's a repeat, not distinct. So no distinct cycles from j=5.
+
+Thus the only distinct cycles for i=6 are the two we found. So distinct sum = -6. So why did our repeat calculation give total repeats = 7 and distinct = -8? Let's recompute the repeat contributions for i=6 more directly by enumerating all triples (6,j,k) with at least two indices equal, and sum their products. Then distinct = (A^3)_{66} - that sum. Let's enumerate all such triples manually:
+
+List all (j,k) pairs where j=6 or k=6 or j=k. Compute product for each. We'll list all possible (j,k) from 1 to 8, but we can compute systematically.
+
+We already computed:
+- For j=6, k any: we have product for each k: only k=5 gives 4, k=6 gives -1, others 0. So contributions: (6,6,5):4, (6,6,6):-1.
+- For k=6, j any: similarly (6,5,6):4, (6,6,6):-1. So these add: (6,5,6):4, (6,6,6) counted twice so far.
+- For j=k, j any: contributions: (6,6,6):-1, and also j=k=5 gives product A65 * A55 * A56 = (-2)*0*2 = 0; j=k=3 gives A63 * A33 * A36 = 2*0*0=0; j=k=2 gives A62 * A22 * A26 = 0; etc. So only (6,6,6):-1.
+
+Now if we simply add all these contributions, we get:
+From j=6: (6,6,5):4, (6,6,6):-1
+From k=6: (6,5,6):4, (6,6,6):-1
+From j=k: (6,6,6):-1
+So total = 4+4 + (-1-1-1) = 8 -3 = 5. But we must be careful: the triple (6,6,6) appears in all three sets, so if we just add, we count it three times. But we want the union, which includes each triple once. So we need to combine them correctly. The union of these sets includes:
+- (6,6,5): from j=6 but not from k=6 or j=k (since j=6,k=5: j=6, k≠6, j≠k, so only in j=6 set)
+- (6,5,6): from k=6 set (j=5,k=6)
+- (6,6,6): appears in all three.
+- Also any others? (6,6,? ) we have only these. Also j=k=5 gave 0, so ignore.
+So the distinct triples in the union are: (6,6,5), (6,5,6), (6,6,6). Their products: 4, 4, -1. Sum = 7. That's exactly the total repeat contributions we computed earlier as 7. So indeed the set of triples with at least two equal indices for i=6 consists of these three triples: (6,6,5), (6,5,6), (6,6,6). Their total product = 4+4-1 = 7. So (A^3)_{66} = -1, so distinct = -1 - 7 = -8. Therefore, the distinct cycles for i=6 should sum to -8. But our enumeration of distinct cycles only gave -6. So we are missing a distinct cycle that contributes -2. That distinct cycle must be a triple (6,j,k) with j,k distinct from i and from each other, and product something that sums to -2 with the existing ones to get -8. Since we already have -8+2 = -6, we need an additional cycle of value -2? But we only have two cycles: one -8 and one +2. Sum -6. To get -8, we need either another cycle of value -2, or the existing cycles have different values. Could it be that we miscomputed the product for (6,3,8)? That gave 2. Maybe it should be something else? Let's recompute (6,3,8): edges: 6->3 = 2, 3->8 = -1, 8->6 =? A86 =? From A, row8 col6 = -1 (since row8: [1,0,2,2,-1,0,0,0] so col6=0? Wait row8 col6 is 0? Let's check: Row8: [1,0,2,2,-1,0,0,0]. So col6=0. Actually earlier we used A86 = -1? I think we confused: (8,6) is row8, col6. Row8 col6 = 0. So A86 = 0. That's a critical mistake! In our list of edges, we had (8,6)? No, we had (8,1), (8,3), (8,4), (8,5). There is no (8,6). So A86 = 0. In our earlier enumeration, we assumed A86 = -1? Where did that come from? Possibly we misread row8: row8 is [1,0,2,2,-1,0,0,0] so col6=0. So the cycle (6,3,8) would require 8->6, which does not exist. So (6,3,8) is not a valid cycle! That explains the discrepancy. Let's check our earlier enumeration for i=6: we had j=3, k=8 gave product 2 because we thought A86=-1. But actually A86=0. So that cycle is invalid. So the only valid cycle for i=6 is (6,3,5) and possibly others? Let's re-evaluate i=6 with correct edges.
+
+For i=6: outgoing to j=3 and j=5.
+j=3: from 3, edges to 4,5,8. For each k, check edge from k to 6.
+- k=4: A46=0
+- k=5: A56=2, so product = A63 * A35 * A56 = 2 * (-2) * 2 = -8. Valid.
+- k=8: A86=0, so no.
+So only k=5 gives -8.
+j=5: from 5, edges to 2,3,4,6,7. For each k, need A_{k6}:
+- k=2: A26=0
+- k=3: A36=0
+- k=4: A46=0
+- k=6: k=6 is i, not distinct (j=5, k=6 gives j,k not distinct? Actually k=6 equals i, so triple (6,5,6) which is repeat, not distinct)
+- k=7: A76=0
+So no distinct cycles from j=5.
+Thus only one distinct cycle for i=6: (6,3,5) with product -8. So distinct sum for i=6 = -8. That matches the required -8. Good! So our earlier enumeration had an extra cycle (6,3,8) which was invalid because A86=0. So we mistakenly thought there was an edge from 8 to 6. So correct distinct sum for i=6 is -8.
+
+Now we need to update the total distinct sum. Previously we had i=6 as -6, now it's -8. So total distinct sum becomes -58 -2? Actually we had sum -58 including i=6 as -6. Changing i=6 from -6 to -8 reduces the sum by 2, so total becomes -60. Wait -58 -2 = -60. But we need total distinct sum to be -66? Actually from (A^3)_{ii} and repeats, we got distinct sum = -63 - repeats(3) = -66? No, we had total tr(A^3) = -63. Repeats = -9+12 = 3. So distinct = -63 - 3 = -66. But now we have distinct sum = -60? That's not matching. Let's recalc: total tr(A^3) = -63, repeats = 3, so distinct = -66. But our updated distinct sum from enumeration is -60? Wait we had total distinct from all i: we had i=2:-3, i=3:-16, i=4:-9, i=5:-23, i=6:-8 (new), i=7:-6, i=8:5, i=1:0. Sum = -3-16=-19; -19-9=-28; -28-23=-51; -51-8=-59; -59-6=-65; -65+5=-60. So distinct sum = -60. That would mean total tr(A^3) = repeats (3) + distinct (-60) = -57, not -63. So there is still inconsistency. We have to recompute the repeats correctly because our repeats might not be just -9+12=3. Because the repeats we computed earlier assumed only the (6,5) pair, but now we have only one distinct cycle for i=6, but the repeats might be different? Let's recalc repeats globally with correct edges.
+
+We need to recompute all contributions from triples with at least two equal indices (including diagonal). We must consider all i, j, k. We previously computed for i=6, we had repeats: (6,6,5), (6,5,6), (6,6,6). That sum is 4+4-1=7. For i=5, we had repeats: (5,5,6) maybe? Let's recompute repeats for all i systematically. Because the repeats are not just the ones we listed earlier (i=j=6,k=5 etc.) but also there could be repeats involving i=2? We already saw none. But also there could be repeats where the repeated index is not the one with diagonal? For example, triple (2,2,3) has A22=-2, A23=1, A32=0 => product 0. So only non-zero repeats involve nodes with diagonals and mutual edges. The only mutual edges we found are between 5 and 6 (both directions). Also note that node 2 has diagonal but no mutual edges. Node 6 has diagonal. So the only non-zero repeat contributions come from pairs (5,6) and (6,5). Let's list all possible ordered triples with at least two equal indices that yield non-zero product. They must involve the diagonal nodes (2 and 6) and the edges between 5 and 6. Also possibly node 2? No. So we need to enumerate all triples (i,j,k) where at least two indices are equal and the product is non-zero. Since the only non-zero edges are those we have, the product will be non-zero only if all three factors are non-zero. So we need to find all combinations of indices such that A_{ij}, A_{jk}, A_{ki} are all non-zero, and at least two indices equal. Let's systematically enumerate all such triples.
+
+We have non-zero edges list. Let's consider possibilities for the repeated index. The diagonal entries are only at 2 and 6. So any triple that includes a diagonal entry might be non-zero if the other edges exist. Also we can have triples where two indices equal but not the diagonal? E.g., j=k but j not a diagonal node, then A_{jj} would be zero unless j=2 or 6. So for j=k and j ≠2,6, A_{jj}=0, so product zero. So only j=2 or 6 can give non-zero when j=k. Similarly, for i=j or i=k, the diagonal is at i, so i must be 2 or 6. So essentially, the only possible non-zero repeat triples are those where the repeated index is 2 or 6, and the other index is such that the required edges exist. Let's enumerate:
+
+Case: i=j (i=j, k different). Then product = A_{ii} * A_{ik} * A_{ki}. For i=2: A22=-2. Need k such that A2k and A_{k2} non-zero. A2k: k=3,7; A_{k2}: A32=0, A72=0. So none. For i=6: A66=-1. Need k such that A6k and A_{k6} non-zero. A6k: k=3,5; A_{k6}: A36=0, A56=2. So k=5 works. So triple (6,6,5): product = (-1)*A65 * A56 = (-1)*(-2)*2 = 4.
+
+Case: i=k (i=k, j different). Then product = A_{ij} * A_{jj} * A_{ji}. Here diagonal is at j. So j must be 2 or 6. For j=2: A22=-2. Need i such that A_{i2} and A_{2i} non-zero. A_{i2}: i=4 (A42=-1), i=5 (A52=2); A_{2i}: A24=0, A25=0. So none. For j=6: A66=-1. Need i such that A_{i6} and A_{6i} non-zero. A_{i6}: i=1 (A16=1), i=5 (A56=2); A_{6i}: A61=0, A65=-2. So i=5 works: A56=2, A65=-2. So triple (5,6,5) i.e., (i=5,j=6,k=5)? Wait i=k=5? Actually i is the first index, j is the second, k=i. So triple (i,j,i) = (5,6,5). Product = A56 * A66 * A65 = 2 * (-1) * (-2) = 4. So (5,6,5): product 4.
+
+Case: j=k (j=k, i different). Then product = A_{ij} * A_{jj} * A_{ji}. Diagonal at j. So j must be 2 or 6. For j=2: need i such that A_{i2} and A_{2i} non-zero. As before, none. For j=6: need i such that A_{i6} and A_{6i} non-zero. i=5 works: A56=2, A65=-2. So triple (5,6,6): product = A56 * A66 * A65 = 2 * (-1) * (-2) = 4. Also i=1? A16=1, A61=0 so no. So triple (5,6,6): product 4.
+
+Also case i=j=k (diagonal): i=2: A22^3 = -8; i=6: A66^3 = -1. So total diagonal = -9.
+
+Thus total repeats = diagonal (-9) + (6,6,5):4 + (5,6,5):4 + (5,6,6):4 = -9+12 = 3. That matches earlier. So repeats sum = 3.
+
+Now distinct sum from enumeration we got -60? But total tr(A^3) = -63, so distinct should be -66. So we still have a discrepancy of 6. Let's recompute distinct sum with corrected i=6 (only -8) and also check other i for any other missed cycles? We already updated i=6 to -8, but that changed the total distinct from -58 to -60? Wait originally we had i=6 as -6, now -8, so distinct sum becomes -58 -2 = -60. But we need -66. So we need additional -6 from somewhere. Perhaps other i have missing cycles? Let's re-evaluate all i's distinct cycles with the correct edges, ensuring we didn't include any non-existent edges like 8->6. We already corrected i=6. Now check i=8: we had cycles including (8,1,6) which uses 1->6 and 6->8? Actually (8,1,6): edges: 8->1=1, 1->6=1, 6->8? We need 6->8. Does 6->8 exist? A68? Row6 col8 = 0. So (8,1,6) is invalid! That's a mistake. We assumed 6->8 exists? In our earlier enumeration for i=8, we had (8,1,6) with product -2. That assumed A86? Actually triple (8,1,6): i=8, j=1, k=6. Need edges: 8->1 (1), 1->6 (1), and 6->8? For the cycle, we need A_{k,i} = A_{6,8}? Since k=6, i=8, we need A_{6,8}. A68 = 0. So this cycle is invalid. So we need to remove that. Also (8,5,6) we had product 4, which used A68? That triple (8,5,6): edges: 8->5=-1, 5->6=2, and 6->8? Need A68, which is 0. So invalid. Also (8,5,2) we had product 2, which uses 5->2 and 2->8? That's valid? Check: (8,5,2): 8->5=-1, 5->2=2, 2->8? A28 = -1, yes. So that's valid. (8,5,3): 8->5=-1, 5->3=-1, 3->8=-1? That's valid: A38=-1, yes. So that's -1. (8,5,6) invalid. (8,4,2) and (8,4,5) are valid? (8,4,2): 8->4=2, 4->2=-1, 2->8=-1, product = 2*(-1)*(-1)=2, valid. (8,4,5): 8->4=2, 4->5=2, 5->8=1? A58=1, product = 2*2*1=4, valid. (8,3,5): 8->3=2, 3->5=-2, 5->8=1, product = 2*(-2)*1=-4, valid. Also (8,1,6) invalid, (8,5,2) valid, (8,5,3) valid. Also (8,? ) maybe (8,? ) we also had (8,? ) from j=1 only k=6, invalid. j=3 gave k=4 and 5, we considered k=4? (8,3,4) requires 4->8? A48=0, so invalid. So only k=5 valid. j=4 gave k=2 and 5 both valid. j=5 gave k=2,3,4,6,7; we need to check each for A_{k8}: A28=-1, A38=-1, A48=0, A68=0, A78=0. So only k=2 and 3 give valid cycles. So valid cycles for i=8 are: (8,3,5): -4; (8,4,2): 2; (8,4,5): 4; (8,5,2): 2; (8,5,3): -1. Also (8,? ) maybe (8,1,? )? none. So sum = -4+2+4+2-1 = 3. Wait that sum is 3, not 5 as before. So i=8 distinct sum becomes 3. Let's compute: -4+2 = -2; -2+4=2; 2+2=4; 4-1=3. So total distinct from i=8 is 3.
+
+Now also check i=5: we had cycles: (5,2,3): -4; (5,3,4): -2; (5,3,8): -1; (5,6,3): -8; (5,7,4): -8. Are all these valid? Check each:
+(5,2,3): 5->2=2, 2->3=1, 3->5? A35=-2, product 2*1*(-2)=-4, valid.
+(5,3,4): 5->3=-1, 3->4=1, 4->5=2, product -1*1*2=-2, valid.
+(5,3,8): 5->3=-1, 3->8=-1, 8->5=-1, product -1*(-1)*(-1)=-1, valid.
+(5,6,3): 5->6=2, 6->3=2, 3->5=-2, product 2*2*(-2)=-8, valid.
+(5,7,4): 5->7=2, 7->4=-2, 4->5=2, product 2*(-2)*2=-8, valid.
+So all valid. Sum = -4-2-1-8-8 = -23. Good.
+
+i=7: cycles: (7,4,2): 2; (7,4,5): -8. Valid? (7,4,2): 7->4=-2, 4->2=-1, 2->7=1, product -2*(-1)*1=2, valid. (7,4,5): 7->4=-2, 4->5=2, 5->7=2, product -2*2*2=-8, valid. Sum = -6. Good.
+
+i=2: cycles: (2,3,4): -1; (2,3,5): -4; (2,7,4): 2. Valid? Check (2,3,4): 2->3=1, 3->4=1, 4->2=-1 -> -1; (2,3,5): 2->3=1, 3->5=-2, 5->2=2 -> -4; (2,7,4): 2->7=1, 7->4=-2, 4->2=-1 -> 2. Sum = -3. Good.
+
+i=3: cycles: (3,4,2): -1; (3,4,5): -2; (3,5,2): -4; (3,5,6): -8; (3,8,5): -1. Check (3,4,2): 3->4=1, 4->2=-1, 2->3=1 -> -1; (3,4,5): 3->4=1, 4->5=2, 5->3=-1 -> -2; (3,5,2): 3->5=-2, 5->2=2, 2->3=1 -> -4; (3,5,6): 3->5=-2, 5->6=2, 6->3=2 -> -8; (3,8,5): 3->8=-1, 8->5=-1, 5->3=-1 -> -1; Sum = -16. Good.
+
+i=4: cycles: (4,2,3): -1; (4,2,7): 2; (4,5,3): -2; (4,5,7): -8. Valid? (4,2,3): 4->2=-1, 2->3=1, 3->4=1 -> -1; (4,2,7): 4->2=-1, 2->7=1, 7->4=-2 -> 2; (4,5,3): 4->5=2, 5->3=-1, 3->4=1 -> -2; (4,5,7): 4->5=2, 5->7=2, 7->4=-2 -> -8; Sum = -9. Good.
+
+i=6: cycles: only (6,3,5): -8. So sum = -8.
+
+i=1: none.
+
+Now total distinct sum = i2:-3 + i3:-16 + i4:-9 + i5:-23 + i6:-8 + i7:-6 + i8:3 = let's add: -3-16=-19; -19-9=-28; -28-23=-51; -51-8=-59; -59-6=-65; -65+3=-62. So distinct sum = -62. Then total tr(A^3) = repeats (3) + distinct (-62) = -59. But we computed from A and B that tr(A^3) = -63. So there is still a discrepancy of -4. So we are missing some distinct cycles summing to -4? Let's check i=8 sum we have 3, but maybe there are more cycles for i=8? Let's re-examine i=8 thoroughly.
+
+i=8, outgoing edges: to 1,3,4,5.
+j=1: from 1, edges to 6,8. k must be distinct from i=8 and j=1, so k=6 (k=8 is i, exclude). Check 6->8? A68=0, so no. So no cycle.
+j=3: from 3, edges to 4,5,8. k can be 4,5 (k=8 is i, exclude). Check 4->8? A48=0; 5->8? A58=1, so k=5 works. So cycle (8,3,5): product = A83 * A35 * A58 = 2 * (-2) * 1 = -4. That's one.
+j=4: from 4, edges to 2,5. k can be 2,5. Check 2->8? A28=-1, works; 5->8? A58=1, works. So cycles: (8,4,2): product = A84 * A42 * A28 = 2 * (-1) * (-1) = 2; (8,4,5): product = 2 * 2 * 1 = 4.
+j=5: from 5, edges to 2,3,4,6,7. k can be 2,3,4,6,7. Check 2->8: A28=-1, so (8,5,2): product = A85 * A52 * A28 = (-1)*2*(-1)=2; 3->8: A38=-1, so (8,5,3): product = (-1)*(-1)*(-1) = -1; 4->8: A48=0; 6->8: A68=0; 7->8: A78=0. So cycles: (8,5,2) and (8,5,3). So total cycles: -4, 2, 4, 2, -1. Sum = -4+2+4+2-1 = 3. So i=8 sum=3. Good.
+
+Now check i=5 again: we had -23. Could there be additional cycles for i=5? Let's list all possible paths for i=5: j=2,3,4,6,7.
+j=2: from 2 to 3,7. k=3: 3->5? A35=-2, so cycle (5,2,3): product = 2*1*(-2) = -4. k=7: 7->5? A75=0, so no.
+j=3: from 3 to 4,5,8. k=4: 4->5=2, cycle (5,3,4): -1*1*2=-2; k=5: k=5 is j? Actually k=5 not allowed (distinct from j=3 and i=5? k=5 equals i, so not distinct); k=8: 8->5=-1, cycle (5,3,8): -1*(-1)*(-1)=-1.
+j=4: from 4 to 2,5. k=2: 2->5? A25=0; k=5: i, not distinct. So none.
+j=6: from 6 to 3,5. k=3: 3->5=-2, cycle (5,6,3): 2*2*(-2)=-8; k=5: i, not distinct. So only k=3.
+j=7: from 7 to 4. k=4: 4->5=2, cycle (5,7,4): 2*(-2)*2=-8. So total -4-2-1-8-8 = -23. Good.
+
+Now i=6: only j=3,5. j=3: from 3 to 4,5,8. k=5 gives cycle (6,3,5): 2*(-2)*2=-8; k=4: 4->6? A46=0; k=8: 8->6? A86=0. So only -8. j=5: from 5 to 2,3,4,6,7. k=2: 2->6? A26=0; k=3: 3->6? A36=0; k=4: 4->6? A46=0; k=6: i; k=7: 7->6? A76=0. So none. So i=6 sum = -8.
+
+Now i=2,3,4,7 are correct. So distinct sum = -3-16-9-23-8-6+3 = -62 as computed. So distinct sum = -62. Then total = repeats (3) + distinct (-62) = -59. But (A^3)_{ii} sum = -63. So there is a difference of -4. That suggests that our repeat sum might be off by 4, or some (A^3)_{ii} values are off. Let's recompute (A^3)_{ii} from A and B to ensure they sum to -63. We computed earlier: (A^3)_{22}=-11, (A^3)_{33}=-16, (A^3)_{44}=-9, (A^3)_{55}=-19, (A^3)_{66}=-1, (A^3)_{77}=-6, (A^3)_{88}=-1, (A^3)_{11}=0. Sum = -11-16=-27; -27-9=-36; -36-19=-55; -55-1=-56; -56-6=-62; -62-1=-63. Yes. So those values are solid. Now we need to see if the repeats sum to 3? Let's compute the sum of all repeat contributions directly by summing over all i the contributions from repeats we enumerated per i. We can compute repeats per i from our earlier analysis of repeats for each i. For i=2, we found repeats = -8 (only diagonal). For i=3, repeats = 0. For i=4, repeats = 0. For i=5, repeats = 4 (from j=k case? Actually we found for i=5, repeats = 4 from (5,5,6)? Wait we computed repeats for i=5 as 4 from j=k? Let's recompute repeats for i=5 using the same method as for i=6. We need to list all triples (5,j,k) with at least two equal indices that have non-zero product. For i=5, diagonal A55=0, so the only possible repeats come from j=5 or k=5 or j=k. But j=5: then product = A55 * A5k * A_{k5} = 0, so none. k=5: product = A5j * A_{j5} * A55 = 0, so none. j=k: then product = A5j * A_{jj} * A_{j5}. For j with A_{jj} non-zero: j=2,6. For j=2: A52=2, A22=-2, A25=0 => product 0. For j=6: A56=2, A66=-1, A65=-2 => product = 2*(-1)*(-2)=4. So that's (5,6,6) triple? Wait j=k=6 gives triple (5,6,6). That product is 4. So repeats for i=5 = 4. That matches earlier. For i=6, we computed repeats = 7 (from (6,6,5):4, (6,5,6):4, (6,6,6):-1). For i=7, A77=0, so repeats? j=7? A77=0, so no. k=7? same. j=k? j with diagonal: j=2,6. For j=2: A72=0; j=6: A76=0; so none. So repeats=0. For i=8, A88=0, similar: j=8 or k=8 zero; j=k: j=2,6: A82? A82=0; A86=0; so 0. For i=1,0. For i=3,0. For i=4,0. For i=2, we computed repeats = -8 (only diagonal). So total repeats sum over i = i2:-8 + i5:4 + i6:7 = -8+4+7=3. That matches global repeats 3. So repeats are correct.
+
+Now distinct sum from enumeration is -62, but from total minus repeats we get -63 -3 = -66? Wait total = -63, repeats = 3, so distinct = -66. But we have -62, so we are missing -4 worth of distinct cycles. So there are still some distinct cycles we haven't accounted for. Let's check i=5 again: we had sum -23. Could there be a cycle (5,2,7) maybe? Check: 5->2=2, 2->7=1, 7->5? A75=0, so no. (5,3,? ) we did. (5,6,? ) we did only k=3. What about (5,6,? ) k= something else? From 6, also k=5? That's not distinct. So no. (5,4,? ) we had none. (5,7,? ) only k=4. So that seems complete.
+
+Maybe there is a cycle involving i=2 besides the ones we have? For i=2, we had cycles: (2,3,4), (2,3,5), (2,7,4). Could there be (2,3,8)? 2->3, 3->8, 8->2? A82=0, no. (2,7,? ) only 7->4. So that's all.
+
+i=3: we had (3,4,2), (3,4,5), (3,5,2), (3,5,6), (3,8,5). Could there be (3,5,8)? Check 3->5, 5->8, 8->3? A83=2, product = (-2)*1*2 = -4? Actually 3->5=-2, 5->8=1, 8->3=2, product = (-2)*1*2 = -4. Did we include that? We had (3,5,? ) we considered k=2,4,6,7. We missed k=8! Because from 5, k can be 8. Indeed, in our enumeration for i=3, j=5, we listed k=2,4,6,7. But we missed k=8. Let's check: when i=3, j=5, from 5, outgoing edges to 2,3,4,6,7. Did we include k=8? No, because 5->8? Is there an edge 5->8? From A, row5 col8 = 0? Wait row5: [0,2,-1,-2,0,2,2,0] so col8=0. So 5->8 is 0. So no. So k=8 not possible. But what about (3,8,5) we already have. So no.
+
+But maybe there is (3,4,? ) k= ? we had k=2,5. (3,5,? ) we had k=2,4,6,7. Did we consider k=8? No because 5->8=0. So that's fine.
+
+Now i=8: we have 3. Could there be (8,1,? ) maybe (8,1,? ) from 1->6, then 6->8? A68=0, so no. (8,3,? ) we did k=5 only. (8,4,? ) we did k=2,5. (8,5,? ) we did k=2,3. So that's all.
+
+Now what about i=1? Could there be any cycle with i=1? i=1: j=6,8. j=6: from 6 to 3,5. Check 3->1? A31=0; 5->1? A51=0. So none. j=8: from 8 to 1,3,4,5. k=1 is i, not distinct; k=3: 3->1? 0; k=4: 4->1? 0; k=5: 5->1? 0. So none.
+
+Now what about i=7? we have (7,4,2) and (7,4,5). Could there be (7,4,? ) other? Only k=2,5. So fine.
+
+Thus the distinct sum we have is -62, but we need -66. So we need to find cycles that sum to -4. Perhaps there are cycles involving i=2 with k= something else? Let's double-check i=2: j=3, we considered k=4,5,8? Actually from 3, k=4,5,8. We considered k=4 and 5, but not k=8 because 8->2? A82=0, so no. So that's fine. j=7, we considered k=4. So fine.
+
+Maybe there is a cycle (2,3,? ) with k= ? We checked all.
+
+Perhaps we missed a cycle for i=4: j=2 gave k=3,7; j=5 gave k=3,7. That's all.
+
+Maybe there is a cycle for i=5: j=2 gave k=3; j=3 gave k=4,8; j=6 gave k=3; j=7 gave k=4. Could there be a cycle (5,2,7)? 5->2, 2->7, 7->5? A75=0, no. (5,3,? ) we have k=4,8. (5,6,? ) only k=3. (5,7,? ) only k=4. So no.
+
+Maybe there is a cycle involving i=6 with j=5 and k= ? we already determined none.
+
+Maybe there is a cycle involving i=3 with j=5 and k= ? we checked all.
+
+Perhaps we missed a cycle for i=3: j=4 gave k=2,5; j=5 gave k=2,4,6,7; j=8 gave k=5. That seems exhaustive.
+
+Let's list all possible directed 3-cycles in the graph by enumerating all sets of three vertices and checking if there is a directed cycle. Since the graph is small, we can list all triples of distinct vertices and check all possible directed cycles among them. There are C(8,3)=56 triples, but we can systematically go through them.
+
+We'll list all combinations of three distinct vertices and see if there is a directed cycle (i->j, j->k, k->i) for some permutation. Then compute product of the three edges (the product for that ordered cycle). Note that each directed cycle of three distinct vertices yields three ordered triples (cyclic permutations) which we already count in our per i enumeration. So we can find all distinct cycles (undirected set) and compute the sum of products for the three permutations, which will be 3 times the product for one direction if the cycle is consistent? Actually for a given cycle a->b->c->a, the three ordered triples are (a,b,c), (b,c,a), (c,a,b) all with same product P = A_{ab}A_{bc}A_{ca}. So the total contribution from that cycle (all three permutations) is 3P. Similarly, if the reverse cycle exists (a->c->b->a), that would be a different set of three ordered triples with product Q. So in our per i enumeration, we sum over all ordered triples. So the total distinct sum is sum over all directed cycles of 3 distinct vertices of the product (each ordered triple counted once). So we can find all directed cycles and compute their contributions.
+
+Let's list all possible directed 3-cycles. We'll list all triples (a,b,c) and see if there is a directed cycle a->b, b->c, c->a.
+
+We'll go through each combination. Since we have adjacency, we can do systematic search.
+
+We have vertices 1-8. Let's list all edges again:
+
+1->6, 1->8
+2->3, 2->7 (and self)
+3->4, 3->5, 3->8
+4->2, 4->5
+5->2, 5->3, 5->4, 5->6, 5->7
+6->3, 6->5 (and self)
+7->4
+8->1, 8->3, 8->4, 8->5
+
+Now, we can look for cycles:
+
+First, consider cycles involving 2,3,4: we have 2->3, 3->4, 4->2. That's a cycle. Product: 1 * 1 * (-1) = -1. So ordered triples: (2,3,4): -1, (3,4,2): -1, (4,2,3): -1. Total -3. We have these in our sums: i=2 gave (2,3,4): -1; i=3 gave (3,4,2): -1; i=4 gave (4,2,3): -1. So total -3. Good.
+
+Next, 2,3,5: 2->3, 3->5, 5->2. Product: 1 * (-2) * 2 = -4. Triples: (2,3,5): -4, (3,5,2): -4, (5,2,3): -4. Total -12. We have i=2: -4, i=3: -4, i=5: -4. So -12.
+
+Next, 2,7,4: 2->7, 7->4, 4->2. Product: 1 * (-2) * (-1) = 2. Triples: (2,7,4):2, (7,4,2):2, (4,2,7):2. Total 6. We have i=2:2, i=7:2, i=4:2. So 6.
+
+Next, 3,4,5: 3->4, 4->5, 5->3. Product: 1 * 2 * (-1) = -2. Triples: (3,4,5):-2, (4,5,3):-2, (5,3,4):-2. Total -6. We have i=3:-2, i=4:-2, i=5:-2. So -6.
+
+Next, 3,5,6: 3->5, 5->6, 6->3. Product: (-2) * 2 * 2 = -8. Triples: (3,5,6):-8, (5,6,3):-8, (6,3,5):-8. Total -24. We have i=3:-8, i=5:-8 (from (5,6,3)? Actually we have (5,6,3) in i=5 as -8, yes), i=6:-8. So -24.
+
+Next, 3,8,5: 3->8, 8->5, 5->3. Product: (-1) * (-1) * (-1) = -1. Triples: (3,8,5):-1, (8,5,3):-1, (5,3,8):-1. Total -3. We have i=3:-1, i=8:? We have (8,5,3) = -1, yes, and i=5:-1. So -3.
+
+Next, 4,5,7: 4->5, 5->7, 7->4. Product: 2 * 2 * (-2) = -8. Triples: (4,5,7):-8, (5,7,4):-8, (7,4,5):-8. Total -24. We have i=4:-8, i=5:-8, i=7:-8. So -24.
+
+Now also check 8,4,2: 8->4, 4->2, 2->8. Product: 2 * (-1) * (-1) = 2. Triples: (8,4,2):2, (4,2,8):2, (2,8,4):2? But does (2,8,4) exist? 2->8? A28=-1, 8->4=2, 4->2=-1, product = (-1)*2*(-1)=2, yes. So cycle (2,8,4) is also valid. So we have a cycle involving 2,4,8. Check edges: 2->8? A28=-1, yes. 8->4=2, 4->2=-1. So that's a directed cycle 2->8->4->2. Product: (-1)*2*(-1)=2. So this is a cycle we might have missed. Did we include (2,8,4) in our enumeration? Let's see: For i=2, we had j=3,7. Did we have j=8? No, because 2->8 is an edge? A28 = -1, yes! In our list of edges from 2, we only listed 2->3 and 2->7, but we missed 2->8? Wait, check row2 of A: row2 = [0,-2,1,0,0,0,1,0]. So col8 = 0. So A28 = 0. So there is no edge 2->8. But we just used A28=-1? Where did that come from? Actually earlier we used A28 in cycles like (8,4,2) we used A28 = -1. That came from row2 col8? Let's check row2 col8: row2 col8 is 0, not -1. Wait we might have confused: In the cycle (8,4,2), we need 2->8? Actually cycle (8,4,2) means 8->4, 4->2, 2->8. So we need A28 (2->8) =? According to A, row2 col8 = 0. So that cycle is not valid. But earlier when we computed (8,4,2) we used A28 = -1? Let's see: In our i=8 enumeration, we had (8,4,2): product = A84 * A42 * A28. We used A28 = -1. But A28 is actually 0. So we made a mistake! Let's check A matrix again: row2 = [0, -2, 1, 0, 0, 0, 1, 0]. So col8 is 0. So there is no edge 2->8. However, we have an edge 8->2? Row8 col2 = -4? Actually row8 col2 = -4? Wait row8: [1,0,2,2,-1,0,0,0] so col2=0. So no 8->2 either. So the cycle (8,4,2) is invalid because 2->8 and 8->2 are both zero. But we earlier computed (8,4,2) with product 2, using A28=-1. Where did that -1 come from? Possibly we misread A28 as -1 from somewhere else? Actually in our earlier enumeration, we had (8,4,2) gave product 2, and we used A28 = -1. That suggests we thought there was an edge 2->8. But there isn't. Let's double-check the A matrix given: Row2: [0, -2, 1, 0, 0, 0, 1, 0] -> col8=0. So no. So cycles involving 2->8 are invalid. Similarly, (2,8,4) would require 2->8, which doesn't exist. So we need to re-evaluate cycles for i=8 that used A28. In our i=8 enumeration, we had (8,4,2) and (8,5,2) both used A28. And (8,5,2) used A28 also. So those cycles are invalid if A28=0. Also (8,5,3) used A38, which is -1? A38 = -1, yes that exists. So (8,5,3) is valid. (8,4,5) used A58=1, valid. (8,3,5) used A58=1, valid. So we need to remove (8,4,2) and (8,5,2) from i=8 list. Also (8,5,2) we had product 2, that's invalid. Also (8,4,2) product 2 invalid. So i=8 valid cycles are: (8,3,5): -4, (8,4,5): 4, (8,5,3): -1. That sums to -4+4-1 = -1. So i=8 sum becomes -1, not 3. Also we should check if there are any other cycles for i=8? (8,1,6) invalid, (8,5,6) invalid. So only those three. So i=8 distinct sum = -1.
+
+Now also we need to check if any cycles involving 2 and 8 exist? Possibly 2->?->8->2? Not since 2->8 is 0. So none.
+
+Now also check cycles involving 1? None.
+
+Now also check cycles involving 5 and something else? We already have (5,2,3), (5,3,4), (5,3,8), (5,6,3), (5,7,4). Are there cycles like (5,2,8)? 5->2, 2->8? No. (5,8,?) 5->8? No. So fine.
+
+Now update i=8 sum to -1. Then total distinct sum becomes: i2:-3, i3:-16, i4:-9, i5:-23, i6:-8, i7:-6, i8:-1, i1:0. Sum = -3-16=-19; -19-9=-28; -28-23=-51; -51-8=-59; -59-6=-65; -65-1=-66. So distinct sum = -66. That matches the required distinct sum! Great. So the corrected distinct sum is -66, making total tr(A^3) = repeats 3 + distinct -66 = -63. Perfect.
+
+So now we have tr(A) = -3, tr(A^2) = -7, tr(A^3) = -63, tr(A^4) = 153.
+
+Thus the four numbers are: -3, -7, -63, 153.
+
+Now we should present them as a comma-separated list.
+
+Therefore, answer: -3, -7, -63, 153.
+
+Double-check tr(A^4) with the corrected matrix? Since we didn't change A, B remains same, so tr(A^4)=153 is correct.
+
+Thus final answer.

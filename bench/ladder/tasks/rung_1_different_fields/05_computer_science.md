@@ -1,0 +1,481 @@
+# Исполнение программы стековой машины
+
+- id: `ladder_rung_1/computer_science`
+- источник: own generator (answer computed by code); лицензия: CC BY-NC-SA 4.0 (this repository)
+- генератор: `r1_cs_stack`, number of instructions = 450, сид 1000
+- отбор: медиана 14780 ток., CV 0.18, верно 5/5
+
+## Условие
+
+```text
+A stack machine holds a stack of integers, initially empty. It executes the instructions below once, in order (there are no jumps). Instruction semantics:
+  PUSH k — push the integer k;
+  ADD — pop x (the top), pop y, push y + x;
+  SUB — pop x (the top), pop y, push y − x;
+  MUL — pop x (the top), pop y, push y × x;
+  DUP — push a copy of the top element;
+  OVER — push a copy of the element just below the top;
+  SWAP — exchange the two top elements;
+  POP — remove the top element.
+Every instruction is valid at the point where it is executed (the stack never underflows).
+
+Program (450 instructions):
+  1. PUSH 19
+  2. PUSH 16
+  3. MUL
+  4. PUSH 10
+  5. PUSH 1
+  6. PUSH 17
+  7. PUSH 12
+  8. PUSH 5
+  9. ADD
+ 10. POP
+ 11. PUSH 14
+ 12. SWAP
+ 13. OVER
+ 14. SUB
+ 15. PUSH 13
+ 16. MUL
+ 17. PUSH 9
+ 18. ADD
+ 19. SUB
+ 20. POP
+ 21. SUB
+ 22. ADD
+ 23. PUSH 14
+ 24. ADD
+ 25. PUSH 3
+ 26. PUSH 20
+ 27. SUB
+ 28. PUSH 8
+ 29. PUSH 9
+ 30. SWAP
+ 31. SUB
+ 32. POP
+ 33. SWAP
+ 34. POP
+ 35. DUP
+ 36. ADD
+ 37. DUP
+ 38. SUB
+ 39. PUSH 15
+ 40. SWAP
+ 41. SUB
+ 42. PUSH 8
+ 43. PUSH 3
+ 44. MUL
+ 45. POP
+ 46. PUSH 13
+ 47. ADD
+ 48. PUSH 14
+ 49. ADD
+ 50. PUSH 1
+ 51. ADD
+ 52. DUP
+ 53. SUB
+ 54. PUSH 17
+ 55. OVER
+ 56. SUB
+ 57. SWAP
+ 58. ADD
+ 59. PUSH 7
+ 60. SUB
+ 61. DUP
+ 62. SUB
+ 63. PUSH 19
+ 64. ADD
+ 65. PUSH 13
+ 66. PUSH 13
+ 67. POP
+ 68. OVER
+ 69. SUB
+ 70. PUSH 15
+ 71. OVER
+ 72. ADD
+ 73. ADD
+ 74. OVER
+ 75. SUB
+ 76. MUL
+ 77. PUSH 5
+ 78. PUSH 15
+ 79. OVER
+ 80. ADD
+ 81. PUSH 6
+ 82. SWAP
+ 83. SUB
+ 84. PUSH 11
+ 85. DUP
+ 86. SWAP
+ 87. PUSH 5
+ 88. SUB
+ 89. SUB
+ 90. SUB
+ 91. SWAP
+ 92. OVER
+ 93. SUB
+ 94. PUSH 20
+ 95. SWAP
+ 96. OVER
+ 97. PUSH 6
+ 98. OVER
+ 99. SWAP
+100. OVER
+101. ADD
+102. OVER
+103. ADD
+104. ADD
+105. POP
+106. DUP
+107. SUB
+108. PUSH 3
+109. SUB
+110. MUL
+111. SUB
+112. ADD
+113. ADD
+114. PUSH 18
+115. ADD
+116. PUSH 5
+117. ADD
+118. DUP
+119. SWAP
+120. POP
+121. PUSH 5
+122. SUB
+123. PUSH 2
+124. ADD
+125. DUP
+126. ADD
+127. PUSH 3
+128. OVER
+129. SUB
+130. PUSH 13
+131. PUSH 6
+132. ADD
+133. ADD
+134. PUSH 14
+135. PUSH 1
+136. DUP
+137. MUL
+138. ADD
+139. ADD
+140. OVER
+141. PUSH 4
+142. SUB
+143. SUB
+144. PUSH 3
+145. ADD
+146. ADD
+147. PUSH 3
+148. POP
+149. PUSH 12
+150. SUB
+151. PUSH 4
+152. ADD
+153. PUSH 13
+154. SUB
+155. PUSH 20
+156. SUB
+157. PUSH 7
+158. SWAP
+159. SUB
+160. PUSH 13
+161. DUP
+162. MUL
+163. POP
+164. PUSH 10
+165. PUSH 4
+166. SUB
+167. PUSH 9
+168. DUP
+169. ADD
+170. SWAP
+171. SWAP
+172. MUL
+173. PUSH 15
+174. PUSH 15
+175. DUP
+176. DUP
+177. SUB
+178. SUB
+179. MUL
+180. POP
+181. DUP
+182. SWAP
+183. SWAP
+184. POP
+185. PUSH 6
+186. SUB
+187. PUSH 11
+188. OVER
+189. POP
+190. SUB
+191. ADD
+192. PUSH 5
+193. POP
+194. PUSH 5
+195. MUL
+196. PUSH 3
+197. OVER
+198. OVER
+199. PUSH 20
+200. ADD
+201. PUSH 5
+202. SUB
+203. OVER
+204. ADD
+205. PUSH 1
+206. SUB
+207. ADD
+208. SUB
+209. PUSH 17
+210. ADD
+211. SWAP
+212. ADD
+213. PUSH 8
+214. ADD
+215. PUSH 4
+216. DUP
+217. ADD
+218. SUB
+219. DUP
+220. PUSH 6
+221. PUSH 15
+222. ADD
+223. PUSH 15
+224. ADD
+225. OVER
+226. PUSH 11
+227. SUB
+228. OVER
+229. PUSH 15
+230. ADD
+231. SWAP
+232. POP
+233. DUP
+234. DUP
+235. SUB
+236. PUSH 4
+237. ADD
+238. MUL
+239. SWAP
+240. SUB
+241. PUSH 13
+242. PUSH 9
+243. SUB
+244. ADD
+245. ADD
+246. DUP
+247. OVER
+248. PUSH 9
+249. ADD
+250. DUP
+251. POP
+252. POP
+253. PUSH 12
+254. ADD
+255. DUP
+256. ADD
+257. PUSH 17
+258. ADD
+259. PUSH 6
+260. PUSH 11
+261. SUB
+262. OVER
+263. ADD
+264. SUB
+265. PUSH 5
+266. MUL
+267. OVER
+268. OVER
+269. PUSH 8
+270. SUB
+271. SUB
+272. ADD
+273. POP
+274. SUB
+275. DUP
+276. ADD
+277. DUP
+278. ADD
+279. PUSH 4
+280. ADD
+281. PUSH 13
+282. SUB
+283. PUSH 5
+284. PUSH 3
+285. SUB
+286. PUSH 4
+287. DUP
+288. PUSH 4
+289. SUB
+290. PUSH 13
+291. OVER
+292. ADD
+293. ADD
+294. SUB
+295. PUSH 1
+296. PUSH 8
+297. OVER
+298. OVER
+299. OVER
+300. ADD
+301. SWAP
+302. OVER
+303. ADD
+304. SWAP
+305. SUB
+306. MUL
+307. MUL
+308. POP
+309. POP
+310. PUSH 6
+311. MUL
+312. OVER
+313. DUP
+314. SWAP
+315. ADD
+316. SUB
+317. PUSH 11
+318. PUSH 16
+319. SUB
+320. SUB
+321. PUSH 2
+322. SWAP
+323. MUL
+324. SUB
+325. PUSH 3
+326. PUSH 20
+327. OVER
+328. POP
+329. PUSH 20
+330. SUB
+331. PUSH 4
+332. PUSH 20
+333. POP
+334. SUB
+335. SUB
+336. OVER
+337. ADD
+338. OVER
+339. SUB
+340. PUSH 1
+341. PUSH 18
+342. PUSH 18
+343. DUP
+344. ADD
+345. SUB
+346. SUB
+347. ADD
+348. PUSH 18
+349. PUSH 12
+350. OVER
+351. ADD
+352. SUB
+353. POP
+354. SUB
+355. PUSH 10
+356. PUSH 5
+357. OVER
+358. SUB
+359. POP
+360. ADD
+361. DUP
+362. OVER
+363. ADD
+364. ADD
+365. DUP
+366. POP
+367. PUSH 13
+368. PUSH 2
+369. OVER
+370. POP
+371. ADD
+372. ADD
+373. PUSH 15
+374. SWAP
+375. ADD
+376. DUP
+377. SUB
+378. DUP
+379. PUSH 20
+380. PUSH 18
+381. POP
+382. ADD
+383. ADD
+384. PUSH 10
+385. PUSH 14
+386. MUL
+387. PUSH 18
+388. PUSH 11
+389. MUL
+390. DUP
+391. PUSH 8
+392. PUSH 3
+393. OVER
+394. SUB
+395. POP
+396. SUB
+397. OVER
+398. ADD
+399. SUB
+400. ADD
+401. OVER
+402. ADD
+403. PUSH 16
+404. POP
+405. PUSH 17
+406. DUP
+407. MUL
+408. SWAP
+409. OVER
+410. ADD
+411. DUP
+412. ADD
+413. SUB
+414. PUSH 12
+415. OVER
+416. SWAP
+417. MUL
+418. SWAP
+419. DUP
+420. ADD
+421. PUSH 9
+422. ADD
+423. POP
+424. SUB
+425. PUSH 13
+426. PUSH 18
+427. SUB
+428. PUSH 7
+429. SUB
+430. PUSH 9
+431. SUB
+432. ADD
+433. PUSH 7
+434. PUSH 3
+435. OVER
+436. POP
+437. SUB
+438. PUSH 16
+439. OVER
+440. PUSH 18
+441. MUL
+442. PUSH 18
+443. SUB
+444. PUSH 15
+445. ADD
+446. SUB
+447. ADD
+448. ADD
+449. PUSH 11
+450. ADD
+
+What integer is on top of the stack after the last instruction? Give it as an integer.
+
+Think it through, then finish with a final line of the form `ANSWER: <your answer>`.
+```
+
+## Эталон
+
+`2709` — проверка: число, точное совпадение

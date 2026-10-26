@@ -1,0 +1,571 @@
+We need to solve least squares for overdetermined system Ax=b, A is 8x6, columns linearly independent. So the normal equations: A^T A x = A^T b. Since columns are independent, A^T A is invertible. So we can compute x = (A^T A)^{-1} A^T b. Should be exact fractions.
+
+We have integer matrix and integer vector. We'll compute A^T A and A^T b, then solve linear system.
+
+Let's write A:
+
+Row1: [1,1,2,-1,0,1]
+Row2: [1,0,0,-1,0,-1]
+Row3: [-1,-1,-1,2,0,-1]
+Row4: [0,-1,0,1,0,0]
+Row5: [0,1,1,0,-1,2]
+Row6: [1,1,3,0,-1,2]
+Row7: [-1,0,0,1,0,2]
+Row8: [1,0,1,-1,0,0]
+
+b = [3, -6, 3, -5, 3, -1, -6, 1]^T
+
+We need A^T A (6x6) and A^T b (6x1). Compute entries.
+
+Better approach: Compute sums of products.
+
+Let columns of A be c1,...,c6. Each column is 8-dimensional.
+
+c1 = (1,1,-1,0,0,1,-1,1)^T? Actually from rows:
+Row1: 1; row2:1; row3:-1; row4:0; row5:0; row6:1; row7:-1; row8:1 → [1,1,-1,0,0,1,-1,1]
+c2 = (1,0,-1,-1,1,1,0,0): row1:1, row2:0, row3:-1, row4:-1, row5:1, row6:1, row7:0, row8:0
+c3 = (2,0,-1,0,1,3,0,1): row1:2, row2:0, row3:-1, row4:0, row5:1, row6:3, row7:0, row8:1
+c4 = (-1,-1,2,1,0,0,1,-1): row1:-1, row2:-1, row3:2, row4:1, row5:0, row6:0, row7:1, row8:-1
+c5 = (0,0,0,0,-1,-1,0,0): row1:0, row2:0, row3:0, row4:0, row5:-1, row6:-1, row7:0, row8:0
+c6 = (1,-1,-1,0,2,2,2,0): row1:1, row2:-1, row3:-1, row4:0, row5:2, row6:2, row7:2, row8:0
+
+We can compute dot products.
+
+Compute all c_i dot c_j (i,j=1..6). Also c_i dot b.
+
+Alternatively, compute A^T A by accumulating: For each row, outer product? Since rows are 8, we can compute sum over rows of row vector^T * row vector? Actually A^T A = sum_{k=1}^{8} a_k^T a_k where a_k is row vector (1x6). That might be easier: For each row, compute its contribution to A^T A (6x6) as outer product of row vector with itself. Then sum. Similarly A^T b = sum_{k} a_k^T b_k.
+
+Thus we can compute row by row.
+
+Define rows:
+
+Row1: r1 = [1,1,2,-1,0,1]; b1=3
+Row2: r2 = [1,0,0,-1,0,-1]; b2=-6
+Row3: r3 = [-1,-1,-1,2,0,-1]; b3=3
+Row4: r4 = [0,-1,0,1,0,0]; b4=-5
+Row5: r5 = [0,1,1,0,-1,2]; b5=3
+Row6: r6 = [1,1,3,0,-1,2]; b6=-1
+Row7: r7 = [-1,0,0,1,0,2]; b7=-6
+Row8: r8 = [1,0,1,-1,0,0]; b8=1
+
+Let's compute A^T A = sum over rows of r^T r (6x6 symmetric). We'll compute each element (i,j) sum of r_i * r_j.
+
+We'll compute matrix S = zeros(6,6). Then for each row r (list), add outer product.
+
+Alternatively compute dot products directly: S_{ij} = sum_{k=1}^8 a_{k,i} a_{k,j}.
+
+We'll compute systematically.
+
+Let's compute dot products of columns:
+
+c1: entries: [1,1,-1,0,0,1,-1,1]
+c2: [1,0,-1,-1,1,1,0,0]
+c3: [2,0,-1,0,1,3,0,1]
+c4: [-1,-1,2,1,0,0,1,-1]
+c5: [0,0,0,0,-1,-1,0,0]
+c6: [1,-1,-1,0,2,2,2,0]
+
+But we can also compute using row method.
+
+Let's compute S_{11} = sum a_{k,1}^2 = 1^2+1^2+(-1)^2+0^2+0^2+1^2+(-1)^2+1^2 = 1+1+1+0+0+1+1+1 = 6.
+Check: c1:1,1,1,0,0,1,1,1 sum=6? Actually 1+1+1+0+0+1+1+1 = 6 yes.
+
+S_{22}= sum a_{k,2}^2: row1:1, row2:0, row3:-1, row4:-1, row5:1, row6:1, row7:0, row8:0 => squares:1+0+1+1+1+1+0+0 =5.
+S_{33}= sum a_{k,3}^2: row1:2^2=4, row2:0, row3:(-1)^2=1, row4:0, row5:1^2=1, row6:3^2=9, row7:0, row8:1^2=1 => total 4+0+1+0+1+9+0+1=16.
+S_{44}= sum a_{k,4}^2: row1:(-1)^2=1, row2:(-1)^2=1, row3:2^2=4, row4:1^2=1, row5:0, row6:0, row7:1^2=1, row8:(-1)^2=1 => 1+1+4+1+0+0+1+1=9.
+S_{55}= sum a_{k,5}^2: row1:0, row2:0, row3:0, row4:0, row5:(-1)^2=1, row6:(-1)^2=1, row7:0, row8:0 =>2.
+S_{66}= sum a_{k,6}^2: row1:1^2=1, row2:(-1)^2=1, row3:(-1)^2=1, row4:0, row5:2^2=4, row6:2^2=4, row7:2^2=4, row8:0 =>1+1+1+0+4+4+4+0=15.
+
+Now off-diagonals:
+
+S_{12}= sum a_{k,1} a_{k,2} = compute: row1:1*1=1; row2:1*0=0; row3:(-1)*(-1)=1; row4:0*(-1)=0; row5:0*1=0; row6:1*1=1; row7:(-1)*0=0; row8:1*0=0 => total = 1+0+1+0+0+1+0+0=3.
+S_{13}= sum a_{k,1} a_{k,3}: row1:1*2=2; row2:1*0=0; row3:(-1)*(-1)=1; row4:0*0=0; row5:0*1=0; row6:1*3=3; row7:(-1)*0=0; row8:1*1=1 => 2+0+1+0+0+3+0+1=7.
+S_{14}= sum a_{k,1} a_{k,4}: row1:1*(-1)=-1; row2:1*(-1)=-1; row3:(-1)*2=-2; row4:0*1=0; row5:0*0=0; row6:1*0=0; row7:(-1)*1=-1; row8:1*(-1)=-1 => sum = -1-1-2+0+0+0-1-1 = -6.
+S_{15}= sum a_{k,1} a_{k,5}: row1:1*0=0; row2:1*0=0; row3:(-1)*0=0; row4:0*0=0; row5:0*(-1)=0; row6:1*(-1)=-1; row7:(-1)*0=0; row8:1*0=0 => total = -1.
+S_{16}= sum a_{k,1} a_{k,6}: row1:1*1=1; row2:1*(-1)=-1; row3:(-1)*(-1)=1; row4:0*0=0; row5:0*2=0; row6:1*2=2; row7:(-1)*2=-2; row8:1*0=0 => sum = 1-1+1+0+0+2-2+0 =1.
+
+S_{23}= sum a_{k,2} a_{k,3}: row1:1*2=2; row2:0*0=0; row3:(-1)*(-1)=1; row4:(-1)*0=0; row5:1*1=1; row6:1*3=3; row7:0*0=0; row8:0*1=0 => 2+0+1+0+1+3+0+0=7.
+S_{24}= sum a_{k,2} a_{k,4}: row1:1*(-1)=-1; row2:0*(-1)=0; row3:(-1)*2=-2; row4:(-1)*1=-1; row5:1*0=0; row6:1*0=0; row7:0*1=0; row8:0*(-1)=0 => -1+0-2-1+0+0+0+0 = -4.
+S_{25}= sum a_{k,2} a_{k,5}: row1:1*0=0; row2:0*0=0; row3:(-1)*0=0; row4:(-1)*0=0; row5:1*(-1)=-1; row6:1*(-1)=-1; row7:0*0=0; row8:0*0=0 => -2.
+S_{26}= sum a_{k,2} a_{k,6}: row1:1*1=1; row2:0*(-1)=0; row3:(-1)*(-1)=1; row4:(-1)*0=0; row5:1*2=2; row6:1*2=2; row7:0*2=0; row8:0*0=0 => 1+0+1+0+2+2+0+0=6.
+
+S_{34}= sum a_{k,3} a_{k,4}: row1:2*(-1)=-2; row2:0*(-1)=0; row3:(-1)*2=-2; row4:0*1=0; row5:1*0=0; row6:3*0=0; row7:0*1=0; row8:1*(-1)=-1 => -2+0-2+0+0+0+0-1 = -5.
+S_{35}= sum a_{k,3} a_{k,5}: row1:2*0=0; row2:0*0=0; row3:(-1)*0=0; row4:0*0=0; row5:1*(-1)=-1; row6:3*(-1)=-3; row7:0*0=0; row8:1*0=0 => -4.
+S_{36}= sum a_{k,3} a_{k,6}: row1:2*1=2; row2:0*(-1)=0; row3:(-1)*(-1)=1; row4:0*0=0; row5:1*2=2; row6:3*2=6; row7:0*2=0; row8:1*0=0 => 2+0+1+0+2+6+0+0=11.
+
+S_{45}= sum a_{k,4} a_{k,5}: row1:-1*0=0; row2:-1*0=0; row3:2*0=0; row4:1*0=0; row5:0*(-1)=0; row6:0*(-1)=0; row7:1*0=0; row8:-1*0=0 => 0.
+S_{46}= sum a_{k,4} a_{k,6}: row1:-1*1=-1; row2:-1*(-1)=1; row3:2*(-1)=-2; row4:1*0=0; row5:0*2=0; row6:0*2=0; row7:1*2=2; row8:-1*0=0 => -1+1-2+0+0+0+2+0 =0.
+S_{56}= sum a_{k,5} a_{k,6}: row1:0*1=0; row2:0*(-1)=0; row3:0*(-1)=0; row4:0*0=0; row5:-1*2=-2; row6:-1*2=-2; row7:0*2=0; row8:0*0=0 => -4.
+
+Now S_{ij} = S_{ji}. So we have matrix:
+
+S = A^T A =
+[[6, 3, 7, -6, -1, 1],
+ [3, 5, 7, -4, -2, 6],
+ [7, 7, 16, -5, -4, 11],
+ [-6, -4, -5, 9, 0, 0],
+ [-1, -2, -4, 0, 2, -4],
+ [1, 6, 11, 0, -4, 15]]
+
+Check symmetry: e.g., S_{46}=0 matches, S_{56}=-4 matches etc.
+
+Now compute A^T b = vector v where v_i = sum_{k} a_{k,i} b_k.
+
+Compute v1 = sum a_{k,1} * b_k: 
+k1: a1=1, b1=3 -> 3
+k2: a2=1, b2=-6 -> -6
+k3: a3=-1, b3=3 -> -3
+k4: a4=0, b4=-5 ->0
+k5: a5=0, b5=3 ->0
+k6: a6=1, b6=-1 -> -1
+k7: a7=-1, b7=-6 -> 6
+k8: a8=1, b8=1 ->1
+Sum=3-6-3+0+0-1+6+1=0? 3-6=-3; -3-3=-6; -6-1=-7; -7+6=-1; -1+1=0. So v1=0.
+
+v2 = sum a_{k,2} b_k:
+row1:1*3=3
+row2:0*(-6)=0
+row3:-1*3=-3
+row4:-1*(-5)=5
+row5:1*3=3
+row6:1*(-1)=-1
+row7:0*(-6)=0
+row8:0*1=0
+Sum=3+0-3+5+3-1+0+0 =7? 3-3=0;0+5=5;5+3=8;8-1=7. So v2=7.
+
+v3 = sum a_{k,3} b_k:
+row1:2*3=6
+row2:0*(-6)=0
+row3:-1*3=-3
+row4:0*(-5)=0
+row5:1*3=3
+row6:3*(-1)=-3
+row7:0*(-6)=0
+row8:1*1=1
+Sum=6+0-3+0+3-3+0+1=4. 6-3=3;3+3=6;6-3=3;3+1=4. So v3=4.
+
+v4 = sum a_{k,4} b_k:
+row1:-1*3=-3
+row2:-1*(-6)=6
+row3:2*3=6
+row4:1*(-5)=-5
+row5:0*3=0
+row6:0*(-1)=0
+row7:1*(-6)=-6
+row8:-1*1=-1
+Sum = -3+6+6-5+0+0-6-1 = (-3+6)=3;3+6=9;9-5=4;4-6=-2;-2-1=-3. So v4 = -3.
+
+v5 = sum a_{k,5} b_k:
+row1:0*3=0
+row2:0*(-6)=0
+row3:0*3=0
+row4:0*(-5)=0
+row5:-1*3=-3
+row6:-1*(-1)=1
+row7:0*(-6)=0
+row8:0*1=0
+Sum = -3+1 = -2. So v5 = -2.
+
+v6 = sum a_{k,6} b_k:
+row1:1*3=3
+row2:-1*(-6)=6
+row3:-1*3=-3
+row4:0*(-5)=0
+row5:2*3=6
+row6:2*(-1)=-2
+row7:2*(-6)=-12
+row8:0*1=0
+Sum = 3+6-3+0+6-2-12+0 = (3+6=9;9-3=6;6+6=12;12-2=10;10-12=-2). So v6 = -2.
+
+Thus A^T b = [0, 7, 4, -3, -2, -2]^T.
+
+Now we need to solve S x = v.
+
+Write system:
+
+6x1 + 3x2 + 7x3 -6x4 - x5 + x6 = 0   (1)
+3x1 + 5x2 + 7x3 -4x4 -2x5 +6x6 = 7   (2)
+7x1 + 7x2 +16x3 -5x4 -4x5 +11x6 = 4   (3)
+-6x1 -4x2 -5x3 +9x4 +0x5 +0x6 = -3   (4)
+- x1 -2x2 -4x3 +0x4 +2x5 -4x6 = -2   (5)
+ x1 +6x2 +11x3 +0x4 -4x5 +15x6 = -2   (6)
+
+We need to solve for x1..x6 exactly as fractions. Since matrix is invertible, we can do Gaussian elimination with fractions.
+
+We could also use matrix inversion or systematic elimination. Let's proceed.
+
+Write augmented matrix (6x7). Use exact arithmetic.
+
+Let’s denote variables: x1,x2,x3,x4,x5,x6.
+
+Equations:
+
+(1): 6x1 + 3x2 + 7x3 -6x4 - x5 + x6 = 0
+(2): 3x1 + 5x2 + 7x3 -4x4 -2x5 +6x6 = 7
+(3): 7x1 + 7x2 +16x3 -5x4 -4x5 +11x6 = 4
+(4): -6x1 -4x2 -5x3 +9x4 = -3   (since x5,x6 coefficients 0)
+(5): -x1 -2x2 -4x3 +2x5 -4x6 = -2
+(6): x1 +6x2 +11x3 -4x5 +15x6 = -2
+
+We can try to eliminate systematically.
+
+Since (4) has no x5,x6, maybe eliminate x4 early. Also (5) and (6) have no x4.
+
+Alternatively, we can use linear algebra software mentally? But we can do by hand.
+
+Let's write equations in order maybe reorder to simpler? We'll proceed.
+
+We can use (4) to express x4 in terms of x1,x2,x3: from (4): 9x4 = 6x1+4x2+5x3 -3. So x4 = (6x1+4x2+5x3 -3)/9.
+
+Substitute x4 into equations that contain x4, i.e., (1),(2),(3). (5) and (6) have no x4, so they remain.
+
+Thus we reduce to 5 equations in x1,x2,x3,x5,x6: (1'),(2'),(3'),(5),(6). Then we can eliminate further.
+
+Compute (1) with x4 substituted:
+
+(1): 6x1+3x2+7x3 -6x4 -x5 + x6 =0. Replace x4:
+
+-6x4 = -6 * (6x1+4x2+5x3 -3)/9 = - (6/9)*(6x1+4x2+5x3-3) = - (2/3)*(6x1+4x2+5x3-3) = -(2/3)*(6x1+4x2+5x3-3). So (1) becomes:
+
+6x1+3x2+7x3 - (2/3)(6x1+4x2+5x3-3) - x5 + x6 =0.
+
+Multiply through by 3 to avoid fractions: Multiply whole equation by 3:
+
+18x1+9x2+21x3 -2*(6x1+4x2+5x3-3) -3x5 +3x6 =0 => 18x1+9x2+21x3 -12x1 -8x2 -10x3 +6 -3x5+3x6=0 => Combine: (18-12)x1 =6x1; (9-8)x2=1x2; (21-10)x3=11x3; constant +6; then -3x5+3x6=0. So equation: 6x1 + x2 + 11x3 + 6 -3x5 +3x6 =0 => 6x1 + x2 + 11x3 -3x5 +3x6 = -6. So (1'): 6x1 + x2 + 11x3 -3x5 +3x6 = -6.
+
+Now (2): 3x1+5x2+7x3 -4x4 -2x5+6x6=7. Substitute x4: -4x4 = -4*(6x1+4x2+5x3-3)/9 = -4/9 (6x1+4x2+5x3-3). Multiply equation by 9 to clear denominator: 9*(3x1+5x2+7x3) -4*(6x1+4x2+5x3-3) -18x5+54x6 =63. Compute: 27x1+45x2+63x3 -24x1 -16x2 -20x3 +12 -18x5+54x6 =63 => Combine: (27-24)=3x1; (45-16)=29x2; (63-20)=43x3; constant +12; then -18x5+54x6 =63. So: 3x1+29x2+43x3+12 -18x5+54x6 =63 => 3x1+29x2+43x3 -18x5+54x6 = 51. Divide by? Maybe keep as is. So (2'): 3x1+29x2+43x3 -18x5+54x6 =51.
+
+Now (3): 7x1+7x2+16x3 -5x4 -4x5+11x6 =4. Substitute x4: -5x4 = -5*(6x1+4x2+5x3-3)/9 = -5/9 (6x1+4x2+5x3-3). Multiply equation by 9: 9*(7x1+7x2+16x3) -5*(6x1+4x2+5x3-3) -36x5+99x6 =36. Compute: 63x1+63x2+144x3 -30x1 -20x2 -25x3 +15 -36x5+99x6 =36 => Combine: (63-30)=33x1; (63-20)=43x2; (144-25)=119x3; constant +15; -36x5+99x6 =36 => 33x1+43x2+119x3 +15 -36x5+99x6 =36 => 33x1+43x2+119x3 -36x5+99x6 =21. So (3'): 33x1+43x2+119x3 -36x5+99x6 =21.
+
+Now we have (5) and (6) unchanged:
+(5): -x1 -2x2 -4x3 +2x5 -4x6 = -2.
+(6): x1 +6x2 +11x3 -4x5 +15x6 = -2.
+
+And (1'): 6x1 + x2 + 11x3 -3x5 +3x6 = -6.
+(2'): 3x1+29x2+43x3 -18x5+54x6 =51.
+(3'): 33x1+43x2+119x3 -36x5+99x6 =21.
+
+Now we have 5 equations in x1,x2,x3,x5,x6. Let's denote these variables. We can solve by elimination.
+
+Observe that (1'), (5), (6) might be simpler. Also (2') and (3') are multiples? Possibly they are consistent.
+
+Let's write them in order:
+
+A: 6x1 + x2 + 11x3 -3x5 +3x6 = -6   (eq1)
+B: -x1 -2x2 -4x3 +2x5 -4x6 = -2   (eq5)
+C: x1 +6x2 +11x3 -4x5 +15x6 = -2   (eq6)
+D: 3x1+29x2+43x3 -18x5+54x6 =51   (eq2)
+E: 33x1+43x2+119x3 -36x5+99x6 =21  (eq3)
+
+We can try to eliminate x1 from some equations, or solve for x1,x2,x3 in terms of x5,x6.
+
+Notice that eq1, eq5, eq6 are three equations in x1,x2,x3,x5,x6. We can treat them as a system for x1,x2,x3 given x5,x6. Then plug into D and E.
+
+Let's write eq1, eq5, eq6 as linear system for x1,x2,x3:
+
+eq1: 6x1 + x2 + 11x3 = -6 +3x5 -3x6.
+eq5: -x1 -2x2 -4x3 = -2 -2x5 +4x6.
+eq6: x1 +6x2 +11x3 = -2 +4x5 -15x6.
+
+We can solve for x1,x2,x3 (3 equations). Let's denote constants.
+
+Let’s rewrite:
+
+6x1 + 1x2 + 11x3 = c1, where c1 = -6 + 3x5 -3x6.
+-1x1 -2x2 -4x3 = c2, where c2 = -2 -2x5 +4x6.
+1x1 + 6x2 +11x3 = c3, where c3 = -2 +4x5 -15x6.
+
+We can solve using matrix inversion or elimination. Write augmented matrix for variables (x1,x2,x3):
+
+[ 6, 1, 11 | c1 ]
+[ -1, -2, -4 | c2 ]
+[ 1, 6, 11 | c3 ]
+
+We'll do row operations.
+
+First, maybe reorder rows: put row3 (1,6,11) as first for convenience. Let's swap row2 and row3? Actually we want pivot 1. Use row3 as pivot. So new order: row3 (1,6,11) then row1 (6,1,11) then row2 (-1,-2,-4). So:
+
+R1: [1, 6, 11 | c3]
+R2: [6, 1, 11 | c1]
+R3: [-1, -2, -4 | c2]
+
+Now eliminate x1 from R2 and R3 using R1.
+
+R2 -> R2 - 6*R1: (6-6*1)=0; (1-6*6)=1-36 = -35; (11-6*11)=11-66= -55; RHS: c1 -6c3.
+R3 -> R3 + 1*R1: (-1+1)=0; (-2+6)=4; (-4+11)=7; RHS: c2 + c3.
+
+So new system:
+
+R1: x1 + 6x2 + 11x3 = c3.
+R2: -35x2 -55x3 = c1 -6c3.
+R3: 4x2 + 7x3 = c2 + c3.
+
+Now we have two equations in x2,x3:
+
+(2'') -35x2 -55x3 = c1 -6c3.
+(3'') 4x2 + 7x3 = c2 + c3.
+
+We can solve for x2,x3. Multiply (3'') by something to eliminate x2.
+
+Let's solve: From (3''): 4x2 = (c2+c3) -7x3 => x2 = ((c2+c3) -7x3)/4.
+
+Substitute into (2''): -35*((c2+c3)-7x3)/4 -55x3 = c1-6c3.
+
+Multiply by 4: -35((c2+c3)-7x3) -220x3 = 4(c1-6c3). => -35(c2+c3) +245x3 -220x3 = 4c1 -24c3 => -35(c2+c3) +25x3 = 4c1 -24c3 => So 25x3 = 4c1 -24c3 +35(c2+c3) = 4c1 -24c3 +35c2+35c3 = 4c1 +35c2 +11c3. So x3 = (4c1+35c2+11c3)/25.
+
+Now we can find x2 from (3''): 4x2 = c2+c3 -7x3 => x2 = (c2+c3 -7x3)/4.
+
+Then x1 = c3 -6x2 -11x3.
+
+Now substitute c1, c2, c3 in terms of x5,x6:
+
+c1 = -6 + 3x5 -3x6.
+c2 = -2 -2x5 +4x6.
+c3 = -2 +4x5 -15x6.
+
+Now compute 4c1+35c2+11c3.
+
+Compute each term:
+
+4c1 = 4*(-6 + 3x5 -3x6) = -24 +12x5 -12x6.
+35c2 = 35*(-2 -2x5 +4x6) = -70 -70x5 +140x6.
+11c3 = 11*(-2 +4x5 -15x6) = -22 +44x5 -165x6.
+
+Sum: constants: -24 -70 -22 = -116. x5 terms: 12x5 -70x5 +44x5 = (12-70+44) = -14x5. x6 terms: -12x6 +140x6 -165x6 = (-12+140-165) = -37x6. So 4c1+35c2+11c3 = -116 -14x5 -37x6.
+
+Thus x3 = (-116 -14x5 -37x6)/25.
+
+Now compute c2+c3:
+
+c2+c3 = (-2 -2x5+4x6) + (-2 +4x5 -15x6) = -4 +2x5 -11x6.
+
+Then x2 = ( (c2+c3) -7x3 )/4 = ( (-4+2x5-11x6) -7*x3 )/4.
+
+But x3 = (-116-14x5-37x6)/25. So -7x3 = -7 * (-116-14x5-37x6)/25 = (7*(116+14x5+37x6))/25 = (812 +98x5+259x6)/25? Actually 7*116=812; 7*14=98; 7*37=259. So -7x3 = (812+98x5+259x6)/25.
+
+Then c2+c3 -7x3 = (-4+2x5-11x6) + (812+98x5+259x6)/25. Write -4 as -100/25? Actually bring to denominator 25: (-4+2x5-11x6) = (-4)*25/25 + (2x5)*25/25 - (11x6)*25/25 = (-100 +50x5 -275x6)/25. Then add (812+98x5+259x6)/25 = total numerator: (-100+50x5-275x6) + (812+98x5+259x6) = (712) + (148x5) + (-16x6)? Let's compute: -100+812=712; 50x5+98x5=148x5; -275x6+259x6 = -16x6. So c2+c3 -7x3 = (712 +148x5 -16x6)/25.
+
+Thus x2 = (1/4)*( (712+148x5-16x6)/25 ) = (712+148x5-16x6)/(100) = simplify dividing numerator and denominator by 4: 712/4=178, 148/4=37, -16/4=-4, denominator 100/4=25. So x2 = (178 +37x5 -4x6)/25? Let's check: 712/100 = 178/25? Actually 712/100 = 178/25? 178/25 = 7.12, 712/100=7.12 yes. Similarly 148x5/100 = 37x5/25, and -16x6/100 = -4x6/25. So x2 = (178 +37x5 -4x6)/25.
+
+Now compute x1 = c3 -6x2 -11x3.
+
+c3 = -2 +4x5 -15x6 = write as something over 25: = (-50 +100x5 -375x6)/25? Actually -2 = -50/25; 4x5 = 100x5/25; -15x6 = -375x6/25. So c3 = (-50 +100x5 -375x6)/25.
+
+x2 = (178+37x5-4x6)/25.
+x3 = (-116 -14x5 -37x6)/25.
+
+Now compute -6x2 = -6*(178+37x5-4x6)/25 = (-1068 -222x5 +24x6)/25.
+-11x3 = -11*(-116-14x5-37x6)/25 = (1276 +154x5 +407x6)/25? Compute: 11*116=1276; 11*14=154; 11*37=407; with sign: -11 * (negative) = positive. So -11x3 = (1276+154x5+407x6)/25.
+
+Now sum: c3 + (-6x2) + (-11x3) = [(-50+100x5-375x6) + (-1068-222x5+24x6) + (1276+154x5+407x6)]/25 = combine constants: -50 -1068 +1276 = 158. x5: 100x5 -222x5 +154x5 = (100-222+154)=32x5. x6: -375x6+24x6+407x6 = (-375+24+407)=56x6. So x1 = (158 +32x5 +56x6)/25.
+
+So we have expressed x1, x2, x3 in terms of x5, x6:
+
+x1 = (158 + 32x5 + 56x6)/25.
+x2 = (178 + 37x5 - 4x6)/25.
+x3 = (-116 - 14x5 - 37x6)/25.
+
+Now we need to plug into equations D and E to determine x5 and x6.
+
+Recall D: 3x1+29x2+43x3 -18x5+54x6 =51.
+E: 33x1+43x2+119x3 -36x5+99x6 =21.
+
+Substitute the expressions. Since all have denominator 25, we can multiply equations by 25 to clear denominators.
+
+First compute each combination.
+
+Let’s denote:
+
+x1 = (A1 + B1 x5 + C1 x6)/25, where A1=158, B1=32, C1=56.
+x2 = (A2 + B2 x5 + C2 x6)/25, where A2=178, B2=37, C2=-4.
+x3 = (A3 + B3 x5 + C3 x6)/25, where A3=-116, B3=-14, C3=-37.
+
+Now compute linear combination L = α x1 + β x2 + γ x3 + δ x5 + ε x6. For D: α=3, β=29, γ=43, δ=-18, ε=54. For E: α=33, β=43, γ=119, δ=-36, ε=99.
+
+We'll compute L*25 = 3*(A1+B1x5+C1x6) + 29*(A2+B2x5+C2x6) + 43*(A3+B3x5+C3x6) + 25*(δ x5+ ε x6) and set equal to 51*25 =1275 for D; for E: 21*25=525.
+
+So compute for D:
+
+Compute constant part (without x5,x6): 3A1 + 29A2 + 43A3.
+Compute x5 coefficient: 3B1 + 29B2 + 43B3 + 25δ.
+Compute x6 coefficient: 3C1 + 29C2 + 43C3 + 25ε.
+
+Then equation: constant + (x5 coef)*x5 + (x6 coef)*x6 = 1275.
+
+Similarly for E.
+
+Let's compute these.
+
+First compute numbers:
+
+A1=158, B1=32, C1=56.
+A2=178, B2=37, C2=-4.
+A3=-116, B3=-14, C3=-37.
+
+Constants:
+
+3A1 = 3*158 = 474.
+29A2 = 29*178. Compute: 29*170=4930, 29*8=232, total 5162? Actually 4930+232=5162. Check: 178*30=5340 minus 178=5162 correct.
+43A3 = 43*(-116) = -4988? Compute: 43*100=4300, 43*16=688, total 4988, so -4988.
+Sum constants: 474 + 5162 = 5636; 5636 - 4988 = 648. So constant part = 648.
+
+Now x5 coefficients:
+
+3B1 = 3*32 = 96.
+29B2 = 29*37 = 1073? Compute: 30*37=1110, minus 37=1073. Yes.
+43B3 = 43*(-14) = -602.
+25δ = 25*(-18) = -450.
+Sum: 96+1073=1169; 1169-602=567; 567-450=117. So x5 coefficient = 117.
+
+x6 coefficients:
+
+3C1 = 3*56 = 168.
+29C2 = 29*(-4) = -116.
+43C3 = 43*(-37) = -1591? Compute: 40*37=1480, 3*37=111, total 1591, so -1591.
+25ε = 25*54 = 1350.
+Sum: 168 -116 = 52; 52 -1591 = -1539; -1539 +1350 = -189. So x6 coefficient = -189.
+
+Thus D equation: 648 + 117 x5 -189 x6 = 1275 => 117 x5 -189 x6 = 1275 - 648 = 627. So 117x5 -189x6 = 627. Simplify dividing by common factor? 117, 189, 627 divisible by 3? 117/3=39, 189/3=63, 627/3=209. So 39x5 -63x6 = 209. Further divide? 39 and 63 share 3? 39/3=13, 63/3=21, 209 not divisible by 3 (209=11*19). So keep: 13x5 -21x6 = 209/3? Wait careful: we divided by 3: 117x5 -189x6 = 627 => divide both sides by 3: 39x5 -63x6 = 209. So equation: 39x5 -63x6 = 209. Or we could keep as 39x5 -63x6 = 209. That's one equation.
+
+Now compute for E: α=33, β=43, γ=119, δ=-36, ε=99.
+
+Constants: 33A1 + 43A2 + 119A3.
+Compute:
+33*158 = 33*100=3300, 33*58=1914, total 5214? Actually 33*158 = 33*(160-2)=5280-66=5214. Yes.
+43*178 = 43*170=7310, 43*8=344, total 7654.
+119*(-116) = -119*116 = - (119*100=11900, 119*16=1904, total 13804) so -13804.
+Sum constants: 5214+7654=12868; 12868-13804 = -936. So constant part = -936.
+
+x5 coefficients: 33B1 + 43B2 + 119B3 + 25δ.
+33*32 = 1056.
+43*37 = 1591? 43*30=1290, 43*7=301, total 1591.
+119*(-14) = -1666. (119*14=1666)
+25δ = 25*(-36) = -900.
+Sum: 1056+1591=2647; 2647-1666=981; 981-900=81. So x5 coefficient = 81.
+
+x6 coefficients: 33C1 + 43C2 + 119C3 + 25ε.
+33*56 = 1848.
+43*(-4) = -172.
+119*(-37) = -4403? Compute: 119*37 = 119*30=3570, 119*7=833, total 4403, so -4403.
+25*99 = 2475.
+Sum: 1848-172=1676; 1676-4403 = -2727; -2727+2475 = -252. So x6 coefficient = -252.
+
+Thus E equation: -936 + 81x5 -252x6 = 525 => 81x5 -252x6 = 525 + 936 = 1461. So 81x5 -252x6 = 1461. Simplify dividing by 3: 27x5 -84x6 = 487. Since 1461/3=487, 81/3=27, 252/3=84. So equation: 27x5 -84x6 = 487.
+
+Now we have two equations:
+
+(1) 39x5 -63x6 = 209.
+(2) 27x5 -84x6 = 487.
+
+We need to solve for x5, x6 as fractions.
+
+Let's solve. Write:
+
+39x5 - 63x6 = 209  ...(A)
+27x5 - 84x6 = 487  ...(B)
+
+We can solve by elimination. Multiply (A) by something to match coefficients. For instance, eliminate x5: Multiply (A) by 27 and (B) by 39? But numbers potentially large. Let's do elimination using fractions.
+
+Alternatively, solve directly using linear combination. Write in matrix: [39 -63; 27 -84] [x5; x6] = [209; 487]. Compute determinant: (39)(-84) - (-63)(27) = -3276 + 1701 = -1575. So det = -1575. So x5 = (det with RHS replacing first column)/det, etc.
+
+Compute numerator for x5: replace first column by RHS: det = (209)(-84) - (-63)(487) = -17556 + (63*487) = -17556 + 30681 = 13125. Since 63*487 = 63*500 -63*13 = 31500 -819 = 30681. So numerator = 13125. Then x5 = 13125 / (-1575) = -13125/1575. Simplify divide by 75? 13125/75=175, 1575/75=21, so -175/21 = -25/3? 175/21 simplifies by 7: 25/3. So x5 = -25/3. Check: 175/21 = 25/3 yes. So x5 = -25/3.
+
+Now x6 numerator: replace second column: det = (39)(487) - (209)(27) = 39*487 - 209*27. Compute: 39*487 = 39*500 -39*13 = 19500 -507 = 18993. 209*27 = 209*20 +209*7 = 4180+1463=5643. So numerator = 18993 - 5643 = 13350. Then x6 = 13350 / (-1575) = -13350/1575. Simplify divide by 75: 13350/75=178, 1575/75=21, so -178/21. Check if further reduction? 178 and 21 share no common factor (21=3*7, 178=2*89), so x6 = -178/21.
+
+But let's verify if these satisfy original equations exactly? We can test with rational: x5=-25/3, x6=-178/21. Let's plug into (A): 39*(-25/3) -63*(-178/21) = 39*(-25/3) = -39*25/3 = -13*25 = -325. Then -63*(-178/21) = +63*178/21 = (63/21)*178 = 3*178 = 534. So -325+534=209 good. (B): 27*(-25/3) -84*(-178/21) = -27*25/3 = -9*25 = -225; -84*(-178/21)= +84*178/21 = (84/21)*178 = 4*178 = 712; -225+712=487 good. So correct.
+
+Now we have x5 and x6. Now compute x1, x2, x3 using formulas:
+
+x1 = (158 + 32x5 + 56x6)/25.
+x2 = (178 + 37x5 - 4x6)/25.
+x3 = (-116 -14x5 -37x6)/25.
+
+We have x5 = -25/3, x6 = -178/21. Let's compute these fractions. All denominators: 25, but we'll compute exact rational numbers.
+
+First, compute 32x5 = 32*(-25/3) = -800/3.
+56x6 = 56*(-178/21) = -56*178/21 = simplify: 56/21 = 8/3? Since 56/7=8, 21/7=3, yes 8/3. So 56x6 = (8/3)*(-178) = -1424/3? Actually 8*178=1424, so -1424/3.
+So 158 + 32x5 + 56x6 = 158 + (-800/3) + (-1424/3) = 158 - (800+1424)/3 = 158 - (2224)/3 = 158 - 2224/3 = (158*3 - 2224)/3 = (474 - 2224)/3 = (-1750)/3. So numerator = -1750/3. Then x1 = ( -1750/3 ) / 25 = -1750/(75) = -1750/75 = simplify divide by 25: -70/3? 1750/25=70, 75/25=3, so -70/3. So x1 = -70/3.
+
+Check: -1750/75 = -70/3 yes.
+
+Now x2: 37x5 = 37*(-25/3) = -925/3.
+-4x6 = -4*(-178/21) = +712/21? Wait: -4x6 = -4 * (-178/21) = 712/21. So 178 + 37x5 -4x6 = 178 + (-925/3) + (712/21). Write 178 as fraction with denominator 21: 178 = 178*21/21 = 3738/21. Also -925/3 = -925*7/21 = -6475/21. So sum = (3738 -6475 +712)/21 = (3738+712=4450, 4450-6475 = -2025)/21 = -2025/21 = simplify? 2025/21 = divide by 3: 675/7. So -2025/21 = -675/7? 2025/3=675, 21/3=7, yes -675/7. So numerator = -675/7. Then x2 = ( -675/7 ) / 25 = -675/(175) = simplify: divide numerator and denominator by 25: -27/7? 675/25=27, 175/25=7, so -27/7. So x2 = -27/7.
+
+Now x3: -14x5 = -14*(-25/3) = +350/3.
+-37x6 = -37*(-178/21) = +6586/21? Actually -37 * (-178/21) = 37*178/21 = 6586/21? Compute 37*178 = 37*100=3700, 37*78=2886, total 6586. So +6586/21.
+Then -116 -14x5 -37x6 = -116 + 350/3 + 6586/21. Write -116 as fraction with denominator 21: -116 = -2436/21 (since 116*21=2436). 350/3 = 350*7/21 = 2450/21. So sum: (-2436 +2450 +6586)/21 = ( -2436+2450=14; 14+6586=6600)/21 = 6600/21 = simplify: divide by 3: 2200/7. So numerator = 2200/7. Then x3 = (2200/7)/25 = 2200/(175) = simplify: divide numerator and denominator by 25: 88/7? 2200/25=88, 175/25=7, so x3 = 88/7.
+
+Thus we have:
+x1 = -70/3
+x2 = -27/7
+x3 = 88/7
+x4 = from earlier expression: x4 = (6x1+4x2+5x3 -3)/9. We need x4 as well.
+x5 = -25/3
+x6 = -178/21
+
+Now compute x4 exactly using formula: x4 = (6x1 + 4x2 + 5x3 - 3)/9.
+
+Compute each term:
+
+x1 = -70/3, so 6x1 = 6*(-70/3) = -420/3 = -140? Actually 6/3=2, 2*(-70) = -140. So 6x1 = -140.
+
+x2 = -27/7, so 4x2 = 4*(-27/7) = -108/7.
+
+x3 = 88/7, so 5x3 = 5*(88/7) = 440/7.
+
+Now sum: -140 + (-108/7) + (440/7) - 3 = -140 -3 + (440-108)/7 = -143 + (332/7). Write -143 as -1001/7? Since 143*7=1001, so -1001/7. Then sum = (-1001 + 332)/7 = -669/7. Then x4 = ( -669/7 ) / 9 = -669/(63) = simplify: divide numerator and denominator by 3: -223/21? 669/3=223, 63/3=21, so x4 = -223/21.
+
+Thus x4 = -223/21.
+
+Now we have all six variables:
+
+x1 = -70/3
+x2 = -27/7
+x3 = 88/7
+x4 = -223/21
+x5 = -25/3
+x6 = -178/21
+
+We should check if these satisfy the original normal equations? Or we can plug into some original equations to check residuals? Might be fine.
+
+Now we need to present them as one comma-separated list of exact numbers (integers or fractions). Possibly they want them as fractions in simplest form. Let's write them in order: x1, x2, x3, x4, x5, x6.
+
+We have:
+x1 = -70/3
+x2 = -27/7
+x3 = 88/7
+x4 = -223/21
+x5 = -25/3
+x6 = -178/21
+
+We can also write them with common denominator? But not necessary. They are exact fractions.
+
+Double-check x2 and x3: Both denominator 7, x4 denominator 21, x1 and x5 denominator 3, x6 denominator 21. All good.
+
+Let's verify using another method quickly: maybe compute A^T A * x and see if equals A^T b. But we did elimination, should be consistent.
+
+We can test a couple: For equation (4): -6x1 -4x2 -5x3 +9x4 should equal -3. Compute with these values:
+
+-6x1 = -6*(-70/3)= +420/3=140? Actually -6*(-70/3)=+420/3=140. -4x2 = -4*(-27/7)=+108/7 ≈15.4286. -5x3 = -5*(88/7) = -440/7 ≈ -62.8571. 9x4 = 9*(-223/21)= -2007/21 = -95.5714? Actually 2007/21=95.5714, so -95.5714. Sum: 140 + (108/7) - (440/7) - (2007/21). Convert to denominator 21: 140 = 2940/21. 108/7 = 324/21. -440/7 = -1320/21. -2007/21. Sum: (2940+324-1320-2007)/21 = (2940+324=3264; 3264-1320=1944; 1944-2007= -63)/21 = -3. Yes -63/21 = -3. Good.
+
+Now equation (5): -x1 -2x2 -4x3 +2x5 -4x6 should equal -2. Compute: -x1 = -(-70/3)=70/3; -2x2 = -2*(-27/7)=54/7; -4x3 = -4*(88/7)= -352/7; 2x5 = 2*(-25/3)= -50/3; -4x6 = -4*(-178/21)=712/21. Sum: bring to common denominator 21: 70/3 = 490/21; 54/7 = 162/21; -352/7 = -1056/21; -50/3 = -350/21; 712/21. Sum: (490+162-1056-350+712)/21 = (490+162=652; 652-1056=-404; -404-350=-754; -754+712=-42)/21 = -2. Good.
+
+Equation (6): x1+6x2+11x3 -4x5+15x6 = -2. Compute: x1 = -70/3; 6x2 = 6*(-27/7)= -162/7; 11x3 = 11*(88/7)=968/7; -4x5 = -4*(-25/3)=100/3; 15x6 = 15*(-178/21)= -2670/21 = -1270/21? Wait 15*178=2670, denominator 21, simplify? Let's compute with denominator 21: -70/3 = -490/21; -162/7 = -486/21; 968/7 = 2904/21; 100/3 = 700/21; -2670/21 = -2670/21. Sum: (-490-486+2904+700-2670)/21 = (-490-486=-976; -976+2904=1928; 1928+700=2628; 2628-2670=-42)/21 = -2. Good.
+
+So solution satisfies the normal equations. Good.
+
+Thus the least squares solution x is [ -70/3, -27/7, 88/7, -223/21, -25/3, -178/21 ].
+
+Now present as comma-separated list. They said "Give x_1, …, x_n as one comma-separated list of exact numbers (integers or exact fractions a/b where needed)." So we output: -70/3, -27/7, 88/7, -223/21, -25/3, -178/21.
+
+Maybe we should check if any simplification like -70/3 = -70/3, fine. Could also write as -23 1/3 but no.
+
+Make sure to use parentheses? No, just numbers.
+
+Thus final answer: -70/3, -27/7, 88/7, -223/21, -25/3, -178/21.
+
+But we need to present as ANSWER: <your answer>. So final line: ANSWER: -70/3, -27/7, 88/7, -223/21, -25/3, -178/21
+
+We might also check if some fractions can be reduced further: -27/7 is reduced; 88/7; -223/21 (223 is prime? 223 is prime, 21=3*7, no common factor); -70/3; -25/3; -178/21 (178=2*89, 21=3*7, no). So fine.
+
+Thus answer.

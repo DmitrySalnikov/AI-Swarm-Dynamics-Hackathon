@@ -1,0 +1,656 @@
+We need to simulate the loan balance month by month from month 1 to month 84, following the given steps. The initial balance at start of month 1 is $56683.10. Monthly interest rate changes at specified months. Also extra prepayments occur at end of certain months after regular payment. We need balance at end of month 84 (after all steps of month 84). So we need to compute for each month the interest, then add interest, subtract regular payment, then subtract any scheduled extra prepayment for that month. The balance after step 3 becomes the starting balance for next month.
+
+We have monthly interest rates: 
+- For months 1-30: 0.65% per month (since up to month 30, but starting month 31 rate changes, so month 31 uses new rate? "Starting with month 31, the monthly interest rate becomes 0.55%". So for month 31, the interest calculation uses 0.55%. So month 30 uses 0.65%. So effective: months 1-30: 0.65%; month 31-40: 0.55%; month 41-43: 0.50%? Wait: Starting with month 41, becomes 0.50%. So month 41-43? Then month 44 becomes 0.40% (starting with month 44). Then month 55 becomes 0.30% but then month 56 becomes 0.35%? Actually: Starting with month 55, becomes 0.30%; starting with month 56, becomes 0.35%. That seems contradictory: they say starting with month 55, the rate becomes 0.30%, and starting with month 56, becomes 0.35%. So month 55 uses 0.30%, month 56 onwards uses 0.35%? But then later starting with month 77, rate becomes 0.30% again. So we need to parse carefully.
+
+Let's list all rate changes in order:
+
+- Initial: 0.65% (for months 1-30 presumably, since change at month 31)
+- Starting month 31: 0.55%
+- Starting month 41: 0.50%
+- Starting month 44: 0.40%
+- Starting month 55: 0.30%
+- Starting month 56: 0.35%
+- Starting month 77: 0.30%
+
+So the rates for each month:
+Months 1-30: 0.65%
+Months 31-40: 0.55%
+Months 41-43: 0.50% (since month 44 changes to 0.40%)
+Months 44-54: 0.40% (since month 55 changes to 0.30%)
+Month 55: 0.30% (since starting month 55)
+Month 56-76: 0.35%? Wait from month 56 to month 76? But note: Starting with month 56, rate becomes 0.35%, so month 56 onwards until next change. Next change is at month 77: becomes 0.30%. So months 56-76: 0.35%.
+Months 77-84: 0.30% (since month 77 to end, we go to month 84)
+
+But also check: There is a prepayment at end of month 50, 54, etc. So we need to simulate all months.
+
+We need to compute interest rounded to nearest cent (half cent rounds up). So we need to do exact arithmetic with floating point or careful rounding.
+
+We can simulate using a spreadsheet or careful manual calculation. Since it's a text-based reasoning, I'll simulate step by step, but I'll try to be systematic.
+
+We have starting balance B0 = 56683.10 at start of month 1.
+
+For each month i from 1 to 84:
+
+Let B_start = balance at start of month i.
+Compute interest = B_start * (monthly rate / 100) but rate given in percent: e.g., 0.65% = 0.0065. So interest = B_start * rate, then round to nearest cent, with half rounding up. Rounding to nearest cent: multiply by 100, round to integer, then divide by 100. But careful: rounding half up: if fractional part exactly 0.5, round up. So we can compute interest as round(B_start * rate * 100) / 100. Using integer arithmetic: compute in cents? But we have decimals; we can do with high precision.
+
+Then B_after_interest = B_start + interest.
+Then subtract regular payment 431.00: B_after_payment = B_after_interest - 431.00.
+Then if extra prepayment scheduled for that month, subtract that amount: B_end = B_after_payment - extra.
+Then B_end becomes B_start for next month.
+
+We need to do this for 84 months, with many events. Could do in a programming-like mental simulation, but it's lengthy. However, we can attempt to simulate using a systematic approach, maybe calculate in a table.
+
+Given the complexity, I'll simulate month by month, tracking balance with two decimal places. We need to be careful with rounding each month.
+
+I'll create a table with columns: month, start balance, interest (computed and rounded), balance after interest, after regular payment, extra prepayment (if any), end balance.
+
+I'll do this stepwise.
+
+Let me start.
+
+Define rate r for each month.
+
+Month1: r=0.65% = 0.0065.
+
+B_start = 56683.10
+Interest = 56683.10 * 0.0065 = let's compute: 56683.10 * 0.0065 = 56683.10 * 65 / 10000 = (56683.10 * 65) / 10000. 56683.10 * 65 = 56683.10 * (60+5) = 3,400,986 + 283,415.5 = 3,684,401.5? Let's do precisely: 56683.10 * 60 = 3,400,986.0; *5 = 283,415.5; sum = 3,684,401.5. Divide by 10000 = 368.44015. So interest = 368.44015, round to nearest cent: 368.44? Check: 0.44015, the thousandths digit is 0, so 368.44? But rounding to nearest cent: look at third decimal: 0.44015, third decimal is 0, so we round down. Actually, to round to cents, we look at the thousandths digit: 0.44015 => thousandths = 0? Wait, 368.44015: the cents are .44, the next digit is 0, so it's 368.44. But careful: 368.44015, the fractional part: .44015, the hundredths digit is 4 (0.44), the thousandths is 0, so round down. So interest = 368.44. But we need to ensure half cent rounding: if it were exactly 0.5, round up. So 368.44015 is not half, so 368.44.
+
+Alternatively, compute 56683.10 * 0.0065 = 56683.10 * 65/10000 = (56683.10*65)/10000 = 3684401.5/10000 = 368.44015. So yes.
+
+So interest = 368.44.
+After interest: 56683.10 + 368.44 = 57051.54.
+Subtract regular payment 431.00: 57051.54 - 431 = 56620.54.
+No extra in month1. So end balance = 56620.54. This becomes start for month2.
+
+Month2: r=0.65% (still)
+B_start = 56620.54
+Interest = 56620.54 * 0.0065 = 56620.54 * 0.0065 = (56620.54*65)/10000 = 56620.54*65 = 56620.54*60=3,397,232.4; *5=283,102.7; sum=3,680,335.1; /10000=368.03351. Rounded: 368.03? Because 368.03351, thousandths=3, so round down: 368.03.
+After interest: 56620.54 + 368.03 = 56988.57
+Minus 431: 56557.57
+End balance = 56557.57
+
+Month3: B=56557.57
+Int = 56557.57*0.0065 = (56557.57*65)/10000. 56557.57*60=3,393,454.2; *5=282,787.85; sum=3,676,242.05; /10000=367.624205; round: 367.62? (0.624205 -> third digit=4? Wait 367.624205: cents .62, thousandths digit=4, so round down: 367.62). So int=367.62
+After int: 56557.57+367.62=56925.19
+Minus 431: 56494.19
+End: 56494.19
+
+Month4: B=56494.19
+Int=56494.19*0.0065 = (56494.19*65)/10000 = 56494.19*60=3,389,651.4; *5=282,470.95; sum=3,672,122.35; /10000=367.212235; round: 367.21 (since .212, thousandths=2 -> down) so int=367.21
+After: 56494.19+367.21=56861.40
+Minus 431: 56430.40
+End: 56430.40
+
+Month5: B=56430.40
+Int=56430.40*0.0065 = (56430.4*65)/10000 = 56430.4*60=3,385,824; *5=282,152; sum=3,667,976; /10000=366.7976; round: 366.80? Because 366.7976: cents .79? Actually .7976, hundredths=79, thousandths=7 -> round up? Let's see: We need to round to nearest cent: 366.7976. The cent part: 366.79? The value is 366.7976. To round to cents, look at the third decimal: 7 (since .7976, digit in thousandths place = 7). Since 7 >=5, we round up the hundredths digit. So 366.79 + 0.01 = 366.80. Indeed 0.7976 rounds to 0.80. So int=366.80.
+After: 56430.40+366.80=56797.20
+Minus 431: 56366.20
+End: 56366.20
+
+Month6: B=56366.20
+Int=56366.20*0.0065 = (56366.2*65)/10000 = 56366.2*60=3,381,972; *5=281,831; sum=3,663,803; /10000=366.3803; round: 366.38 (since .3803, thousandths=0 -> down) so 366.38
+After: 56366.20+366.38=56732.58
+Minus 431: 56301.58
+End: 56301.58
+
+Month7: B=56301.58
+Int=56301.58*0.0065 = (56301.58*65)/10000 = 56301.58*60=3,378,094.8; *5=281,507.9; sum=3,659,602.7; /10000=365.96027; round: 365.96 (since .96027, thousandths=0? Actually .96027, hundredths=96, thousandths=0, so down: 365.96)
+After: 56301.58+365.96=56667.54
+Minus 431: 56236.54
+End: 56236.54
+
+Month8: B=56236.54
+Int=56236.54*0.0065 = (56236.54*65)/10000 = 56236.54*60=3,374,192.4; *5=281,182.7; sum=3,655,375.1; /10000=365.53751; round: 365.54? Because .53751, thousandths=7? Actually .53751: hundredths=53, thousandths=7 (since 0.53751, digits: .5 3 7 5 1, so thousandths=7 >5, round up hundredths from 53 to 54). So int=365.54.
+After: 56236.54+365.54=56602.08
+Minus 431: 56171.08
+End: 56171.08
+
+Month9: B=56171.08
+Int=56171.08*0.0065 = (56171.08*65)/10000 = 56171.08*60=3,370,264.8; *5=280,855.4; sum=3,651,120.2; /10000=365.11202; round: 365.11 (since .11202, thousandths=1 -> down) so int=365.11
+After: 56171.08+365.11=56536.19
+Minus 431: 56105.19
+End: 56105.19
+
+Month10: B=56105.19
+Int=56105.19*0.0065 = (56105.19*65)/10000 = 56105.19*60=3,366,311.4; *5=280,525.95; sum=3,646,837.35; /10000=364.683735; round: 364.68? Since .683735, thousandths=3? Actually .683735: hundredths=68, thousandths=3 -> down: 364.68.
+After: 56105.19+364.68=56469.87
+Minus 431: 56038.87
+End: 56038.87
+
+Month11: B=56038.87
+Int=56038.87*0.0065 = (56038.87*65)/10000 = 56038.87*60=3,362,332.2; *5=280,194.35; sum=3,642,526.55; /10000=364.252655; round: 364.25 (since .252655, thousandths=2 -> down) so 364.25.
+After: 56038.87+364.25=56403.12
+Minus 431: 55972.12
+End: 55972.12
+
+Month12: B=55972.12
+Int=55972.12*0.0065 = (55972.12*65)/10000 = 55972.12*60=3,358,327.2; *5=279,860.6; sum=3,638,187.8; /10000=363.81878; round: 363.82? Since .81878, thousandths=8 -> round up hundredths: .81? Wait .81878: hundredths=81, thousandths=8 >=5, so round up to .82. So int=363.82.
+After: 55972.12+363.82=56335.94
+Minus 431: 55904.94
+End: 55904.94
+
+Month13: B=55904.94
+Int=55904.94*0.0065 = (55904.94*65)/10000 = 55904.94*60=3,354,296.4; *5=279,524.7; sum=3,633,821.1; /10000=363.38211; round: 363.38 (since .38211, thousandths=2 -> down) so 363.38.
+After: 55904.94+363.38=56268.32
+Minus 431: 55837.32
+End: 55837.32
+
+Month14: B=55837.32
+Int=55837.32*0.0065 = (55837.32*65)/10000 = 55837.32*60=3,350,239.2; *5=279,186.6; sum=3,629,425.8; /10000=362.94258; round: 362.94 (since .94258, thousandths=2? Actually .94258: hundredths=94, thousandths=2 -> down: 362.94)
+After: 55837.32+362.94=56200.26
+Minus 431: 55769.26
+End: 55769.26
+
+Month15: B=55769.26
+Int=55769.26*0.0065 = (55769.26*65)/10000 = 55769.26*60=3,346,155.6; *5=278,846.3; sum=3,625,001.9; /10000=362.50019; round: 362.50? Since .50019, thousandths=0? Actually .50019: hundredths=50, thousandths=0 -> down? But careful: half cent rounding: exactly .50000 would round up? But .50019 is not exactly .5, it's slightly above .5, so the usual rounding: we look at thousandths digit: 0? Wait, .50019: digits: .5 0 0 1 9. The hundredths digit is 0 (since .50), the thousandths digit is 0, the ten-thousandths is 1. In rounding to nearest cent, we look at the third decimal (thousandths). Here third decimal is 0, which is less than 5, so we round down, so .50. However, some might interpret "half a cent rounds up" means that if the interest calculation yields exactly .005 (i.e., 0.5 cent), then we round up. But here it's .50019, which is > .5? Wait, .5 cent is 0.005 dollar? Actually, cent is 0.01 dollar. Half a cent is 0.005 dollar. When we have value like 362.50019, the fractional part is 0.50019 dollars, which is 50.019 cents. The half-cent rounding applies to the fractional cent? Typically rounding to nearest cent means we round to the nearest hundredth of a dollar. So the threshold is 0.005 dollar. So for 362.50019, the hundredths digit is 0 (since .50), and the thousandths digit is 0? Actually 0.50019 = 0.50 + 0.00019, so the thousandths digit is 0? Let's express in decimals: 362.50019. To get cents: multiply by 100: 36250.019 cents. Rounding to nearest cent: we look at fractional cent (0.019) which is less than 0.5, so round down to 36250 cents = 362.50. So indeed 362.50. So int=362.50.
+After: 55769.26+362.50=56131.76
+Minus 431: 55700.76
+End: 55700.76
+
+Month16: This month has an extra prepayment at the end of month 16 ("At the end of month 16, after the regular payment, an extra prepayment of $920.00 is made.") So for month16, we need to compute interest, add, subtract regular, then subtract extra 920. So month16: r=0.65% still (since month16 <31).
+B_start = 55700.76
+Int = 55700.76*0.0065 = (55700.76*65)/10000 = 55700.76*60=3,342,045.6; *5=278,503.8; sum=3,620,549.4; /10000=362.05494; round: 362.05? Since .05494, thousandths=4? Actually .05494: hundredths=05, thousandths=4 -> down: 362.05.
+After int: 55700.76+362.05=56062.81
+Minus regular 431: 55631.81
+Minus extra 920: 55631.81 - 920 = 54711.81
+End balance = 54711.81
+
+Now month17: r=0.65% (still until month30)
+B_start=54711.81
+Int=54711.81*0.0065 = (54711.81*65)/10000 = 54711.81*60=3,282,708.6; *5=273,559.05; sum=3,556,267.65; /10000=355.626765; round: 355.63? Since .626765, thousandths=6 -> round up hundredths from .62 to .63. So int=355.63.
+After: 54711.81+355.63=55067.44
+Minus 431: 54636.44
+No extra. End=54636.44
+
+Month18: B=54636.44
+Int=54636.44*0.0065 = (54636.44*65)/10000 = 54636.44*60=3,278,186.4; *5=273,182.2; sum=3,551,368.6; /10000=355.13686; round: 355.14 (since .13686, thousandths=3? Actually .13686: hundredths=13, thousandths=6? Wait .13686: digits: .1 3 6 8 6. So hundredths digit = 3, thousandths = 6 >=5, so round up hundredths from 13 to 14, so 355.14). int=355.14.
+After: 54636.44+355.14=54991.58
+Minus 431: 54560.58
+End=54560.58
+
+Month19: B=54560.58
+Int=54560.58*0.0065 = (54560.58*65)/10000 = 54560.58*60=3,273,634.8; *5=272,802.9; sum=3,546,437.7; /10000=354.64377; round: 354.64 (since .64377, thousandths=3? .64377: hundredths=64, thousandths=3 -> down? Actually .64377: digits: .6 4 3 7 7. Hundredths digit = 4, thousandths = 3 <5, so round down: 354.64). int=354.64.
+After: 54560.58+354.64=54915.22
+Minus 431: 54484.22
+End=54484.22
+
+Month20: B=54484.22
+Int=54484.22*0.0065 = (54484.22*65)/10000 = 54484.22*60=3,269,053.2; *5=272,421.1; sum=3,541,474.3; /10000=354.14743; round: 354.15? Since .14743, thousandths=7? Actually .14743: hundredths=14, thousandths=7 >=5, so round up to .15. So int=354.15.
+After: 54484.22+354.15=54838.37
+Minus 431: 54407.37
+End=54407.37
+
+Month21: B=54407.37
+Int=54407.37*0.0065 = (54407.37*65)/10000 = 54407.37*60=3,264,442.2; *5=272,036.85; sum=3,536,479.05; /10000=353.647905; round: 353.65? Since .647905, thousandths=7? .647905: hundredths=64, thousandths=7 >=5, so round up to 353.65. int=353.65.
+After: 54407.37+353.65=54761.02
+Minus 431: 54330.02
+End=54330.02
+
+Month22: B=54330.02
+Int=54330.02*0.0065 = (54330.02*65)/10000 = 54330.02*60=3,259,801.2; *5=271,650.1; sum=3,531,451.3; /10000=353.14513; round: 353.15? Since .14513, thousandths=5? Actually .14513: thousandths=5? digits: .1 4 5 1 3. Thousandths digit = 5, so we round up (half cent rounding rule: exactly 0.5 cent? But here the fractional part is 0.14513 dollars = 14.513 cents? Wait careful: 353.14513, the hundredths digit is 4 (since .14), the thousandths is 5, so we need to round up if the thousandths digit is 5 or above? Standard rounding: if the digit after the hundredths is 5 or more, round up. So yes, since it's exactly .145, the thousandths digit is 5, so we round up to .15. But is it exactly .005? 0.14513 is not exactly 0.005, but the thousandths digit is 5, so the rule says round up. So int=353.15.
+After: 54330.02+353.15=54683.17
+Minus 431: 54252.17
+End=54252.17
+
+Month23: B=54252.17
+Int=54252.17*0.0065 = (54252.17*65)/10000 = 54252.17*60=3,255,130.2; *5=271,260.85; sum=3,526,391.05; /10000=352.639105; round: 352.64? Since .639105, thousandths=9? Actually .639105: hundredths=63, thousandths=9 >=5, so round up to .64. int=352.64.
+After: 54252.17+352.64=54604.81
+Minus 431: 54173.81
+End=54173.81
+
+Month24: B=54173.81
+Int=54173.81*0.0065 = (54173.81*65)/10000 = 54173.81*60=3,250,428.6; *5=270,869.05; sum=3,521,297.65; /10000=352.129765; round: 352.13? Since .129765, thousandths=9? .129765: hundredths=12, thousandths=9 >=5, so round up to .13. int=352.13.
+After: 54173.81+352.13=54525.94
+Minus 431: 54094.94
+End=54094.94
+
+Month25: B=54094.94
+Int=54094.94*0.0065 = (54094.94*65)/10000 = 54094.94*60=3,245,696.4; *5=270,474.7; sum=3,516,171.1; /10000=351.61711; round: 351.62? Since .61711, thousandths=7? .61711: hundredths=61, thousandths=7 >=5, round up to .62. int=351.62.
+After: 54094.94+351.62=54446.56
+Minus 431: 54015.56
+End=54015.56
+
+Month26: B=54015.56
+Int=54015.56*0.0065 = (54015.56*65)/10000 = 54015.56*60=3,240,933.6; *5=270,077.8; sum=3,511,011.4; /10000=351.10114; round: 351.10? Since .10114, thousandths=1 -> down: 351.10.
+After: 54015.56+351.10=54366.66
+Minus 431: 53935.66
+End=53935.66
+
+Month27: B=53935.66
+Int=53935.66*0.0065 = (53935.66*65)/10000 = 53935.66*60=3,236,139.6; *5=269,678.3; sum=3,505,817.9; /10000=350.58179; round: 350.58? Since .58179, thousandths=1? .58179: hundredths=58, thousandths=1 -> down: 350.58.
+After: 53935.66+350.58=54286.24
+Minus 431: 53855.24
+End=53855.24
+
+Month28: B=53855.24
+Int=53855.24*0.0065 = (53855.24*65)/10000 = 53855.24*60=3,231,314.4; *5=269,276.2; sum=3,500,590.6; /10000=350.05906; round: 350.06? Since .05906, thousandths=9? .05906: hundredths=5, thousandths=9 >=5, so round up to .06. int=350.06.
+After: 53855.24+350.06=54205.30
+Minus 431: 53774.30
+End=53774.30
+
+Month29: B=53774.30
+Int=53774.30*0.0065 = (53774.30*65)/10000 = 53774.30*60=3,226,458; *5=268,871.5; sum=3,495,329.5; /10000=349.53295; round: 349.53? Since .53295, thousandths=2? .53295: hundredths=53, thousandths=2 -> down: 349.53.
+After: 53774.30+349.53=54123.83
+Minus 431: 53692.83
+End=53692.83
+
+Month30: B=53692.83
+Int=53692.83*0.0065 = (53692.83*65)/10000 = 53692.83*60=3,221,569.8; *5=268,464.15; sum=3,490,033.95; /10000=349.003395; round: 349.00? Since .003395, thousandths=0? Actually .003395: hundredths=0, thousandths=0? Wait .003395 is 0.003395 dollars = 0.3395 cents. The hundredths digit is 0, the thousandths is 3? Actually .003395: digits: .0 0 3 3 9 5. So hundredths=0, thousandths=3 (<5), so round down: 349.00. So int=349.00.
+After: 53692.83+349.00=54041.83
+Minus 431: 53610.83
+End=53610.83
+
+Now month31: Starting with month31, rate becomes 0.55% = 0.0055.
+So month31: B_start = 53610.83
+Int = 53610.83 * 0.0055 = 53610.83 * 55 / 10000 = (53610.83*55)/10000. 53610.83*50=2,680,541.5; *5=268,054.15; sum=2,948,595.65; /10000=294.859565; round: 294.86? Since .859565, thousandths=9? .859565: hundredths=85, thousandths=9 >=5, round up to .86. So int=294.86.
+After: 53610.83+294.86=53905.69
+Minus 431: 53474.69
+No extra. End=53474.69
+
+Month32: r=0.55%
+B=53474.69
+Int=53474.69*0.0055 = (53474.69*55)/10000 = 53474.69*50=2,673,734.5; *5=267,373.45; sum=2,941,107.95; /10000=294.110795; round: 294.11? Since .110795, thousandths=0? .110795: hundredths=11, thousandths=0 -> down: 294.11.
+After: 53474.69+294.11=53768.80
+Minus 431: 53337.80
+End=53337.80
+
+Month33: B=53337.80
+Int=53337.80*0.0055 = (53337.80*55)/10000 = 53337.8*55 = 53337.8*50=2,666,890; *5=266,689; sum=2,933,579; /10000=293.3579; round: 293.36? Since .3579, thousandths=7? .3579: hundredths=35, thousandths=7 >=5, so round up to .36. So int=293.36.
+After: 53337.80+293.36=53631.16
+Minus 431: 53200.16
+End=53200.16
+
+Month34: B=53200.16
+Int=53200.16*0.0055 = (53200.16*55)/10000 = 53200.16*50=2,660,008; *5=266,000.8; sum=2,926,008.8; /10000=292.60088; round: 292.60? Since .60088, thousandths=0? Actually .60088: hundredths=60, thousandths=0? .60088: digits: .6 0 0 8 8. So thousandths=0 -> down: 292.60.
+After: 53200.16+292.60=53492.76
+Minus 431: 53061.76
+End=53061.76
+
+Month35: B=53061.76
+Int=53061.76*0.0055 = (53061.76*55)/10000 = 53061.76*50=2,653,088; *5=265,308.8; sum=2,918,396.8; /10000=291.83968; round: 291.84? Since .83968, thousandths=9? .83968: hundredths=83, thousandths=9 >=5, round up to .84. So int=291.84.
+After: 53061.76+291.84=53353.60
+Minus 431: 52922.60
+End=52922.60
+
+Month36: B=52922.60
+Int=52922.60*0.0055 = (52922.6*55)/10000 = 52922.6*50=2,646,130; *5=264,613; sum=2,910,743; /10000=291.0743; round: 291.07? Since .0743, thousandths=4? Actually .0743: hundredths=7, thousandths=4 <5, down: 291.07.
+After: 52922.60+291.07=53213.67
+Minus 431: 52782.67
+End=52782.67
+
+Month37: B=52782.67
+Int=52782.67*0.0055 = (52782.67*55)/10000 = 52782.67*50=2,639,133.5; *5=263,913.35; sum=2,903,046.85; /10000=290.304685; round: 290.30? Since .304685, thousandths=4? .304685: hundredths=30, thousandths=4 -> down: 290.30.
+After: 52782.67+290.30=53072.97
+Minus 431: 52641.97
+End=52641.97
+
+Month38: B=52641.97
+Int=52641.97*0.0055 = (52641.97*55)/10000 = 52641.97*50=2,632,098.5; *5=263,209.85; sum=2,895,308.35; /10000=289.530835; round: 289.53? Since .530835, thousandths=0? .530835: hundredths=53, thousandths=0 -> down: 289.53.
+After: 52641.97+289.53=52931.50
+Minus 431: 52500.50
+End=52500.50
+
+Month39: B=52500.50
+Int=52500.50*0.0055 = (52500.5*55)/10000 = 52500.5*50=2,625,025; *5=262,502.5; sum=2,887,527.5; /10000=288.75275; round: 288.75? Since .75275, thousandths=2? Actually .75275: hundredths=75, thousandths=2 -> down: 288.75.
+After: 52500.50+288.75=52789.25
+Minus 431: 52358.25
+End=52358.25
+
+Month40: B=52358.25
+Int=52358.25*0.0055 = (52358.25*55)/10000 = 52358.25*50=2,617,912.5; *5=261,791.25; sum=2,879,703.75; /10000=287.970375; round: 287.97? Since .970375, thousandths=0? .970375: hundredths=97, thousandths=0 -> down: 287.97.
+After: 52358.25+287.97=52646.22
+Minus 431: 52215.22
+End=52215.22
+
+Month41: Starting month41, rate becomes 0.50% = 0.0050.
+So month41: B=52215.22
+Int = 52215.22 * 0.0050 = 52215.22 * 5 / 1000? Actually 0.005 = 5/1000 = 1/200. So int = 52215.22 * 0.005 = 261.0761? Compute: 52215.22 * 0.005 = 52215.22 / 200 = 261.0761. So int = 261.0761, round to nearest cent: 261.08? Because .0761, thousandths=6? Actually .0761: hundredths=7, thousandths=6 >=5, so round up to .08. So int=261.08.
+After: 52215.22+261.08=52476.30
+Minus 431: 52045.30
+No extra. End=52045.30
+
+Month42: r=0.50%
+B=52045.30
+Int=52045.30*0.005 = 52045.30/200 = 260.2265. So 260.2265, round: .2265, thousandths=6? .2265: hundredths=22, thousandths=6 >=5 -> round up to .23? Wait, 260.2265: hundredths digit = 2? Actually 260.2265: dollars and cents: 260.22? The fractional part .2265. To round to cents: look at thousandths: 0.2265, thousandths digit = 6 (since .2265, digits: 2 2 6 5). So round up hundredths from .22 to .23 => 260.23. So int=260.23.
+After: 52045.30+260.23=52305.53
+Minus 431: 51874.53
+End=51874.53
+
+Month43: r=0.50%
+B=51874.53
+Int=51874.53/200 = 259.37265. Round: .37265, thousandths=2? .37265: hundredths=37, thousandths=2 -> down: 259.37.
+After: 51874.53+259.37=52133.90
+Minus 431: 51702.90
+End=51702.90
+
+Month44: Starting month44, rate becomes 0.40% = 0.0040.
+So month44: B=51702.90
+Int = 51702.90 * 0.004 = 51702.90 * 4 / 1000 = 206.8116. Round: .8116, thousandths=1? .8116: hundredths=81, thousandths=1 -> down? Actually .8116: digits: .8 1 1 6. So thousandths=1 (<5), so round down to .81. So int=206.81.
+After: 51702.90+206.81=51909.71
+Minus 431: 51478.71
+End=51478.71
+
+Month45: r=0.40%
+B=51478.71
+Int = 51478.71 * 0.004 = 205.91484. Round: .91484, thousandths=4? .91484: hundredths=91, thousandths=4 -> down: .91? Actually .91484, hundredths=91, thousandths=4 (<5), so .91. So int=205.91? Wait: 205.91484 round to 205.91? Let's compute: 205.91484, the hundredths digit is 1 (since 205.91? The number: 205.91484, the cents: 91.484? Actually 205.91484: the first two decimals: 91, the third decimal is 4, so we round down, so 205.91. Yes.
+After: 51478.71+205.91=51684.62
+Minus 431: 51253.62
+End=51253.62
+
+Month46: r=0.40%
+B=51253.62
+Int=51253.62*0.004 = 205.01448. Round: .01448, thousandths=4? .01448: hundredths=1, thousandths=4 -> down: .01? Actually .01448, hundredths=1, thousandths=4 (<5), so .01. So int=205.01.
+After: 51253.62+205.01=51458.63
+Minus 431: 51027.63
+End=51027.63
+
+Month47: r=0.40%
+B=51027.63
+Int=51027.63*0.004 = 204.11052. Round: .11052, thousandths=0? .11052: hundredths=11, thousandths=0 -> down: .11? Actually .11052: hundredths=11, thousandths=0, so .11. So int=204.11.
+After: 51027.63+204.11=51231.74
+Minus 431: 50800.74
+End=50800.74
+
+Month48: r=0.40%
+B=50800.74
+Int=50800.74*0.004 = 203.20296. Round: .20296, thousandths=2? .20296: hundredths=20, thousandths=2 -> down: .20? Actually .20296: cents=20, thousandths=2, so .20. So int=203.20.
+After: 50800.74+203.20=51003.94
+Minus 431: 50572.94
+End=50572.94
+
+Month49: r=0.40%
+B=50572.94
+Int=50572.94*0.004 = 202.29176. Round: .29176, thousandths=1? .29176: hundredths=29, thousandths=1 -> down: .29? Actually .29176: hundredths=29, thousandths=1, so .29. So int=202.29.
+After: 50572.94+202.29=50775.23
+Minus 431: 50344.23
+End=50344.23
+
+Month50: This month has extra prepayment of $219.00 at end of month50. So month50: r=0.40% (since month50 is between 44-54, so rate 0.40%)
+B_start = 50344.23
+Int=50344.23*0.004 = 201.37692. Round: .37692, thousandths=6? .37692: hundredths=37, thousandths=6 >=5, so round up to .38. So int=201.38.
+After: 50344.23+201.38=50545.61
+Minus regular 431: 50114.61
+Minus extra 219: 50114.61 - 219 = 49895.61
+End=49895.61
+
+Month51: r=0.40% (still)
+B=49895.61
+Int=49895.61*0.004 = 199.58244. Round: .58244, thousandths=2? .58244: hundredths=58, thousandths=2 -> down: .58? Actually .58244: hundredths=58, thousandths=2, so .58. So int=199.58.
+After: 49895.61+199.58=50095.19
+Minus 431: 49664.19
+End=49664.19
+
+Month52: r=0.40%
+B=49664.19
+Int=49664.19*0.004 = 198.65676. Round: .65676, thousandths=6? .65676: hundredths=65, thousandths=6 >=5, round up to .66. So int=198.66.
+After: 49664.19+198.66=49862.85
+Minus 431: 49431.85
+End=49431.85
+
+Month53: r=0.40%
+B=49431.85
+Int=49431.85*0.004 = 197.7274. Round: .7274, thousandths=7? .7274: hundredths=72, thousandths=7 >=5, round up to .73. So int=197.73.
+After: 49431.85+197.73=49629.58
+Minus 431: 49198.58
+End=49198.58
+
+Month54: This month has extra prepayment of $1116.32 at end of month54. So month54: r=0.40% (since month54 <=54, still 0.40%)
+B_start = 49198.58
+Int = 49198.58*0.004 = 196.79432. Round: .79432, thousandths=4? .79432: hundredths=79, thousandths=4 -> down: .79? Actually .79432: hundredths=79, thousandths=4 (<5), so .79. So int=196.79.
+After: 49198.58+196.79=49395.37
+Minus regular 431: 48964.37
+Minus extra 1116.32: 48964.37 - 1116.32 = 47848.05
+End=47848.05
+
+Month55: Starting month55, rate becomes 0.30% = 0.0030.
+So month55: B=47848.05
+Int = 47848.05 * 0.003 = 143.54415. Round: .54415, thousandths=4? .54415: hundredths=54, thousandths=4 -> down: .54? Actually .54415: hundredths=54, thousandths=4 (<5), so .54. So int=143.54.
+After: 47848.05+143.54=47991.59
+Minus 431: 47560.59
+No extra this month? Check events: extra at month50,54, then next at month62,65,71,80,81. So none at month55. End=47560.59
+
+Month56: Starting month56, rate becomes 0.35% = 0.0035 (since starting month56 becomes 0.35%). So month56: B=47560.59
+Int = 47560.59 * 0.0035 = 47560.59 * 35 / 10000 = (47560.59*35)/10000. 47560.59*30=1,426,817.7; *5=237,802.95; sum=1,664,620.65; /10000=166.462065; round: .462065, thousandths=2? .462065: hundredths=46, thousandths=2 -> down: .46? Actually .462065: hundredths=46, thousandths=2, so .46. So int=166.46.
+After: 47560.59+166.46=47727.05
+Minus 431: 47296.05
+End=47296.05
+
+Month57: r=0.35% (since months 56-76 are 0.35%? Actually until month76, but month77 changes to 0.30%. So months 56 to 76 inclusive are 0.35%.)
+B=47296.05
+Int=47296.05*0.0035 = (47296.05*35)/10000 = 47296.05*35 = 47296.05*30=1,418,881.5; *5=236,480.25; sum=1,655,361.75; /10000=165.536175; round: .536175, thousandths=6? .536175: hundredths=53, thousandths=6 >=5, round up to .54? Actually .536175: hundredths=53, thousandths=6, so round up to .54. So int=165.54.
+After: 47296.05+165.54=47461.59
+Minus 431: 47030.59
+End=47030.59
+
+Month58: B=47030.59
+Int=47030.59*0.0035 = (47030.59*35)/10000 = 47030.59*30=1,410,917.7; *5=235,152.95; sum=1,646,070.65; /10000=164.607065; round: .607065, thousandths=7? .607065: hundredths=60, thousandths=7 >=5, round up to .61? Actually .607065: hundredths=60, thousandths=7 => round up to .61. So int=164.61.
+After: 47030.59+164.61=47195.20
+Minus 431: 46764.20
+End=46764.20
+
+Month59: B=46764.20
+Int=46764.20*0.0035 = (46764.2*35)/10000 = 46764.2*30=1,402,926; *5=233,821; sum=1,636,747; /10000=163.6747; round: .6747, thousandths=4? .6747: hundredths=67, thousandths=4 -> down: .67? Actually .6747: hundredths=67, thousandths=4, so .67. So int=163.67.
+After: 46764.20+163.67=46927.87
+Minus 431: 46496.87
+End=46496.87
+
+Month60: B=46496.87
+Int=46496.87*0.0035 = (46496.87*35)/10000 = 46496.87*30=1,394,906.1; *5=232,484.35; sum=1,627,390.45; /10000=162.739045; round: .739045, thousandths=9? .739045: hundredths=73, thousandths=9 >=5, round up to .74. So int=162.74.
+After: 46496.87+162.74=46659.61
+Minus 431: 46228.61
+End=46228.61
+
+Month61: B=46228.61
+Int=46228.61*0.0035 = (46228.61*35)/10000 = 46228.61*30=1,386,858.3; *5=231,143.05; sum=1,618,001.35; /10000=161.800135; round: .800135, thousandths=0? .800135: hundredths=80, thousandths=0 -> down: .80? Actually .800135: hundredths=80, thousandths=0, so .80. So int=161.80.
+After: 46228.61+161.80=46390.41
+Minus 431: 45959.41
+End=45959.41
+
+Month62: This month has extra prepayment of $184.00 at end of month62. So month62: r=0.35% (since month62 is between 56 and 76)
+B_start = 45959.41
+Int=45959.41*0.0035 = (45959.41*35)/10000 = 45959.41*30=1,378,782.3; *5=229,797.05; sum=1,608,579.35; /10000=160.857935; round: .857935, thousandths=7? .857935: hundredths=85, thousandths=7 >=5, round up to .86. So int=160.86.
+After: 45959.41+160.86=46120.27
+Minus regular 431: 45689.27
+Minus extra 184: 45689.27 - 184 = 45505.27
+End=45505.27
+
+Month63: r=0.35%
+B=45505.27
+Int=45505.27*0.0035 = (45505.27*35)/10000 = 45505.27*30=1,365,158.1; *5=227,526.35; sum=1,592,684.45; /10000=159.268445; round: .268445, thousandths=8? .268445: hundredths=26, thousandths=8 >=5, round up to .27. So int=159.27.
+After: 45505.27+159.27=45664.54
+Minus 431: 45233.54
+End=45233.54
+
+Month64: B=45233.54
+Int=45233.54*0.0035 = (45233.54*35)/10000 = 45233.54*30=1,357,006.2; *5=226,167.7; sum=1,583,173.9; /10000=158.31739; round: .31739, thousandths=7? .31739: hundredths=31, thousandths=7 >=5, round up to .32. So int=158.32.
+After: 45233.54+158.32=45391.86
+Minus 431: 44960.86
+End=44960.86
+
+Month65: This month has extra prepayment of $1889.00 at end of month65. So month65: r=0.35%
+B_start = 44960.86
+Int=44960.86*0.0035 = (44960.86*35)/10000 = 44960.86*30=1,348,825.8; *5=224,804.3; sum=1,573,630.1; /10000=157.36301; round: .36301, thousandths=3? .36301: hundredths=36, thousandths=3 -> down: .36. So int=157.36.
+After: 44960.86+157.36=45118.22
+Minus regular 431: 44687.22
+Minus extra 1889: 44687.22 - 1889 = 42798.22
+End=42798.22
+
+Month66: r=0.35%
+B=42798.22
+Int=42798.22*0.0035 = (42798.22*35)/10000 = 42798.22*30=1,283,946.6; *5=213,991.1; sum=1,497,937.7; /10000=149.79377; round: .79377, thousandths=3? .79377: hundredths=79, thousandths=3 -> down: .79? Actually .79377: hundredths=79, thousandths=3, so .79. So int=149.79.
+After: 42798.22+149.79=42948.01
+Minus 431: 42517.01
+End=42517.01
+
+Month67: B=42517.01
+Int=42517.01*0.0035 = (42517.01*35)/10000 = 42517.01*30=1,275,510.3; *5=212,585.05; sum=1,488,095.35; /10000=148.809535; round: .809535, thousandths=9? .809535: hundredths=80, thousandths=9 >=5, round up to .81. So int=148.81.
+After: 42517.01+148.81=42665.82
+Minus 431: 42234.82
+End=42234.82
+
+Month68: B=42234.82
+Int=42234.82*0.0035 = (42234.82*35)/10000 = 42234.82*30=1,267,044.6; *5=211,174.1; sum=1,478,218.7; /10000=147.82187; round: .82187, thousandths=1? .82187: hundredths=82, thousandths=1 -> down: .82. So int=147.82.
+After: 42234.82+147.82=42382.64
+Minus 431: 41951.64
+End=41951.64
+
+Month69: B=41951.64
+Int=41951.64*0.0035 = (41951.64*35)/10000 = 41951.64*30=1,258,549.2; *5=209,758.2; sum=1,468,307.4; /10000=146.83074; round: .83074, thousandths=0? .83074: hundredths=83, thousandths=0 -> down: .83. So int=146.83.
+After: 41951.64+146.83=42098.47
+Minus 431: 41667.47
+End=41667.47
+
+Month70: B=41667.47
+Int=41667.47*0.0035 = (41667.47*35)/10000 = 41667.47*30=1,250,024.1; *5=208,337.35; sum=1,458,361.45; /10000=145.836145; round: .836145, thousandths=6? .836145: hundredths=83, thousandths=6 >=5, round up to .84. So int=145.84.
+After: 41667.47+145.84=41813.31
+Minus 431: 41382.31
+End=41382.31
+
+Month71: This month has extra prepayment of $1309.36 at end of month71. So month71: r=0.35%
+B_start = 41382.31
+Int=41382.31*0.0035 = (41382.31*35)/10000 = 41382.31*30=1,241,469.3; *5=206,911.55; sum=1,448,380.85; /10000=144.838085; round: .838085, thousandths=8? .838085: hundredths=83, thousandths=8 >=5, round up to .84. So int=144.84.
+After: 41382.31+144.84=41527.15
+Minus regular 431: 41096.15
+Minus extra 1309.36: 41096.15 - 1309.36 = 39786.79
+End=39786.79
+
+Month72: r=0.35%
+B=39786.79
+Int=39786.79*0.0035 = (39786.79*35)/10000 = 39786.79*30=1,193,603.7; *5=198,933.95; sum=1,392,537.65; /10000=139.253765; round: .253765, thousandths=3? .253765: hundredths=25, thousandths=3 -> down: .25? Actually .253765: hundredths=25, thousandths=3, so .25. So int=139.25.
+After: 39786.79+139.25=39926.04
+Minus 431: 39495.04
+End=39495.04
+
+Month73: B=39495.04
+Int=39495.04*0.0035 = (39495.04*35)/10000 = 39495.04*30=1,184,851.2; *5=197,475.2; sum=1,382,326.4; /10000=138.23264; round: .23264, thousandths=2? .23264: hundredths=23, thousandths=2 -> down: .23. So int=138.23.
+After: 39495.04+138.23=39633.27
+Minus 431: 39202.27
+End=39202.27
+
+Month74: B=39202.27
+Int=39202.27*0.0035 = (39202.27*35)/10000 = 39202.27*30=1,176,068.1; *5=196,011.35; sum=1,372,079.45; /10000=137.207945; round: .207945, thousandths=7? .207945: hundredths=20, thousandths=7 >=5, round up to .21. So int=137.21.
+After: 39202.27+137.21=39339.48
+Minus 431: 38908.48
+End=38908.48
+
+Month75: B=38908.48
+Int=38908.48*0.0035 = (38908.48*35)/10000 = 38908.48*30=1,167,254.4; *5=194,542.4; sum=1,361,796.8; /10000=136.17968; round: .17968, thousandths=9? .17968: hundredths=17, thousandths=9 >=5, round up to .18. So int=136.18.
+After: 38908.48+136.18=39044.66
+Minus 431: 38613.66
+End=38613.66
+
+Month76: B=38613.66
+Int=38613.66*0.0035 = (38613.66*35)/10000 = 38613.66*30=1,158,409.8; *5=193,068.3; sum=1,351,478.1; /10000=135.14781; round: .14781, thousandths=7? .14781: hundredths=14, thousandths=7 >=5, round up to .15. So int=135.15.
+After: 38613.66+135.15=38748.81
+Minus 431: 38317.81
+End=38317.81
+
+Month77: Starting month77, rate becomes 0.30% = 0.0030.
+So month77: B=38317.81
+Int = 38317.81 * 0.003 = 114.95343. Round: .95343, thousandths=3? .95343: hundredths=95, thousandths=3 -> down: .95? Actually .95343: hundredths=95, thousandths=3, so .95. So int=114.95.
+After: 38317.81+114.95=38432.76
+Minus 431: 38001.76
+No extra at month77. End=38001.76
+
+Month78: r=0.30%
+B=38001.76
+Int=38001.76*0.003 = 114.00528. Round: .00528, thousandths=5? .00528: hundredths=0, thousandths=5? Actually .00528: digits: .0 0 5 2 8. So hundredths=0, thousandths=5 (since it's 5), so round up? Threshold: half cent rounding: if exactly 0.005? Here it's 0.00528 which is greater than 0.005? Actually 0.00528 > 0.005, so we round up the hundredths? But careful: rounding to nearest cent: we look at the third decimal (thousandths). Here the thousandths digit is 5, and there are non-zero digits after? The rule for rounding to nearest cent: if the third decimal is 5 or more, round up the second decimal. However, some interpretations: if the third decimal is exactly 5 and there are no further non-zero digits, it's a tie and we round up (half up). Here it's 5 with extra digits, so definitely round up. So 114.00528 rounds to 114.01? Since 114.00528: cents = 0.00? Actually 114.00528: the cent value is .00? Wait: 114.00528 = 114 dollars and 0.528 cents? Let's be systematic: The number is 114.00528. The hundredths place is the second decimal: 0 (since .00). The thousandths place is 5. So we round up the hundredths from 0 to 1, giving 114.01. So int=114.01? But check: 114.00528 is 114 dollars and 0.528 cents, so rounded to nearest cent is 114.01? Actually 0.528 cents is more than 0.5 cents, so yes, rounding up to 1 cent. So int=114.01.
+After: 38001.76+114.01=38115.77
+Minus 431: 37684.77
+End=37684.77
+
+Month79: r=0.30%
+B=37684.77
+Int=37684.77*0.003 = 113.05431. Round: .05431, thousandths=4? .05431: hundredths=5, thousandths=4 -> down: .05? Actually .05431: hundredths=5, thousandths=4 (<5), so .05. So int=113.05.
+After: 37684.77+113.05=37797.82
+Minus 431: 37366.82
+End=37366.82
+
+Month80: This month has extra prepayment of $2358.00 at end of month80. So month80: r=0.30%
+B_start = 37366.82
+Int=37366.82*0.003 = 112.10046. Round: .10046, thousandths=0? .10046: hundredths=10, thousandths=0 -> down: .10. So int=112.10.
+After: 37366.82+112.10=37478.92
+Minus regular 431: 37047.92
+Minus extra 2358: 37047.92 - 2358 = 34689.92
+End=34689.92
+
+Month81: This month has extra prepayment of $864.00 at end of month81. So month81: r=0.30% (since month81 still >=77 and <84)
+B_start = 34689.92
+Int=34689.92*0.003 = 104.06976. Round: .06976, thousandths=9? .06976: hundredths=6, thousandths=9 >=5, round up to .07. So int=104.07.
+After: 34689.92+104.07=34793.99
+Minus regular 431: 34362.99
+Minus extra 864: 34362.99 - 864 = 33498.99
+End=33498.99
+
+Month82: r=0.30%
+B=33498.99
+Int=33498.99*0.003 = 100.49697. Round: .49697, thousandths=6? .49697: hundredths=49, thousandths=6 >=5, round up to .50. So int=100.50.
+After: 33498.99+100.50=33599.49
+Minus 431: 33168.49
+End=33168.49
+
+Month83: r=0.30%
+B=33168.49
+Int=33168.49*0.003 = 99.50547. Round: .50547, thousandths=5? .50547: hundredths=50, thousandths=5? Actually .50547: digits: .5 0 5 4 7. So hundredths=0? Wait .50? Actually .50547: hundredths digit is 0? Let's read: 99.50547: the cents part: 50? Actually 99.50547, the first two decimals: 50 (since .50), the third decimal is 5. So .50547, hundredths = 0? No: The number is 99.50547. The digits after decimal: 5 (tenths), 0 (hundredths), 5 (thousandths), 4 (ten-thousandths), 7 (hundred-thousandths). So hundredths digit = 0, thousandths digit = 5. Since thousandths digit is 5, we round up the hundredths from 0 to 1, giving 99.51. So int=99.51.
+After: 33168.49+99.51=33268.00
+Minus 431: 32837.00
+End=32837.00
+
+Month84: Last month, we need balance at end of month84 after all steps. No extra prepayments scheduled at month84 (only up to month81). So month84: r=0.30%
+B_start = 32837.00
+Int = 32837.00 * 0.003 = 98.511. Compute: 32837 * 0.003 = 98.511 exactly? 32837 * 3 / 1000 = 98511/1000 = 98.511. So int=98.511, round to nearest cent: .511, thousandths=1? Actually .511: hundredths=51, thousandths=1 (<5) -> .51. So int=98.51.
+After: 32837.00+98.51=32935.51
+Minus 431: 32504.51
+No extra. So end balance = 32504.51.
+
+Thus the outstanding balance at the end of month 84 is $32504.51.
+
+But we should double-check calculations, especially rounding decisions, and ensure no missed events. Also ensure that the rates are applied correctly: At month55 rate 0.30%, month56 becomes 0.35%. At month77 rate 0.30%. Yes.
+
+We also need to consider that the interest rate changes "starting with month" means that month's interest calculation uses the new rate. So we did that.
+
+Now verify some months for consistency, perhaps using a different method or spot-check.
+
+Let me recalc month1 quickly: 56683.10 * 0.0065 = 368.44015, rounded to 368.44, good. After payment: 56683.10+368.44-431 = 56620.54, okay.
+
+Month16: 55700.76*0.0065 = 362.05494 -> 362.05, after interest 56062.81, -431=55631.81, -920=54711.81, okay.
+
+Month31: 53610.83*0.0055 = 294.859565 -> 294.86, okay.
+
+Month41: 52215.22*0.005 = 261.0761 -> 261.08, okay.
+
+Month44: 51702.90*0.004 = 206.8116 -> 206.81, okay.
+
+Month50: 50344.23*0.004 = 201.37692 -> 201.38, okay.
+
+Month54: 49198.58*0.004 = 196.79432 -> 196.79, okay.
+
+Month55: 47848.05*0.003 = 143.54415 -> 143.54, okay.
+
+Month56: 47560.59*0.0035 = 166.462065 -> 166.46, okay.
+
+Month62: 45959.41*0.0035 = 160.857935 -> 160.86, okay.
+
+Month65: 44960.86*0.0035 = 157.36301 -> 157.36, okay.
+
+Month71: 41382.31*0.0035 = 144.838085 -> 144.84, okay.
+
+Month77: 38317.81*0.003 = 114.95343 -> 114.95, okay.
+
+Month78: 38001.76*0.003 = 114.00528 -> 114.01, okay.
+
+Month80: 37366.82*0.003 = 112.10046 -> 112.10, okay.
+
+Month81: 34689.92*0.003 = 104.06976 -> 104.07, okay.
+
+Month84: 32837.00*0.003 = 98.511 -> 98.51, okay.
+
+So final balance 32504.51.
+
+But we need to ensure that all months from 1 to 84 have been accounted, and we have included all extra payments: month16: 920, month50: 219, month54: 1116.32, month62: 184, month65: 1889, month71: 1309.36, month80: 2358, month81: 864. That's all.
+
+Thus answer is 32504.51.
+
+Now output in required format: "ANSWER: 32504.51".

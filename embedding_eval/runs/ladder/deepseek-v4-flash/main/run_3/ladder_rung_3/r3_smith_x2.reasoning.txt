@@ -1,0 +1,769 @@
+We are given a 6x6 integer matrix A. We need to compute its Smith normal form (SNF) over the integers. The SNF is a diagonal matrix diag(d1, d2, ..., d6) where each di is non-negative integer, d_i divides d_{i+1}, and zeros come last (so the last entries may be zero if rank < 6). We need to output the invariant factors d1,...,d6 as a comma-separated list.
+
+We need to compute SNF of this 6x6 matrix. Let's denote A:
+
+A = [
+[-5, -4, -3, -4, 3, -6],
+[-3, 0, -5, -5, 4, -1],
+[1, -1, 4, 5, -4, -3],
+[-3, -3, -3, -5, 4, -1],
+[-5, -5, 0, 0, -1, -8],
+[-1, -1, 0, 0, -1, 0]
+]
+
+We want to compute invariant factors (d1,..., d6) such that d1 divides d2, ..., d5 divides d6, and the product of all di (non-zero) equals the gcd of all k×k minors? Actually the SNF is obtained by performing elementary row and column operations (over integers) to reduce the matrix to diagonal form with divisibility property. There are algorithms: compute the gcd of all entries, use that as d1, then reduce etc. We can compute the SNF by systematic elimination.
+
+Because it's 6x6, we could attempt to compute manually or using some systematic computations. We can compute the gcd of all entries to start. Let's see entries: many negative numbers; absolute values: 5,4,3,4,3,6; 3,0,5,5,4,1; 1,1,4,5,4,3; 3,3,3,5,4,1; 5,5,0,0,1,8; 1,1,0,0,1,0. The smallest positive numbers: 1 appears in (3,1) and (3,2) maybe? Actually (3,1)=1, (3,2)=-1, (6,5)=-1, and (3,6)=-3, etc. There are 1's and -1's. So gcd of all entries is 1 (since we have 1). So d1 = 1 automatically. So first invariant factor is 1.
+
+Now we need to find the rest. The SNF is d1=1, then d2 = gcd of all 2x2 minors divided by d1? Actually it's known that product d1d2...dk = gcd of all k×k minors of A. So we can compute the invariant factors by computing the gcd of minors of each order. However, for a 6x6 matrix, computing all minors can be huge, but we can compute step by step using operations.
+
+Since d1=1, we can perform elementary operations to bring the matrix to a form with 1 in top-left, and then eliminate the rest of first row and first column. This is typical algorithm: find an entry that divides all others? We have 1, so we can bring it to (1,1) using row/col swaps and sign changes. There is a 1 at position (3,1). So we can swap row1 and row3? But we want to keep track. We'll use elementary operations: swap rows, multiply rows by -1, add integer multiples of rows to other rows, similarly for columns.
+
+Let's do systematically.
+
+Given A:
+
+Row1: [-5, -4, -3, -4, 3, -6]
+Row2: [-3, 0, -5, -5, 4, -1]
+Row3: [1, -1, 4, 5, -4, -3]
+Row4: [-3, -3, -3, -5, 4, -1]
+Row5: [-5, -5, 0, 0, -1, -8]
+Row6: [-1, -1, 0, 0, -1, 0]
+
+We can swap row1 and row3 to get 1 in (1,1). After swapping row1 and row3, matrix becomes:
+
+Row1 (new) = [1, -1, 4, 5, -4, -3]
+Row2 = [-3, 0, -5, -5, 4, -1]
+Row3 (old row1) = [-5, -4, -3, -4, 3, -6]
+Row4 = [-3, -3, -3, -5, 4, -1]
+Row5 = [-5, -5, 0, 0, -1, -8]
+Row6 = [-1, -1, 0, 0, -1, 0]
+
+Now, use row1 to clear first column entries below row1. We'll add multiples of row1 to other rows to zero out column1 entries. For row2: entry = -3. We want to make it 0. Since row1 has 1, we can add 3 * row1 to row2: row2 = row2 + 3*row1. Compute: row2: [-3 + 3*1 = 0, 0 + 3*(-1) = -3, -5 + 3*4 = -5+12=7, -5+3*5 = -5+15=10, 4+3*(-4)=4-12=-8, -1+3*(-3)=-1-9=-10]. So row2 becomes [0, -3, 7, 10, -8, -10].
+
+Row3: entry = -5. Add 5*row1: row3 = row3 + 5*row1. Compute: [-5+5*1=0, -4+5*(-1)=-4-5=-9, -3+5*4=-3+20=17, -4+5*5=-4+25=21, 3+5*(-4)=3-20=-17, -6+5*(-3)=-6-15=-21]. So row3: [0, -9, 17, 21, -17, -21].
+
+Row4: entry = -3. Add 3*row1: row4 = row4 + 3*row1: [-3+3=0, -3+3*(-1)=-3-3=-6, -3+3*4=-3+12=9, -5+3*5=-5+15=10, 4+3*(-4)=4-12=-8, -1+3*(-3)=-1-9=-10]. So row4: [0, -6, 9, 10, -8, -10].
+
+Row5: entry = -5. Add 5*row1: row5 = row5 + 5*row1: [-5+5=0, -5+5*(-1)=-5-5=-10, 0+5*4=20, 0+5*5=25, -1+5*(-4)=-1-20=-21, -8+5*(-3)=-8-15=-23]. So row5: [0, -10, 20, 25, -21, -23].
+
+Row6: entry = -1. Add 1*row1: row6 = row6 + row1: [-1+1=0, -1+(-1)=-2, 0+4=4, 0+5=5, -1+(-4)=-5, 0+(-3)=-3]. So row6: [0, -2, 4, 5, -5, -3].
+
+Now matrix after these operations (first column cleared):
+
+Row1: [1, -1, 4, 5, -4, -3]
+Row2: [0, -3, 7, 10, -8, -10]
+Row3: [0, -9, 17, 21, -17, -21]
+Row4: [0, -6, 9, 10, -8, -10]
+Row5: [0, -10, 20, 25, -21, -23]
+Row6: [0, -2, 4, 5, -5, -3]
+
+Now we want to also clear first row after column 1? Actually we can also use column operations to clear the first row. Since we have a 1 in (1,1), we can use it to zero out the rest of first row entries by adding appropriate multiples of first column to those columns. For instance, column2 has -1, we can add column1 to column2 to get 0? Actually we can do: column2 = column2 + 1*column1? But careful: row1 entry at column2 is -1. To zero it, we add column1 * 1 to column2? Let's think: The operation is column j = column j - (a_{1j}) * column1, because we want to make a_{1j} become 0: new a_{1j} = a_{1j} - a_{1j} * a_{11}? But since a_{11}=1, we can simply do: for j=2..6, column j = column j - a_{1j} * column1. That will zero out the first row entries except the pivot. So we do:
+
+Let col1 = [1,0,0,0,0,0]^T after we cleared first column? Wait, after row operations, col1 is [1,0,0,0,0,0]^T indeed. So we can use it.
+
+Compute new columns:
+
+We have current matrix (after row ops) with columns:
+
+col1: [1,0,0,0,0,0]
+col2: [-1, -3, -9, -6, -10, -2] (from row1 to row6)
+col3: [4,7,17,9,20,4]
+col4: [5,10,21,10,25,5]
+col5: [-4,-8,-17,-8,-21,-5]
+col6: [-3,-10,-21,-10,-23,-3]
+
+Now apply column operations: For j=2..6, colj = colj - a1j * col1. Since col1 is [1,0,...], subtracting a1j*col1 simply subtracts a1j from the first entry of colj.
+
+So:
+
+col2: original a12 = -1, so subtract (-1)*col1? Wait careful: We want to set new entry (1,2) = a12 - a12 * a11 = a12 - a12*1 = 0. So we do col2 = col2 - a12 * col1. Since a12 = -1, subtract (-1)*col1 i.e. add col1? Actually minus a12 * col1 = -(-1)*col1 = +1*col1? Let's be systematic: new col2 = old col2 - (old a12) * col1. old a12 = -1. So new col2 = old col2 - (-1)*col1 = old col2 + col1. So we add col1 to col2. This yields: first entry: -1 + 1 = 0; other entries remain same because col1 has zeros: so col2 becomes [0, -3, -9, -6, -10, -2].
+
+Similarly col3: a13 = 4, so new col3 = old col3 - 4*col1 = [4-4,7,17,9,20,4] = [0,7,17,9,20,4].
+col4: a14=5, new col4 = [5-5,10,21,10,25,5] = [0,10,21,10,25,5].
+col5: a15=-4, new col5 = old col5 - (-4)*col1 = old col5 + 4*col1 = [-4+4, -8, -17, -8, -21, -5] = [0, -8, -17, -8, -21, -5].
+col6: a16=-3, new col6 = old col6 - (-3)*col1 = old col6 +3*col1 = [-3+3, -10, -21, -10, -23, -3] = [0, -10, -21, -10, -23, -3].
+
+Now matrix after column operations:
+
+Row1: [1,0,0,0,0,0]
+Row2: [0, -3, 7, 10, -8, -10]
+Row3: [0, -9, 17, 21, -17, -21]
+Row4: [0, -6, 9, 10, -8, -10]
+Row5: [0, -10, 20, 25, -21, -23]
+Row6: [0, -2, 4, 5, -5, -3]
+
+Now we have a 1 in top-left. The rest is a 5x5 submatrix (rows 2-6, cols 2-6) that we need to reduce to Smith form similarly. Let's denote B as that submatrix:
+
+B = 
+row2: [-3, 7, 10, -8, -10]
+row3: [-9, 17, 21, -17, -21]
+row4: [-6, 9, 10, -8, -10]
+row5: [-10, 20, 25, -21, -23]
+row6: [-2, 4, 5, -5, -3]
+
+We need to compute the invariant factors of A. The invariant factors of A are d1=1 and then the invariant factors of B (since we have block diagonal with 1 and then B). More precisely, after performing operations that put the matrix in the form [[1,0],[0,B']], where B' is equivalent to B (i.e., same Smith form), the Smith form of A is diag(1, Smith(B)). Because the SNF is unique and for block diagonal with a 1, the invariant factors are 1 followed by those of the smaller matrix. However, careful: The SNF algorithm ensures that the diagonal entries are such that each divides the next. Since we have 1, the next entries must be the invariant factors of B, but they also must be multiples of 1 (which they are). So indeed, d2,...,d6 are the invariant factors of B. However, we need to compute SNF of B, a 5x5 integer matrix.
+
+So we need to compute the SNF of B (5x5). We can continue the process: find the gcd of all entries of B, compute d2 = gcd of all entries? Actually in SNF of A, d2 = gcd of all 2x2 minors of A divided by d1. But we can compute by reducing B similarly. Let's compute B entries:
+
+B = 
+[ -3, 7, 10, -8, -10 ]
+[ -9, 17, 21, -17, -21 ]
+[ -6, 9, 10, -8, -10 ]
+[ -10, 20, 25, -21, -23 ]
+[ -2, 4, 5, -5, -3 ]
+
+We need to find d2 = gcd of all entries of A? But d2 is not simply gcd of all entries of B? Actually after the first reduction, the invariant factor d2 is the gcd of all entries of the 5x5 matrix? Not exactly: In the SNF of A, d2 is the first invariant factor of B (i.e., the gcd of all entries of B), because when we have an SNF of A = diag(1, d2', d3', ...), then d2' = d2, which is the gcd of all entries of B. However, note that the SNF of B will be diag(e1, e2, e3, e4, e5) with e1|e2|...|e5, and then the SNF of A = diag(1, e1, e2, e3, e4, e5). So we can compute e1 = gcd of all entries of B. Then we reduce further.
+
+So compute gcd of all entries of B. Entries: absolute values: 3,7,10,8,10; 9,17,21,17,21; 6,9,10,8,10; 10,20,25,21,23; 2,4,5,5,3. So smallest positive number is 2 (row5 col1 = -2), also 3, etc. gcd of all numbers? Let's compute gcd of all entries: gcd(2,3,4,5,6,7,8,9,10,17,20,21,23,25). Since 2 is present, gcd must be 1 or 2? But 3 is present, so cannot be 2. So gcd = 1. Indeed we have odd numbers like 3,5,7, etc. So e1 = 1. So d2 = 1. So the second invariant factor is also 1? That would mean d2=1. But we need to check if any 2x2 minor's gcd might be >1? Since d2 = gcd of all 2x2 minors / d1 = gcd of 2x2 minors (since d1=1). Could be >1 even if entries have gcd 1? Possibly. However, the SNF algorithm: after we put 1 at (1,1), we then need to ensure that the new matrix has the property that the (1,1) entry divides all entries in the remaining block. Since we have 1, it's fine. Then we proceed to the submatrix, and we need to compute its SNF. But the algorithm for SNF: after fixing the first diagonal entry (which we set to d1=1), we then consider the submatrix (rows2.., cols2..). The next diagonal entry d2 will be the gcd of all entries of that submatrix. However, that submatrix's entries might have gcd 1, so d2=1. But we must also consider that the first diagonal entry must divide the next, which 1 divides anything. So it's okay. However, we must ensure that before extracting d2, we have performed operations to make the (2,2) entry the gcd of the submatrix, and then clear the first row and column of the submatrix. So we can continue.
+
+Thus d2=1 as well. So after we reduce the submatrix B to its SNF, the first invariant factor of B is 1. So d2=1.
+
+Now we need to compute the SNF of B, which has first invariant factor 1. We'll reduce B similarly: find a 1 within B (or an entry that divides all others). Since gcd is 1, we can find a 1? Not necessarily; but we can create a 1 using row/col operations since gcd=1. So we need to bring a 1 to the (2,2) position after the first reduction? Actually we have already eliminated first row and column of A. For the submatrix, we need to perform similar operations: find a 1 in B and bring it to top-left of B (which would be the (2,2) global). Let's examine B entries: we have -2 at (row5, col1 of B? Actually B indexing: row2..6, col2..6. B[1,1] = -3, B[1,2]=7,... B[5,1]=-2, B[5,2]=4, B[5,3]=5, B[5,4]=-5, B[5,5]=-3. There is -2 in B[5,1] (global row6, col2). Also there is 2? But -2 is there. Not a 1. Also we have -3, -9, etc. But we can combine to get 1. For example, we can use the Euclidean algorithm to create a 1 from two entries. Since gcd of entries is 1, we can find a combination. Let's try to systematically reduce B.
+
+We have a 5x5 matrix B. We want to compute its SNF. We can continue on B by performing row and column operations within rows 2-6 and cols 2-6 (without affecting the first row/col). We can treat B as an independent matrix.
+
+Let's write B clearly:
+
+Rows (original indices 2-6) and columns (original indices 2-6). I'll denote them:
+
+B = 
+r2: [-3, 7, 10, -8, -10]
+r3: [-9, 17, 21, -17, -21]
+r4: [-6, 9, 10, -8, -10]
+r5: [-10, 20, 25, -21, -23]
+r6: [-2, 4, 5, -5, -3]
+
+We can rename rows 1..5 for simplicity:
+
+B1 = [-3, 7, 10, -8, -10]
+B2 = [-9, 17, 21, -17, -21]
+B3 = [-6, 9, 10, -8, -10]
+B4 = [-10, 20, 25, -21, -23]
+B5 = [-2, 4, 5, -5, -3]
+
+Goal: compute SNF of B.
+
+We can apply standard algorithm: find a non-zero entry with smallest absolute value, use it to reduce others etc. Since gcd of all entries =1, we want to eventually get a 1 as the first diagonal entry.
+
+Let's compute the absolute values: smallest is 2 (in B5,1). There is also 3, etc. So we can use that entry to try to get 1. We can swap rows/columns to bring the entry with smallest absolute value to the top-left corner. Let's bring the -2 to (1,1) position of B. B5,1 corresponds to row5 (original row6) and column1 (original col2). So we can swap row5 with row1 of B (i.e., swap global row6 with row2). But note that we have already fixed row1 and col1 of A. Swapping rows among rows 2-6 does not affect the top row, so it's allowed. Similarly swap columns among columns 2-6 also allowed.
+
+Let's perform: swap rows 1 and 5 of B. So new B rows order: row5 becomes first row, row1 becomes fifth row. So B becomes:
+
+Row1 (old B5): [-2, 4, 5, -5, -3]
+Row2 (old B1): [-3, 7, 10, -8, -10]
+Row3 (old B2): [-9, 17, 21, -17, -21]
+Row4 (old B3): [-6, 9, 10, -8, -10]
+Row5 (old B4): [-10, 20, 25, -21, -23]
+
+Now we have pivot = -2 at (1,1). We can also multiply row1 by -1 to make it positive. So multiply row1 by -1: row1 becomes [2, -4, -5, 5, 3]. (Sign change allowed). So now matrix B:
+
+Row1: [2, -4, -5, 5, 3]
+Row2: [-3, 7, 10, -8, -10]
+Row3: [-9, 17, 21, -17, -21]
+Row4: [-6, 9, 10, -8, -10]
+Row5: [-10, 20, 25, -21, -23]
+
+Now we have d1'=2 for B? But we must consider that the gcd of all entries of B is 1, so we can eventually get 1. We want to reduce the first row and column using the pivot 2. Since the pivot may not divide all entries (we need to eventually have the pivot dividing all entries in the submatrix). We can use Euclidean algorithm to reduce the pivot by combining with other rows/columns to get a smaller gcd. Since the overall gcd is 1, we can eventually get 1.
+
+Standard process: For a matrix, we can work to put the gcd of all entries into the (1,1) position. One approach: while there is an entry in the first row or column not divisible by the pivot, we can use row/column operations to reduce the pivot. For instance, if we have a pivot p and an entry a in the first row, we can compute q = floor(a/p), then subtract q times the first column from that column to reduce a modulo p. Then we swap to bring the remainder (which is smaller in absolute value) to the pivot position. This is like Euclidean algorithm. So we can proceed.
+
+Let's denote pivot p = 2. Check the first row entries (beyond column1): row1 col2 = -4, col3 = -5, col4 = 5, col5 = 3. Are they all divisible by 2? -4 is divisible, -5 not, 5 not, 3 not. So we need to reduce them. We can perform column operations: For column j, we can subtract a multiple of column1 to reduce the entry mod p. For col2: entry = -4. Since -4 is divisible by 2, we can simply set col2 = col2 + (4/2)*col1? Actually we want to make entry 0 if possible, but we might want to reduce it to a remainder smaller than p. Since -4 is divisible by 2, we can add 2*col1 to col2? Let's see: col2 entry = -4. We can do col2 = col2 + 2*col1? col1 entries: first row col1=2, other rows have entries? After we have done row swaps, col1 entries: row1:2, row2:-3, row3:-9, row4:-6, row5:-10. So adding 2*col1 to col2 would change row1 col2 from -4 to -4+2*2 = 0. But we need to ensure we don't mess up other entries, but that's fine. So we can clear the first row entries that are multiples of p. However, if an entry is not a multiple, we can subtract floor(a/p)*col1 to reduce it to a remainder r where |r| < |p|. That remainder can then be swapped to pivot to get a smaller pivot. So we proceed.
+
+For col2: entry a12 = -4. Since p=2, -4 is divisible, we can set col2 = col2 + 2*col1 (because -4/2 = -2? Actually we want to make it 0: new entry = a12 - (a12/p)*p? Better: Use column operation: col2 = col2 - k*col1, where k = a12/p? But a12 = -4, p=2, so k = -4/2 = -2? Then col2 = col2 - (-2)*col1 = col2+2*col1 gives new a12 = -4 + 2*2 = 0. So that works. So do col2 = col2 + 2*col1.
+
+Compute col2 update: col2 originally: row1: -4, row2:7, row3:17, row4:9, row5:20. col1: [2, -3, -9, -6, -10]^T. So new col2 = col2 + 2*col1:
+row1: -4 + 2*2 = 0.
+row2: 7 + 2*(-3) = 7-6 = 1.
+row3: 17 + 2*(-9) = 17-18 = -1.
+row4: 9 + 2*(-6) = 9-12 = -3.
+row5: 20 + 2*(-10) = 20-20 = 0.
+So new col2: [0, 1, -1, -3, 0]^T.
+
+Now col3: a13 = -5. Not divisible by 2. We can reduce it mod 2: Since -5 mod 2 = 1 or -1? -5 = -2*2 -1, remainder -1 (absolute value 1 < 2). So we can subtract k*col1 where k = floor(-5/2) = -3? Actually floor division: -5/2 = -2.5, floor is -3, remainder = -5 - (-3)*2 = -5+6=1. So we can do col3 = col3 - (-3)*col1 = col3 + 3*col1? Let's compute: k = floor(a/p) = floor(-5/2) = -3, then we set col3 = col3 - k*col1? Actually standard: we want new a13 = a13 - q * p, where q = floor(a13/p) (or any integer such that remainder has smaller absolute value). So we set col3 = col3 - q*col1. Then new a13 = a13 - q*p. For q = -3, then new a13 = -5 - (-3)*2 = -5+6=1. That's remainder 1. So we do col3 = col3 - (-3)*col1 = col3 + 3*col1. So add 3*col1 to col3.
+
+Compute col3 originally: row1:-5, row2:10, row3:21, row4:10, row5:25. col1: [2,-3,-9,-6,-10]. So new col3 = col3 + 3*col1:
+row1: -5 + 3*2 = -5+6 = 1.
+row2: 10 + 3*(-3) = 10-9 = 1.
+row3: 21 + 3*(-9) = 21-27 = -6.
+row4: 10 + 3*(-6) = 10-18 = -8.
+row5: 25 + 3*(-10) = 25-30 = -5.
+So col3 becomes [1,1,-6,-8,-5]^T.
+
+Now col4: a14 = 5. Divisible by 2? 5 mod 2 = 1. So not divisible. q = floor(5/2)=2, remainder = 5-2*2=1. So subtract q*col1: col4 = col4 - 2*col1. Compute: col4 originally: row1:5, row2:-8, row3:-17, row4:-8, row5:-21. Subtract 2*col1: col4 - 2*col1 =>
+row1: 5 - 2*2 = 5-4=1.
+row2: -8 - 2*(-3) = -8+6 = -2.
+row3: -17 - 2*(-9) = -17+18 = 1.
+row4: -8 - 2*(-6) = -8+12 = 4.
+row5: -21 - 2*(-10) = -21+20 = -1.
+So col4 becomes [1, -2, 1, 4, -1]^T.
+
+col5: a15 = 3. 3 mod 2 = 1. q = floor(3/2)=1, remainder = 3-1*2=1. So subtract q*col1: col5 = col5 - 1*col1. col5 originally: row1:3, row2:-10, row3:-21, row4:-10, row5:-23. Subtract col1:
+row1: 3 - 2 = 1.
+row2: -10 - (-3) = -10+3 = -7.
+row3: -21 - (-9) = -21+9 = -12.
+row4: -10 - (-6) = -10+6 = -4.
+row5: -23 - (-10) = -23+10 = -13.
+So col5 becomes [1, -7, -12, -4, -13]^T.
+
+Now after these column operations, the first row entries (row1) become: col1=2, col2=0, col3=1, col4=1, col5=1. So we have entries 1 in columns 3,4,5, and 0 in col2. The pivot is still 2 at (1,1). But we now have a 1 in the first row. That's good: we can bring a 1 to the (1,1) position by swapping columns. Since we have a 1 at (1,3), we can swap column3 with column1 (or column2, but column1 has pivot 2, we want to replace it with 1). So swap column1 and column3. That would bring the 1 to (1,1). Let's do that: swap col1 and col3. But note: after column swaps, the first row entries change. Let's perform column swap: new col1 = old col3, new col3 = old col1. So after swap, row1 becomes: new col1 = old col3 entry = 1; new col2 = old col2 = 0; new col3 = old col1 = 2; new col4 = old col4 = 1; new col5 = old col5 = 1. So row1: [1,0,2,1,1]. But we still have a 1 at (1,1), which is better. Now we also need to adjust the rest of the matrix because we swapped columns. Let's compute the full current B matrix after previous column operations and before swap. We have rows 1-5 and columns 1-5 after the column operations. Let's write the entire B after the column ops. We had:
+
+Original B after first row operation made row1 positive 2, then we did col ops to get:
+
+Row1: [2, 0, 1, 1, 1] after column ops? Wait careful: We started with row1 = [2, -4, -5, 5, 3]. Then we performed:
+- col2: col2 = col2 + 2*col1 -> gave col2 entries: row1:0, row2:1, row3:-1, row4:-3, row5:0.
+- col3: col3 = col3 + 3*col1 -> gave col3: row1:1, row2:1, row3:-6, row4:-8, row5:-5.
+- col4: col4 = col4 - 2*col1 -> gave col4: row1:1, row2:-2, row3:1, row4:4, row5:-1.
+- col5: col5 = col5 - 1*col1 -> gave col5: row1:1, row2:-7, row3:-12, row4:-4, row5:-13.
+
+Thus the whole matrix B after column ops is:
+
+Row1: [2, 0, 1, 1, 1]
+Row2: [-3, 1, 1, -2, -7]
+Row3: [-9, -1, -6, 1, -12]
+Row4: [-6, -3, -8, 4, -4]
+Row5: [-10, 0, -5, -1, -13]
+
+Double-check row2 col2: originally row2 col2 was 7; after col2 = col2+2*col1: row2 col2 = 7 + 2*(-3) = 7-6=1. Yes.
+row2 col3: originally row2 col3=10; after col3 = col3+3*col1: 10+3*(-3)=10-9=1. Yes.
+row2 col4: originally row2 col4=-8; after col4 = col4-2*col1: -8 -2*(-3) = -8+6=-2. Yes.
+row2 col5: originally row2 col5=-10; after col5 = col5-1*col1: -10 -1*(-3) = -10+3=-7. Yes.
+row3: originally [-9,17,21,-17,-21]; after:
+col2:17+2*(-9)=17-18=-1; col3:21+3*(-9)=21-27=-6; col4:-17-2*(-9)=-17+18=1; col5:-21-1*(-9)=-21+9=-12; so row3: [-9, -1, -6, 1, -12] good.
+row4: originally [-6,9,10,-8,-10]; col2:9+2*(-6)=9-12=-3; col3:10+3*(-6)=10-18=-8; col4:-8-2*(-6)=-8+12=4; col5:-10-1*(-6)=-10+6=-4; so row4: [-6, -3, -8, 4, -4] good.
+row5: originally [-10,20,25,-21,-23]; col2:20+2*(-10)=20-20=0; col3:25+3*(-10)=25-30=-5; col4:-21-2*(-10)=-21+20=-1; col5:-23-1*(-10)=-23+10=-13; so row5: [-10,0,-5,-1,-13] good.
+
+Now we swap col1 and col3 as said. So new columns: col1 becomes old col3, col3 becomes old col1. Let's define new matrix after swap:
+
+Columns: new col1 = old col3 = [1,1,-6,-8,-5]^T (from row1 to row5: row1 col3=1, row2 col3=1, row3 col3=-6, row4 col3=-8, row5 col3=-5)
+new col2 = old col2 = [0,1,-1,-3,0]^T
+new col3 = old col1 = [2, -3, -9, -6, -10]^T
+new col4 = old col4 = [1, -2, 1, 4, -1]^T
+new col5 = old col5 = [1, -7, -12, -4, -13]^T
+
+So after swap, the matrix becomes:
+
+Row1: [1, 0, 2, 1, 1]
+Row2: [1, 1, -3, -2, -7]
+Row3: [-6, -1, -9, 1, -12]
+Row4: [-8, -3, -6, 4, -4]
+Row5: [-5, 0, -10, -1, -13]
+
+Now we have a 1 at (1,1). Good. Now we can use this 1 to clear the first row and first column of the submatrix B (which is now our current B). However, we need to keep in mind that B is within A and the top-left of B corresponds to global (2,2). So we now have a 1 at (2,2) global? Actually after swapping columns among cols2-6 global, the matrix A's first row is still [1,0,0,0,0,0] because we only changed columns 2-6? Wait we did column swaps among columns 2-6 only? Earlier we swapped col1 and col3 of B, which correspond to global columns: B's col1 = global col2, B's col3 = global col4. So we swapped global col2 and global col4. That's fine; first row of A had zeros in global cols2-6 after earlier column ops, so swapping them doesn't affect first row. So we have a 1 at (1,1) global, and now we have a 1 at (2,2) global? Actually (2,2) is the entry at row2 col2 of A. After our operations, A's first row is [1,0,0,0,0,0]. Then rows 2-6, cols 2-6 is B. In B we now have row1 (global row2) col1 (global col2) = 1. So yes, (2,2) entry = 1. So now we have a 1 at (2,2) as well. Then we can use this 1 to eliminate the rest of row2 and col2 (global) from the submatrix. That will yield d2 = 1 indeed.
+
+Now we need to continue to reduce the submatrix further. After clearing row2 and col2 (global rows2 and cols2) we will get a 1 in the (2,2) position and zeros elsewhere in row2 and col2 except the pivot. Then we will have a 3x3 submatrix (rows3-6, cols3-6) to reduce. But note: we might also have to ensure that the pivot 1 divides all entries in the remaining submatrix, which it does. So we can proceed.
+
+Now we can zero out the rest of the first row (row1 of B) and first column (col1 of B) using the pivot 1.
+
+Current B (after column swap) is:
+
+Row1 (global row2): [1, 0, 2, 1, 1]
+Row2 (global row3): [1, 1, -3, -2, -7]
+Row3 (global row4): [-6, -1, -9, 1, -12]
+Row4 (global row5): [-8, -3, -6, 4, -4]
+Row5 (global row6): [-5, 0, -10, -1, -13]
+
+We want to use the (1,1) pivot = 1 to clear first row entries beyond column1 and first column entries beyond row1. Let's do that.
+
+First, clear first row: For j=2..5 (since we have 5 columns in B), we do column j = column j - (a_{1j}) * column1. Since a11=1, this zeros out a1j. So compute:
+
+col2: a12 = 0, so col2 unchanged (already 0). col3: a13 = 2, so col3 = col3 - 2*col1. col4: a14=1, so col4 = col4 - 1*col1. col5: a15=1, so col5 = col5 - 1*col1.
+
+Let's compute the new columns:
+
+col1: [1,1,-6,-8,-5]^T (remains as is)
+col2: [0,1,-1,-3,0]^T (unchanged)
+col3: original col3 = [2, -3, -9, -6, -10]^T; subtract 2*col1: new col3 = [2-2*1, -3-2*1, -9-2*(-6), -6-2*(-8), -10-2*(-5)] = [0, -5, -9+12=3, -6+16=10, -10+10=0] -> [0, -5, 3, 10, 0]^T.
+col4: original col4 = [1, -2, 1, 4, -1]^T; subtract 1*col1: new col4 = [1-1, -2-1, 1-(-6)=1+6=7, 4-(-8)=4+8=12, -1-(-5)=-1+5=4] -> [0, -3, 7, 12, 4]^T.
+col5: original col5 = [1, -7, -12, -4, -13]^T; subtract 1*col1: new col5 = [1-1, -7-1, -12-(-6)=-12+6=-6, -4-(-8)=-4+8=4, -13-(-5)=-13+5=-8] -> [0, -8, -6, 4, -8]^T.
+
+Now after these column ops, the first row becomes: [1,0,0,0,0]. So row1 is cleaned.
+
+Now we need to clear the first column below row1. For rows i=2..5, we want to zero out entries in col1. Since a11=1, we can do row operations: row i = row i - a_{i1} * row1. a_{i1} are col1 entries for rows 2-5: row2 col1 = 1, row3 col1 = -6, row4 col1 = -8, row5 col1 = -5. So subtract appropriate multiples of row1 from these rows.
+
+Compute:
+
+Row2 originally: [1,1,-3,-2,-7] but note we changed columns? Wait row2 entries are as before the column ops? Actually we have to apply the column ops to the entire rows. After the column ops, the rows are updated. So we need to recalc the rows after column ops. Let's list the matrix after the column ops (first row cleared) but before row operations. The matrix after the column ops (we did col3, col4, col5 adjustments) is:
+
+We have columns:
+col1: [1,1,-6,-8,-5]^T
+col2: [0,1,-1,-3,0]^T
+col3: [0, -5, 3, 10, 0]^T
+col4: [0, -3, 7, 12, 4]^T
+col5: [0, -8, -6, 4, -8]^T
+
+Thus the full matrix B after column ops (row1 cleaned) is:
+
+Row1: [1,0,0,0,0]
+Row2: [1,1,-5,-3,-8]? Wait row2 col1=1, col2=1, col3=-5, col4=-3, col5=-8 => row2: [1,1,-5,-3,-8]
+Row3: col1=-6, col2=-1, col3=3, col4=7, col5=-6 => row3: [-6,-1,3,7,-6]
+Row4: col1=-8, col2=-3, col3=10, col4=12, col5=4 => row4: [-8,-3,10,12,4]
+Row5: col1=-5, col2=0, col3=0, col4=4, col5=-8 => row5: [-5,0,0,4,-8]
+
+Double-check row5 col2: from col2 row5 = 0, yes; col3 row5 =0; col4 row5=4; col5 row5=-8. Good.
+
+Now we clear first column below row1: For i=2..5, row_i = row_i - a_{i1} * row1. Since row1 is [1,0,0,0,0], subtracting a_{i1} * row1 will set the first entry to 0 and leave other entries unchanged because row1's other entries are zero. So row2: subtract 1 * row1: new row2 = [0,1,-5,-3,-8]; row3: subtract (-6)*row1? Actually a_{31} = -6, so row3 = row3 - (-6)*row1 = row3 + 6*row1 = row3 + [6,0,0,0,0] = [0, -1, 3,7,-6]; row4: a_{41}=-8, so row4 = row4 - (-8)*row1 = row4 + 8*row1 = [0, -3,10,12,4]; row5: a_{51}=-5, row5 = row5 - (-5)*row1 = row5 +5*row1 = [0,0,0,4,-8]. So after row operations, we get:
+
+Row1: [1,0,0,0,0]
+Row2: [0,1,-5,-3,-8]
+Row3: [0,-1,3,7,-6]
+Row4: [0,-3,10,12,4]
+Row5: [0,0,0,4,-8]
+
+Now the matrix is in block diagonal form with 1 at (1,1) and a 4x4 submatrix in rows2-5, cols2-5. But note: The first row and column of B are now cleared, and the (2,2) entry is 1. However, we need to ensure the divisibility condition: d2 should be 1, which we have. But we need to continue to reduce the remaining 4x4 submatrix C (rows2-5, cols2-5). However, note that the (2,2) entry is 1, which divides everything, so we can use it to clear row2 and col2 further. That is, we can now treat the submatrix starting at row2,col2 as having a 1 pivot, and eliminate the rest of row2 and col2 in the submatrix.
+
+But wait: In the current matrix, row2 has entry 1 at col2, and other entries in row2 (cols3,4,5) are -5, -3, -8. Since we have a 1, we can clear row2 by column operations: for j=3..5, do colj = colj - (row2colj)*col2 to zero out row2 entries. Similarly, we can clear col2 below row2: for rows i=3..5, do row_i = row_i - (row_i col2)*row2. This will produce zeros in row2 and col2 except pivot. This will reduce the problem to a 3x3 submatrix. Let's do that.
+
+First, use col2 = [1,? actually col2 currently: from rows: row1 col2=0, row2 col2=1, row3 col2=-1, row4 col2=-3, row5 col2=0]. We can treat the pivot at (2,2)=1. To clear row2 col3: entry = -5, so col3 = col3 - (-5)*col2 = col3 +5*col2? Actually we want to zero (2,3): new a23 = a23 - a22 * q? Since a22=1, we can choose q = a23, then col3 = col3 - a23 * col2. That will set (2,3) to 0. So do col3 = col3 - (-5)*col2? Actually a23 = -5, so subtract a23 * col2: col3 = col3 - (-5)*col2 = col3 +5*col2. So new col3 = col3 +5*col2. Similarly, col4: a24=-3, col4 = col4 - (-3)*col2 = col4+3*col2. col5: a24? Actually a25=-8, col5 = col5 - (-8)*col2 = col5+8*col2.
+
+Now compute these column operations. Current col2: entries: row1:0, row2:1, row3:-1, row4:-3, row5:0.
+Current col3: entries: row1:0, row2:-5, row3:3, row4:10, row5:0. (from matrix above: row3 col3=3? Actually row3,col3 is 3, row4 col3=10, row5 col3=0). So col3 +5*col2:
+row1: 0+5*0=0
+row2: -5+5*1=0
+row3: 3+5*(-1)=3-5=-2
+row4: 10+5*(-3)=10-15=-5
+row5: 0+5*0=0
+So new col3: [0,0,-2,-5,0]^T.
+
+col4: current col4: row1:0, row2:-3, row3:7, row4:12, row5:4. col4 +3*col2:
+row1:0+0=0
+row2:-3+3*1=0
+row3:7+3*(-1)=7-3=4
+row4:12+3*(-3)=12-9=3
+row5:4+3*0=4
+So new col4: [0,0,4,3,4]^T.
+
+col5: current col5: row1:0, row2:-8, row3:-6, row4:4, row5:-8. col5 +8*col2:
+row1:0+0=0
+row2:-8+8*1=0
+row3:-6+8*(-1)=-6-8=-14
+row4:4+8*(-3)=4-24=-20
+row5:-8+8*0=-8
+So new col5: [0,0,-14,-20,-8]^T.
+
+Now after these column ops, row2 becomes: [0,1,0,0,0] (since row2 col2=1, others zero). Good.
+
+Now we also need to clear col2 below row2. For rows i=3..5, entries in col2: row3 col2 = -1, row4 col2 = -3, row5 col2 = 0. We want to zero them using row operations: row_i = row_i - (row_i col2)*row2. Since row2 is [0,1,0,0,0], subtracting multiple will only affect col2 entry. So do:
+row3: row3 - (-1)*row2 = row3 + row2 => new row3 = [0, -1+1=0, 3,7,-6]? Wait we need to use the updated matrix after column ops. Let's first compute the full matrix after the column ops (but before row ops for clearing col2). The matrix after column ops (with row2 cleaned) is:
+
+We have columns:
+col1: [1,0,0,0,0]^T (unchanged)
+col2: [0,1,-1,-3,0]^T (unchanged)
+col3: [0,0,-2,-5,0]^T
+col4: [0,0,4,3,4]^T
+col5: [0,0,-14,-20,-8]^T
+
+Rows:
+row1: [1,0,0,0,0]
+row2: [0,1,0,0,0] (since after column ops, row2 col3..5 become 0)
+row3: col1=0? Actually row3 col1 = 0 (since we cleared col1 earlier), col2 = -1, col3 = -2, col4 = 4, col5 = -14? Wait col5 row3 = -14? Let's recalc row3: from columns:
+col1 row3=0, col2 row3=-1, col3 row3=-2, col4 row3=4, col5 row3=-14. So row3 = [0, -1, -2, 4, -14].
+row4: col1=0, col2=-3, col3=-5, col4=3, col5=-20 => [0, -3, -5, 3, -20].
+row5: col1=0, col2=0, col3=0, col4=4, col5=-8 => [0, 0, 0, 4, -8].
+
+Now clear col2 below row2: For row3: a32 = -1, so row3 = row3 - (-1)*row2 = row3 + row2 = [0+0, -1+1=0, -2+0=-2, 4+0=4, -14+0=-14] => [0,0,-2,4,-14].
+For row4: a42 = -3, row4 = row4 + 3*row2 = [0, -3+3=0, -5, 3, -20] -> [0,0,-5,3,-20].
+For row5: a52 = 0, row5 unchanged: [0,0,0,4,-8].
+
+Now after these row ops, the matrix becomes:
+
+Row1: [1,0,0,0,0]
+Row2: [0,1,0,0,0]
+Row3: [0,0,-2,4,-14]
+Row4: [0,0,-5,3,-20]
+Row5: [0,0,0,4,-8]
+
+Now we have a 2x2? Actually rows3-5, cols3-5 form a 3x3 submatrix D:
+
+D = 
+row3: [-2, 4, -14]
+row4: [-5, 3, -20]
+row5: [0, 4, -8]
+
+But we also have a 3x3, but note that row5 has first column 0, second column 4, third column -8. So D is:
+
+[ -2,  4, -14 ]
+[ -5,  3, -20 ]
+[  0,  4, -8  ]
+
+We need to compute the SNF of this 3x3 matrix. Then the invariant factors of A will be d1=1, d2=1, followed by the invariant factors of D (which will be d3, d4, d5, and then d6 maybe? But we have 6x6 matrix, so we have 6 invariant factors. After getting 2 ones, we have 4 more entries. But D is 3x3, so we will get three more invariant factors from D. That totals 1+1+3=5, but we need 6. Wait, we started with 6x6, so after factoring out two 1's, we have a 4x4 submatrix? Actually our B was 5x5. After we cleared first row and column of B (using pivot 1), we got a 4x4 submatrix (rows2-5, cols2-5) but we then used the 1 at (2,2) to clear row2 and col2, reducing that 4x4 to a 3x3 submatrix (rows3-5, cols3-5). However, note that B originally had 5 rows and 5 columns. After we put a 1 at (1,1) of B, we cleared its row and column, leaving a 4x4 submatrix. Then we had a 1 at the new (1,1) of that 4x4 (which is global (3,3)? Actually after first clearing, we had a 1 at (2,2) global because we had row2 col2 = 1. Then we used that 1 to clear its row and column, leaving a 3x3 submatrix (rows3-5, cols3-5). That's correct: we removed two rows and two columns, so from 5x5 we removed 2 rows and 2 columns, leaving 3x3. So the total invariant factors: we have d1=1, d2=1, and then the SNF of D will give d3, d4, d5. But we need d6 as well. However, note that D is only 3x3, so we would get only 3 non-zero diagonal entries? But original matrix is 6x6, so after SNF, we should have 6 diagonal entries. The rank of A may be less than 6. Possibly there is a zero diagonal entry (since the matrix might be singular). Indeed, we started with a 6x6 matrix; it's possible that the rank is less than 6, so some invariant factors are zero. In SNF, zeros come last. So we may have d6 = 0 if the matrix is singular. Also, the product of all d_i (non-zero) equals the gcd of all 6x6 minors, which is the determinant of A (since it's a square matrix) up to sign. If determinant is zero, then d6=0. So we need to compute the SNF of D, which is 3x3, and then the remaining entries (d4, d5, d6?) Actually we have 6 total: d1,d2,d3,d4,d5,d6. After we have d1=d2=1, then the next three are the invariant factors of D, which would be d3,d4,d5. Then d6 would be 0 if D is singular (i.e., if its determinant is zero), or if D is non-singular, d6 would be the product of the invariants? Wait, we only have 3x3 D, so it yields three invariant factors, say e1,e2,e3. Then the whole matrix A has invariant factors: 1,1,e1,e2,e3? That would be 5 factors, but we need 6. So what about the last one? Actually the SNF of A is a 6x6 diagonal matrix. Since A is 6x6, there are 6 diagonal entries. After we have reduced to a 3x3 block after removing 3 rows and 3 columns? Wait, let's count: Starting with A, we performed operations to get:
+- First pivot 1 at (1,1), cleared row1 and col1, leaving a 5x5 block.
+- Then we got a 1 at (2,2) of that block (global (2,2)), cleared row2 and col2, leaving a 4x4 block? Actually after clearing row2 and col2, we got a 3x3 block? Let's recount: The initial block after first reduction was 5x5. Then we reduced that 5x5 by making its first diagonal 1 (which we did), and then cleared its first row and column, resulting in a 4x4 submatrix. Then in that 4x4, we had a 1 at its top-left (global (3,3) if we had performed further). But we didn't clear row3 and col3 of the 4x4 yet? Actually we used the 1 at (2,2) (global) to clear row2 and col2, but that 1 is the pivot for the second row/col. After clearing, we obtained a matrix where rows1-2 and cols1-2 are identity (1's on diagonal, zeros elsewhere). The remaining submatrix is rows3-6, cols3-6, which is a 4x4 submatrix, not 3x3. Wait, we had B as 5x5, and we cleared its first row and column using the 1 at its (1,1). That gave us a 4x4 submatrix (rows2-5 of B, cols2-5 of B). Then we used the 1 at (2,2) of B to clear row2 and col2 of B, which would affect that 4x4 submatrix? Actually careful:
+
+After we cleared first row and column of B, we had matrix:
+
+Row1: [1,0,0,0,0]
+Row2: [0,1, -5, -3, -8]   (but we then did column ops to clear row2? Actually later we did operations to clear row2 and col2, which transformed the 4x4 into a 3x3. Let's track the dimensions.
+
+Original B is 5x5. After we put 1 at (1,1) of B (global (2,2)), we cleared first row and column of B. That gave us a 4x4 submatrix in rows2-5, cols2-5. Let's call that submatrix C (size 4x4). In our steps, after clearing B's first row and column, we had:
+
+Row1: [1,0,0,0,0]
+Row2: [1,1,-5,-3,-8] -> after clearing column1, row2 became [0,1,-5,-3,-8] as we did? Wait we did the steps: we first cleared row1 of B using column ops, then cleared col1 using row ops. At that point we had:
+
+After clearing row1 (col ops): we got B':
+
+Row1: [1,0,0,0,0]
+Row2: [1,1,-5,-3,-8]
+Row3: [-6,-1,3,7,-6]
+Row4: [-8,-3,10,12,4]
+Row5: [-5,0,0,4,-8]
+
+Then we cleared col1 (row ops): subtracting multiples of row1 gave:
+
+Row1: [1,0,0,0,0]
+Row2: [0,1,-5,-3,-8]
+Row3: [0,-1,3,7,-6]
+Row4: [0,-3,10,12,4]
+Row5: [0,0,0,4,-8]
+
+So now the submatrix in rows2-5, cols2-5 is a 4x4 matrix:
+
+C = 
+[1, -5, -3, -8]
+[-1, 3, 7, -6]
+[-3, 10, 12, 4]
+[0, 0, 4, -8]
+
+That is a 4x4 matrix. So we have 4 rows and 4 columns remaining. So we have accounted for d1=1 and d2 will be the first invariant factor of C. But we haven't yet set d2; we have a 1 at the top-left of C (global (3,3)? Actually C's first entry is 1 at row2 col2 of B, which is global (3,3)? Wait global indices: B rows correspond to global rows 2..6, B cols to global cols 2..6. So B's row1 is global row2, B's row2 is global row3, B's row3 is global row4, B's row4 is global row5, B's row5 is global row6. Similarly for columns. So after clearing B's first row and column, the submatrix C occupies global rows 3..6 and global cols 3..6? Let's see: B's row2 is global row3, B's col2 is global col3. So C's first row (row2 of B) corresponds to global row3, and first column (col2 of B) corresponds to global col3. So C is a 4x4 matrix in the lower-right corner, starting at global (3,3). So we now have the global matrix:
+
+Global rows/cols:
+1: [1,0,0,0,0,0]
+2: [0,1,0,0,0,0]? Actually we haven't yet cleared row2 and col2 beyond the (2,2) pivot? Wait we have only cleared B's first row and col. But we haven't yet cleared the row and column corresponding to global row2 and col2? Actually we have global row2 (which is B's row1) and global col2 (B's col1). Those are already cleared: global row2 is [0,1,0,0,0,0]? Let's reconstruct:
+
+After clearing B's first row and col, we have:
+
+Global row1: [1,0,0,0,0,0] (from earlier A reduction)
+Global row2: (B's row1) = [0,1,0,0,0,0]? Actually B's row1 after clearing is [1,0,0,0,0] but that is in B's columns which are global cols2-6. However, global col1 is still 0 for row2. So global row2 becomes [0,1,0,0,0,0] because the first entry is from global col1=0, second entry is B's row1 col1=1? Wait careful: B's row1 (global row2) has entries: col1 of B = global col2 = 1? Actually B's col1 corresponds to global col2. So global row2: global col1 = 0 (since we cleared first column earlier), global col2 = B row1 col1 = 1, global col3 = B row1 col2? But after clearing B's first row and column, B row1 col2=0, col3=0, col4=0, col5=0. So global row2 = [0,1,0,0,0,0]. So we have a 1 at (2,2). Good.
+
+Now global row3 (B row2) after clearing col1: we had row2 of B = [0,1,-5,-3,-8]? Wait that was after clearing col1? Actually after clearing B's first column (row ops), we got:
+row2 (global row3) = [0,1,-5,-3,-8] (with columns: global col2=0? Actually careful: after row ops, row2 col1 (global col2) became 0? Because we subtracted a multiple of row1? We had row2 originally [1,1,-5,-3,-8] after column ops? Let's recompute step by step to avoid confusion.
+
+After we cleared B's first row by column ops (making row1 have zeros except col1), we had:
+row1: [1,0,0,0,0] (global row2)
+row2: [1,1,-5,-3,-8] (global row3)
+row3: [-6,-1,3,7,-6] (global row4)
+row4: [-8,-3,10,12,4] (global row5)
+row5: [-5,0,0,4,-8] (global row6)
+Then we cleared B's first column by row operations: row i = row i - (entry in col1) * row1. For row2, entry col1 = 1, so row2 = row2 - 1*row1 = [1-1, 1-0, -5-0, -3-0, -8-0] = [0,1,-5,-3,-8]. So global row3 becomes: global col1=0 (already), global col2= row2 col1 of B? Actually row2 col1 of B is the entry in global col2. So global col2: row3 entry = 0? Wait we need to map columns: B's columns are global cols2-6. So B's col1 is global col2, B's col2 is global col3, etc. So row2 (global row3) has:
+global col2 = B row2 col1 = 0 (after operation)
+global col3 = B row2 col2 = 1
+global col4 = B row2 col3 = -5
+global col5 = B row2 col4 = -3
+global col6 = B row2 col5 = -8
+Thus global row3 = [0, 0, 1, -5, -3, -8]? But wait, global col1? That is from A's first column, already zero for rows>1. So global row3 = [0,0,1,-5,-3,-8]. Similarly, row3 (global row4): original row3 = [-6,-1,3,7,-6]; subtract (-6)*row1? Since entry col1 = -6, row3 = row3 - (-6)*row1 = row3 + 6*row1 = [-6+6, -1+0, 3+0, 7+0, -6+0] = [0,-1,3,7,-6]. So global row4: global col2 = 0, global col3 = -1, global col4 = 3, global col5 = 7, global col6 = -6 => [0,0,-1,3,7,-6]. Row4 (global row5): [-8,-3,10,12,4] - (-8)*row1 = [-8+8, -3,10,12,4] = [0,-3,10,12,4] => global row5: [0,0,-3,10,12,4]? Wait global col2 = 0, col3 = -3, col4 = 10, col5 = 12, col6 = 4. Row5 (global row6): [-5,0,0,4,-8] - (-5)*row1 = [0,0,0,4,-8] => global row6: [0,0,0,0,4,-8]? Wait col2 = 0, col3 = 0, col4 = 0, col5 = 4, col6 = -8. So global matrix now:
+
+Row1: [1,0,0,0,0,0]
+Row2: [0,1,0,0,0,0]
+Row3: [0,0,1,-5,-3,-8]
+Row4: [0,0,-1,3,7,-6]
+Row5: [0,0,-3,10,12,4]
+Row6: [0,0,0,0,4,-8]
+
+But this is after we cleared B's first row and column, but we haven't yet performed the operations to clear row2 (global row3) and col2 (global col3) using the 1 at (3,3) (since now we have a 1 there). Indeed, we have a 1 at (3,3). So we can then clear row3 and col3 to reduce further. That will yield a 3x3 submatrix in the bottom right (global rows4-6, cols4-6). That is what we earlier did when we started from the 4x4 submatrix C (which was rows2-5 of B, i.e., global rows3-6, cols3-6). In that submatrix C, the top-left entry was 1 (global (3,3)). So we then used that 1 to clear its row and column, resulting in a 3x3 submatrix. That matches.
+
+So after clearing row3 and col3 (global), we will have:
+
+Row1: [1,0,0,0,0,0]
+Row2: [0,1,0,0,0,0]
+Row3: [0,0,1,0,0,0]
+Row4: [0,0,0, ?, ?, ?]
+Row5: [0,0,0, ?, ?, ?]
+Row6: [0,0,0, ?, ?, ?]
+
+Where the bottom-right 3x3 is the D we computed (from rows4-6, cols4-6). That D we got as:
+
+from earlier we had after clearing row3 and col3, we got:
+
+Row3 (global row4? Actually we need to re-index: In the earlier step we had a 4x4 C with top-left 1, and after clearing we got a 3x3 D. In our global matrix above, the 4x4 block is rows3-6, cols3-6? Actually from above matrix (after B reduction), the block is rows3-6, cols3-6:
+
+Rows3-6, cols3-6:
+Row3: [1, -5, -3, -8]
+Row4: [-1, 3, 7, -6]
+Row5: [-3, 10, 12, 4]
+Row6: [0, 0, 4, -8]
+
+That's C (4x4). Then we used the 1 at (3,3) to clear row3 and col3. That would yield a 3x3 matrix in rows4-6, cols4-6. We performed those operations and got D as:
+
+[ -2, 4, -14 ]
+[ -5, 3, -20 ]
+[ 0, 4, -8 ]
+
+But note: The indices: row4 col4 = -2, row4 col5 = 4, row4 col6 = -14; row5 col4 = -5, row5 col5 = 3, row5 col6 = -20; row6 col4 = 0, row6 col5 = 4, row6 col6 = -8. That matches D. So D is 3x3. So now the global matrix after clearing row3 and col3 will have identity in first three rows/cols, and D in bottom-right 3x3. Then the invariant factors d1,d2,d3 are 1,1,1 (since we have a 1 at (3,3) as well). Wait, we have d3 =? In the SNF, d3 is the third diagonal entry. Since we have a 1 at (3,3) after reduction, that would imply d3 = 1. But we need to verify that the 1 at (3,3) is indeed a pivot that divides all entries in the remaining submatrix. Since we used it to clear row and column, it is a 1, so d3=1. So d1=d2=d3=1. That means the first three invariant factors are all 1. Then the remaining three are the invariant factors of D, i.e., d4,d5,d6 from the 3x3 D. So we need to compute SNF of D. That will give three numbers e1,e2,e3 such that e1|e2|e3. And then d4=e1, d5=e2, d6=e3. Possibly e3 could be zero if D is singular. Since A may be singular, the product of d1..d6 gives the determinant (up to sign) if full rank; if rank<6, then some trailing d_i=0. So we need to compute SNF of D.
+
+Now D = 
+[ -2,  4, -14 ]
+[ -5,  3, -20 ]
+[  0,  4, -8 ]
+
+We can simplify by making entries positive and reducing. Compute gcd of all entries: 2,4,14,5,3,20,0,4,8 → gcd(2,5)=1? Since 2 and 5 have gcd 1, so overall gcd =1. So e1 = 1. So d4 = 1. That means fourth invariant factor is 1 as well? Actually d4 = e1 = 1. So d1=d2=d3=d4=1. Then we need e2 and e3.
+
+So now we reduce D to SNF. Since gcd=1, we can get a 1 at top-left. Let's perform operations on D. D is 3x3. We'll compute its SNF.
+
+D = 
+[ -2, 4, -14 ]
+[ -5, 3, -20 ]
+[ 0, 4, -8 ]
+
+We can multiply rows by -1 to simplify signs, but we'll handle with operations.
+
+Step: We want to bring a 1 to (1,1). Since gcd=1, we can combine. The smallest absolute value entry is 2 (in row1 col1). We can use it to reduce others. But we may also find a 1? Not directly. We can perform Euclidean algorithm.
+
+Let p = -2. We can try to use row/column operations to reduce other entries mod p. For instance, look at row1 col2 = 4. 4 mod 2 = 0, so we can eliminate it. col3 = -14, -14 mod 2 = 0, so also divisible. So row1 entries are multiples of 2. Similarly col1 entries: row2 col1 = -5, not divisible by 2; row3 col1=0 divisible. So we need to reduce the pivot. Since -5 is not divisible by 2, we can swap row2 with row1? But we want to make the pivot the gcd, so we can perform operations like adding a multiple of row1 to row2 to get a remainder smaller than 2. For instance, row2 = row2 + q * row1 to make the first entry smaller. Since row1 first entry is -2, row2 first entry is -5. Compute -5 = 2*(-2) -1? Actually -5 = 2*(-2) + (-1)? Let's do: -5 = 2*(-2) -1? 2*(-2) = -4, -5 - (-4) = -1. So remainder -1. So we can do row2 = row2 - 2*row1? Actually row1 = [-2,4,-14]. 2*row1 = [-4,8,-28]. row2 - 2*row1 = [-5 - (-4), 3-8, -20 - (-28)] = [-1, -5, 8]. So new row2 = [-1, -5, 8]. That gives a 1 (absolute value 1) in col1. Then we can swap row2 with row1 to bring the 1 to top-left. Let's do that.
+
+So apply row operation: row2 = row2 - 2*row1. Compute:
+row1: [-2,4,-14]
+row2: [-5,3,-20]
+2*row1 = [-4,8,-28]
+row2 - 2*row1 = [-5+4, 3-8, -20+28] = [-1, -5, 8]. Great.
+Now matrix becomes:
+Row1: [-2,4,-14]
+Row2: [-1,-5,8]
+Row3: [0,4,-8]
+
+Now we can swap row1 and row2 to get -1 (which can be made 1). Swap rows1 and 2:
+New row1: [-1,-5,8]
+New row2: [-2,4,-14]
+Row3: [0,4,-8]
+
+Multiply row1 by -1 to get 1: row1 = [1,5,-8] (since -1 * row1 = [1,5,-8]).
+Now matrix:
+Row1: [1,5,-8]
+Row2: [-2,4,-14]
+Row3: [0,4,-8]
+
+Now we have a 1 at (1,1). Use it to clear first row and first column.
+
+First, clear first row: col2 and col3. For col2: a12=5, so col2 = col2 - 5*col1. col3: a13=-8, so col3 = col3 - (-8)*col1 = col3 +8*col1. Perform column operations:
+
+Current columns:
+col1: [1, -2, 0]^T (from rows: row1:1, row2:-2, row3:0)
+col2: [5, 4, 4]^T
+col3: [-8, -14, -8]^T
+
+Now col2 = col2 - 5*col1: new col2 = [5-5*1=0, 4-5*(-2)=4+10=14, 4-5*0=4] -> [0,14,4]^T.
+col3 = col3 + 8*col1: new col3 = [-8+8*1=0, -14+8*(-2)= -14 -16 = -30, -8+8*0=-8] -> [0, -30, -8]^T.
+
+Now matrix after column ops:
+Row1: [1,0,0]
+Row2: [-2,14,-30]
+Row3: [0,4,-8]
+
+Now clear first column below row1: For row2: a21=-2, so row2 = row2 +2*row1? Actually row2 = row2 - (-2)*row1? More systematically: row2 = row2 - a21*row1 = row2 - (-2)*row1 = row2+2*row1. row2+2*row1 = [-2+2*1, 14+2*0, -30+2*0] = [0,14,-30]. row3: a31=0, unchanged. So matrix:
+Row1: [1,0,0]
+Row2: [0,14,-30]
+Row3: [0,4,-8]
+
+Now we have a 2x2 submatrix in rows2-3, cols2-3: M = [[14, -30], [4, -8]]. We need to compute its SNF. That will give e2 and e3.
+
+So D's SNF is diag(1, e2, e3) where e2|e3 and e2 = gcd of entries of M? Actually we need to compute the invariant factors of the 2x2 matrix. We can compute the SNF of M.
+
+M = [14, -30; 4, -8]. We can compute the gcd of all entries: gcd(14,30,4,8) = gcd(14,30)=2, gcd(2,4)=2, gcd(2,8)=2. So e2 should be 2? But we must also consider the gcd of 1x1 minors? Actually the first invariant factor of M is the gcd of all entries, which is 2. But we also have the condition that the product e1*e2 = gcd of all 2x2 minors? Since e1=1 for M? Actually the SNF of M is diag(d1', d2') with d1'|d2'. The product d1'*d2' = |det(M)|. Also d1' = gcd of all entries of M. So d1' = 2. Then d2' = |det(M)| / d1'. Compute det(M) = 14*(-8) - (-30)*4 = -112 - (-120) = -112+120 = 8. So |det| = 8. Then d2' = 8/2 = 4. And check divisibility: 2 divides 4, so SNF of M is diag(2,4). So e2 = 2, e3 = 4. Therefore D's SNF is diag(1, 2, 4). So the invariant factors of D are (1,2,4). Then the full A's invariant factors are d1=1, d2=1, d3=1, d4=1, d5=2, d6=4? Wait careful: We have d1,d2,d3 from first three pivots? We got d1=1 from original A, d2=1 from B's first pivot, d3=1 from C's first pivot (the 1 at global (3,3)). Then the remaining three are from D: e1=1, e2=2, e3=4. So that would give d4=1, d5=2, d6=4. But we have 6 entries total: d1=1, d2=1, d3=1, d4=1, d5=2, d6=4. That's six numbers: 1,1,1,1,2,4. However, note that the divisibility condition requires each divides the next: 1|1|1|1|2|4, which holds. So that is plausible.
+
+But we must double-check if we might have missed a factor? Possibly the rank is 5? Let's compute the determinant of original A to see if it's zero or not. If the SNF is diag(1,1,1,1,2,4), then the product of non-zero invariants is 1*1*1*1*2*4 = 8. That would be the absolute value of the determinant (since A is square and full rank, the determinant is ± product of invariant factors). But if the determinant is zero, then d6 would be zero. So we should compute the determinant of A to verify. Or maybe the matrix is singular, then d6=0 and the product of the first five = something. We need to check.
+
+Let's compute determinant of original A. We have performed many operations that preserve determinant up to sign? Elementary operations: row swaps change sign, row additions preserve determinant, column operations also affect determinant? Actually elementary row and column operations over integers: swapping rows changes sign; adding integer multiple of one row to another does not change determinant; multiplying a row by -1 changes sign by factor -1; similarly for columns. So the determinant of the final diagonal form is not necessarily the same as original because we've used column operations that also affect determinant? Actually column operations also affect determinant similarly: swapping columns changes sign; adding multiple of one column to another does not change determinant; multiplying column by -1 changes sign. So the overall determinant of the transformed matrix is equal to the determinant of the original up to sign changes from swaps and multiplications by -1. Since we performed many row and column swaps and sign changes, the determinant of the final diagonal matrix is ± det(A). The final diagonal matrix we have after all reductions (before we go to SNF) is diag(1,1,1,1,2,4)? But we haven't finished the reduction to SNF? Actually after we cleared first three rows/cols to identity, we had a 3x3 block D. We then performed operations on D to get its SNF, which we determined as diag(1,2,4). So after those operations, the whole matrix becomes diag(1,1,1,1,2,4). That is the SNF. So the determinant of that diagonal matrix is 1*1*1*1*2*4 = 8. Therefore, the determinant of A is ±8. So A is non-singular, rank 6. That means d6 is non-zero and should be 4. So the list of invariant factors is (1,1,1,1,2,4). However, we need to ensure that we didn't miss a factor: there could be a 2 before the 4? But we have 2 divides 4, good.
+
+But wait, we have d4=1, but we also had d3=1. So we have four 1's. Is that plausible? The number of 1's equals the number of times we could extract a 1 as gcd of the remaining submatrix. We had gcd of all entries of original A =1, then after removing one row/col, the 5x5 submatrix had gcd=1, then after another removal, the 4x4 submatrix had gcd=1 (since we found a 1 at top-left), then after another removal, the 3x3 submatrix D had gcd=1, and then the 2x2 submatrix M had gcd=2. So indeed we have four 1's. So SNF = diag(1,1,1,1,2,4). That is a valid SNF.
+
+But we should verify the gcd of all 2x2 minors of A? It should be d1*d2 = 1*1=1? Actually the gcd of all 2x2 minors is d1*d2 = 1? But we have d2=1, so product 1. But if there is a 2 somewhere later, maybe some 2x2 minors have gcd 2? Not necessarily: The gcd of all k×k minors is the product of the first k invariant factors. So for k=2, product d1*d2 =1, so gcd of all 2x2 minors should be 1. That is plausible. For k=3, product d1*d2*d3 =1, so gcd of all 3x3 minors =1. For k=4, product d1*d2*d3*d4 =1, so gcd of all 4x4 minors =1. For k=5, product d1*d2*d3*d4*d5 = 1*1*1*1*2 =2, so gcd of all 5x5 minors =2. For k=6, product of all six =8, so determinant = ±8. That seems consistent.
+
+We can test quickly: maybe compute some small minors to see if gcd of all 5x5 minors is 2? But we trust the algorithm. However, it's prudent to double-check our reduction steps for possible errors, since we did many manual operations. Let's recalc carefully, perhaps using a more systematic approach or verify the determinant of A directly.
+
+We can compute the determinant of A using known methods or using software mentally? Could compute using row reduction or by using the operations we performed, but we can also compute directly. Since the matrix is 6x6, we can try to compute the determinant using a systematic method like elimination over integers, but we can also check the product of the SNF we got: 8. So we need to check if det(A) = ±8. Let's compute det(A) by performing some operations to simplify.
+
+Original A:
+
+A = 
+[-5, -4, -3, -4, 3, -6]
+[-3, 0, -5, -5, 4, -1]
+[1, -1, 4, 5, -4, -3]
+[-3, -3, -3, -5, 4, -1]
+[-5, -5, 0, 0, -1, -8]
+[-1, -1, 0, 0, -1, 0]
+
+We can compute determinant via row operations that preserve determinant up to sign. Let's do some row operations to simplify, but keep track of sign changes.
+
+We can start by swapping row1 and row3 to get a 1 at top-left. That will flip sign: det = - det after swap. Then we can eliminate first column.
+
+Let's do:
+
+Swap row1 and row3: new matrix B1 (I'll denote after swap). Let R1 = original row3 = [1, -1, 4, 5, -4, -3]; R2 = original row1 = [-5, -4, -3, -4, 3, -6]; R3 = original row2 = [-3, 0, -5, -5, 4, -1]; R4 = original row4 = [-3, -3, -3, -5, 4, -1]; R5 = original row5 = [-5, -5, 0, 0, -1, -8]; R6 = original row6 = [-1, -1, 0, 0, -1, 0]. So after swap, det = - det(A).
+
+Now we eliminate first column below R1: Add multiples of R1 to other rows to zero out col1.
+
+R2 = R2 + 5*R1: R2: [-5+5*1=0, -4+5*(-1)=-4-5=-9, -3+5*4=-3+20=17, -4+5*5=-4+25=21, 3+5*(-4)=3-20=-17, -6+5*(-3)=-6-15=-21]. So R2 = [0, -9, 17, 21, -17, -21].
+R3 = R3 + 3*R1: [-3+3=0, 0+3*(-1)=-3, -5+3*4=-5+12=7, -5+3*5=-5+15=10, 4+3*(-4)=4-12=-8, -1+3*(-3)=-1-9=-10]. So R3 = [0, -3, 7, 10, -8, -10].
+R4 = R4 + 3*R1: [-3+3=0, -3+3*(-1)=-3-3=-6, -3+3*4=-3+12=9, -5+3*5=-5+15=10, 4+3*(-4)=4-12=-8, -1+3*(-3)=-1-9=-10]. So R4 = [0, -6, 9, 10, -8, -10].
+R5 = R5 + 5*R1: [-5+5=0, -5+5*(-1)=-5-5=-10, 0+5*4=20, 0+5*5=25, -1+5*(-4)=-1-20=-21, -8+5*(-3)=-8-15=-23]. So R5 = [0, -10, 20, 25, -21, -23].
+R6 = R6 + 1*R1: [-1+1=0, -1+(-1)=-2, 0+4=4, 0+5=5, -1+(-4)=-5, 0+(-3)=-3]. So R6 = [0, -2, 4, 5, -5, -3].
+
+So after elimination, matrix becomes:
+
+R1: [1, -1, 4, 5, -4, -3]
+R2: [0, -9, 17, 21, -17, -21]
+R3: [0, -3, 7, 10, -8, -10]
+R4: [0, -6, 9, 10, -8, -10]
+R5: [0, -10, 20, 25, -21, -23]
+R6: [0, -2, 4, 5, -5, -3]
+
+Now we can compute determinant as 1 times determinant of the 5x5 submatrix (since we did row operations that preserve determinant? Actually adding multiples of row1 to other rows does not change determinant. The row swap we did changed sign. So currently det = - det(A) (since we swapped). So det(A) = - det(current). But we can compute det(current) from the 5x5 submatrix (since first row and column have 1 and zeros below, the determinant is 1 * det(B) where B is the 5x5 submatrix from rows2-6, cols2-6). So det(current) = det(B) where B is:
+
+B = 
+[-9, 17, 21, -17, -21]
+[-3, 7, 10, -8, -10]
+[-6, 9, 10, -8, -10]
+[-10, 20, 25, -21, -23]
+[-2, 4, 5, -5, -3]
+
+Note that this B is similar to the one we had earlier but with signs? Earlier we had B after swapping rows? Our earlier B was from after we had done column operations and maybe swapped rows to bring -2 to top? This B is the raw submatrix from the elimination. But we can compute its determinant to find det(A). Since det(A) = - det(B). So compute det(B). Then we can see if det(B) = ±8? Actually we expect det(A)=±8 so det(B) should be ∓8.
+
+Compute det(B). Let's compute det(B) by performing operations that simplify but preserve determinant up to factor? We can do row operations within B that preserve determinant. Because we only care about the value.
+
+We can also compute via SNF we derived: SNF of A is diag(1,1,1,1,2,4) so determinant = ±8. So we expect det(B) = ∓8.
+
+Let's compute det(B) manually.
+
+B (5x5):
+Row1: [-9, 17, 21, -17, -21]
+Row2: [-3, 7, 10, -8, -10]
+Row3: [-6, 9, 10, -8, -10]
+Row4: [-10, 20, 25, -21, -23]
+Row5: [-2, 4, 5, -5, -3]
+
+We can factor common factors? Row5 has factors: all entries are? -2,4,5,-5,-3. No overall factor. Row2: -3,7,10,-8,-10. Row3: -6,9,10,-8,-10. Row1: -9,17,21,-17,-21. Row4: -10,20,25,-21,-23.
+
+We can try to simplify using row operations. Let's try to reduce the matrix by eliminating entries using row5 maybe because it has small numbers. For instance, we can add multiples of row5 to other rows to reduce entries. Or we can do Gaussian elimination over integers, keeping track of determinant.
+
+We can also compute using expansion or systematic elimination. Let's try to perform row operations that preserve determinant (no scaling of rows, only adding multiples, and swapping rows which flips sign). We'll aim to get an upper triangular form, then product of diagonal entries.
+
+Let's label rows: R1,R2,R3,R4,R5.
+
+We can try to use R5 (which has entries -2,4,5,-5,-3) as a pivot row. But it's not a pivot with 1, but we can use it to eliminate other rows' first column. However, we can also swap to bring a row with a leading 1 or smaller number. But we need to be careful with determinant sign changes when swapping. We can do swaps but keep track.
+
+Alternatively, we can compute determinant using software-like manual calculation: use row reduction to upper triangular. Since the matrix is integer, we can compute the determinant as the product of pivots after row reduction with rational numbers but we want exact integer. We can compute using fraction-free Gaussian elimination (Bareiss algorithm) or just do elimination with fractions and compute product.
+
+Let's proceed with elimination over rationals (or integers by scaling). We can treat as real numbers and do row operations that preserve determinant up to sign (avoiding scaling rows, but we can add multiples). To make pivots 1, we may divide rows, but that changes determinant; we can keep track. Better: we can compute determinant directly using row operations that do not multiply rows by non-1 integers (except swapping). We can aim to get an upper triangular matrix by elimination, using integer arithmetic, but the pivots may not be 1; we can allow integer pivots and the product of these pivots (taking into account row swaps) gives the determinant. Because adding a multiple of one row to another does not change determinant. So we can eliminate below without scaling.
+
+We'll proceed to eliminate the first column below the first row. Choose a pivot for first column. We can pick the row with smallest absolute entry to reduce fractions later. The first column entries: R1:-9, R2:-3, R3:-6, R4:-10, R5:-2. The smallest absolute is 2 (R5). We could swap R1 and R5 to bring -2 to top. That would give a pivot -2, which might be easier to eliminate others. But swapping rows flips sign. Let's do that: Swap R1 and R5. So new order: R1 = original R5 = [-2,4,5,-5,-3]; R2 = original R1 = [-9,17,21,-17,-21]; R3 = original R2 = [-3,7,10,-8,-10]; R4 = original R3 = [-6,9,10,-8,-10]; R5 = original R4 = [-10,20,25,-21,-23]. This swap multiplies determinant by -1. So det(B) = - det(B_new) where B_new is this order. Let's denote B' = after swap.
+
+Now B' rows:
+R1 = [-2, 4, 5, -5, -3]
+R2 = [-9, 17, 21, -17, -21]
+R3 = [-3, 7, 10, -8, -10]
+R4 = [-6, 9, 10, -8, -10]
+R5 = [-10, 20, 25, -21, -23]
+
+Now we want to eliminate first column below R1. Use R1 as pivot. For each row i=2..5, we can add multiples of R1 to make first entry 0. Specifically, for row2: a21 = -9. We want to find integer k such that -9 + k*(-2) = 0? That would require k = -9/2 not integer. So we cannot eliminate directly with integer multiplier without remainder. But we can still add a multiple that reduces the absolute value, but for determinant we can use Gaussian elimination over rationals: we can do row2 = row2 - (9/2)*row1, but that would introduce fractions and change determinant? Actually if we multiply a row by a scalar, determinant changes; but if we do row2 = row2 - (9/2)*row1, that's not an elementary operation over integers but over rationals; however, the determinant remains unchanged if we do row addition with a rational multiple? Actually adding a multiple of one row to another does not change determinant, even if the multiple is a rational number, because the operation corresponds to multiplying by an elementary matrix with determinant 1. But the entries become rational. That's okay for computing determinant, but we need to work with fractions to get exact value. We can handle fractions. Alternatively, we can compute determinant by performing elimination using integer arithmetic with Bareiss algorithm (fraction-free). But perhaps easier: we can compute determinant by expanding or using known SNF result to check if det=±8. Since we believe SNF gives product 8, we can quickly compute determinant by another method: compute the determinant of A using a known formula? Could also compute using Python mentally? Not possible.
+
+Let's compute determinant of B' via elimination with fractions (rational numbers) but keep track of product of pivots. We'll transform to upper triangular form using row operations that add multiples (including fractional) of pivot rows to rows below. Since we only care about determinant, we can do that.
+
+We have pivot = -2 at (1,1). For each row i>1, we want to zero out the first entry. The operation: row_i = row_i - (a_i1 / pivot) * row1. Since pivot = -2, we compute multiplier m_i = a_i1 / (-2). For row2: a21=-9, m2 = (-9)/(-2) = 9/2 = 4.5. row3: a31=-3, m3 = (-3)/(-2)=1.5; row4: a41=-6, m4=(-6)/(-2)=3; row5: a51=-10, m5=(-10)/(-2)=5. So we subtract these multiples. The resulting rows will have first entry 0. But we will have fractions. Then we continue with next pivot. At the end, the determinant is the product of the pivots (since the row operations do not change determinant). However, note that when we subtract a multiple of a row, the determinant is unchanged. But if we later swap rows, sign changes. Also if we multiply a row by a factor, that changes determinant. So using fractional multiples is fine because it's still adding a multiple (which doesn't change determinant). So we can compute using rational numbers.
+
+Let's do it step by step.
+
+B' (starting):
+
+R1: [-2, 4, 5, -5, -3]
+R2: [-9, 17, 21, -17, -21]
+R3: [-3, 7, 10, -8, -10]
+R4: [-6, 9, 10, -8, -10]
+R5: [-10, 20, 25, -21, -23]
+
+Compute R2' = R2 - (9/2)*R1. Since 9/2=4.5.
+
+R2' = [-9 - (9/2)*(-2), 17 - (9/2)*4, 21 - (9/2)*5, -17 - (9/2)*(-5), -21 - (9/2)*(-3)]
+Compute each:
+First: -9 - (9/2)*(-2) = -9 - ( -9) = -9+9=0.
+Second: 17 - (9/2)*4 = 17 - 18 = -1.
+Third: 21 - (9/2)*5 = 21 - (45/2) = (42/2 - 45/2) = -3/2.
+Fourth: -17 - (9/2)*(-5) = -17 - (-45/2) = -17 + 45/2 = (-34/2 + 45/2) = 11/2.
+Fifth: -21 - (9/2)*(-3) = -21 - (-27/2) = -21 + 27/2 = (-42/2+27/2) = -15/2.
+So R2' = [0, -1, -3/2, 11/2, -15/2].
+
+R3' = R3 - (3/2)*R1. Because 3/2=1.5.
+R3 = [-3,7,10,-8,-10]
+(3/2)*R1 = [ (3/2)*(-2)=-3, (3/2)*4=6, (3/2)*5=15/2=7.5, (3/2)*(-5)=-15/2=-7.5, (3/2)*(-3)=-9/2=-4.5]
+So R3' = [-3 - (-3)=0, 7-6=1, 10 - 15/2 = (20/2-15/2)=5/2, -8 - (-15/2) = -8 + 15/2 = (-16/2+15/2)= -1/2, -10 - (-9/2) = -10+9/2 = (-20/2+9/2)= -11/2]. So R3' = [0,1,5/2,-1/2,-11/2].
+
+R4' = R4 - 3*R1 (since m4=3). R4 = [-6,9,10,-8,-10]; 3*R1 = [-6,12,15,-15,-9]; So R4' = [0, -3, -5, 7, -1]? Compute: 9-12=-3; 10-15=-5; -8-(-15)=7; -10-(-9)=-1. So R4' = [0,-3,-5,7,-1].
+
+R5' = R5 - 5*R1 (since m5=5). R5 = [-10,20,25,-21,-23]; 5*R1 = [-10,20,25,-25,-15]; So R5' = [0,0,0,4,-8]? Compute: 20-20=0; 25-25=0; -21-(-25)=4; -23-(-15)=-8. So R5' = [0,0,0,4,-8].
+
+Now after these operations, matrix becomes (ignoring the first column zeros):
+
+R1: [-2, 4, 5, -5, -3]
+R2: [0, -1, -3/2, 11/2, -15/2]
+R3: [0, 1, 5/2, -1/2, -11/2]
+R4: [0, -3, -5, 7, -1]
+R5: [0, 0, 0, 4, -8]
+
+Now we need to continue elimination on the 4x4 submatrix (rows2-5, cols2-5). We have first column of this submatrix (col2) with entries: R2: -1, R3: 1, R4: -3, R5: 0. The pivot for this column should be chosen. We can swap rows to bring a pivot with absolute value 1 to the top, which is convenient. Since R3 has 1 in col2, we can swap R2 and R3 to bring that 1 to the (2,2) position. Swapping rows flips sign. So swap R2 and R3. Then new order:
+
+R1: [-2, 4, 5, -5, -3]
+R2 (old R3): [0, 1, 5/2, -1/2, -11/2]
+R3 (old R2): [0, -1, -3/2, 11/2, -15/2]
+R4: [0, -3, -5, 7, -1]
+R5: [0, 0, 0, 4, -8]
+
+Now determinant sign: we swapped rows, so multiply det by -1. So far we have det(B') = (original det of B')? We'll keep track later.
+
+Now we have pivot at (2,2) = 1. Use it to clear col2 below row2. For rows3,4,5 (i=3,4,5), we do row_i = row_i - (a_i2)*row2. Since pivot=1, it's easy.
+
+Row3: a32 = -1 (the entry in col2). So row3 = row3 - (-1)*row2 = row3 + row2. Row3 currently: [0, -1, -3/2, 11/2, -15/2]; row2: [0,1,5/2,-1/2,-11/2]; sum: [0,0, (-3/2+5/2)=2/2=1, (11/2 + -1/2)=10/2=5, (-15/2 + -11/2)= -26/2 = -13]. So new row3 = [0,0,1,5,-13].
+
+Row4: a42 = -3. So row4 = row4 - (-3)*row2 = row4 + 3*row2. row4: [0,-3,-5,7,-1]; row2: [0,1,5/2,-1/2,-11/2]; 3*row2 = [0,3,15/2,-3/2,-33/2]; add to row4: [0,0, -5+15/2 = -10/2+15/2=5/2, 7 + (-3/2)=14/2-3/2=11/2, -1 + (-33/2)= -2/2-33/2= -35/2]. So row4 = [0,0,5/2,11/2,-35/2].
+
+Row5: a52 = 0, unchanged: [0,0,0,4,-8].
+
+Now matrix:
+
+R1: [-2, 4, 5, -5, -3]
+R2: [0, 1, 5/2, -1/2, -11/2]
+R3: [0, 0, 1, 5, -13]
+R4: [0, 0, 5/2, 11/2, -35/2]
+R5: [0, 0, 0, 4, -8]
+
+Now we need to eliminate below the pivot at (3,3)=1. Use row3 to clear col3 in rows4 and maybe row5? Row4 has entry 5/2 in col3. We can do row4 = row4 - (5/2)*row3. That will introduce fractions but okay. row5 has 0 in col3, so no need.
+
+Compute row4' = row4 - (5/2)*row3. row4 = [0,0,5/2,11/2,-35/2]; (5/2)*row3 = [0,0,5/2, 5/2*5=25/2, 5/2*(-13)= -65/2]. So row4' = [0,0,0, (11/2 - 25/2)= -14/2 = -7, (-35/2 - (-65/2)) = (-35/2+65/2)=30/2=15]. So row4' = [0,0,0,-7,15].
+
+Now matrix:
+
+R1: [-2, 4, 5, -5, -3]
+R2: [0, 1, 5/2, -1/2, -11/2]
+R3: [0, 0, 1, 5, -13]
+R4: [0, 0, 0, -7, 15]
+R5: [0, 0, 0, 4, -8]
+
+Now we have two rows (R4 and R5) with col4 and col5. We need to eliminate col4 below R4 (pivot = -7). Swap rows? We could swap R4 and R5 to get a smaller pivot? But we'll proceed. Use R4 as pivot. Then do row5 = row5 - (a54/pivot)*row4. a54 = 4, pivot = -7. So multiplier = 4/(-7) = -4/7. So row5 = row5 - (-4/7)*row4 = row5 + (4/7)*row4. That will zero out col4 entry. Compute:
+
+row5: [0,0,0,4,-8]; row4: [0,0,0,-7,15]; (4/7)*row4 = [0,0,0, -4, 60/7? Actually (4/7)*(-7)= -4, (4/7)*15 = 60/7]. So row5' = [0,0,0, 4 + (-4) = 0, -8 + 60/7 = (-56/7+60/7)=4/7]. So row5' = [0,0,0,0,4/7].
+
+Now the matrix is upper triangular. The diagonal entries are: R1: -2, R2: 1, R3: 1, R4: -7, R5: 4/7. The determinant of the triangular matrix is product of diagonal entries: (-2)*1*1*(-7)*(4/7) = (-2)*(-7)*(4/7) = (14)*(4/7) = 56/7? Actually 14*(4/7)=56/7=8. So product = 8. However, we need to account for row swaps we performed: we swapped rows once (R1 with R5) and later swapped R2 and R3. Each swap multiplies determinant by -1. So we have two swaps? Let's track:
+
+- Starting with B (original order) we swapped R1 and R5 to get B'. That swap: det(B) = - det(B')? Actually we had B original, we swapped row1 and row5 to get B'. So det(B) = - det(B').
+
+- Then during elimination we performed another swap: we swapped R2 and R3 (of B') to bring pivot. That swap changes the determinant of the matrix we are working with: we had B', then after swap we got B''. So det(B') = - det(B''). Because swapping two rows flips sign. So overall, det(B) = - det(B') = - ( - det(B'')) = det(B''). So actually the two swaps cancel? Let's see: original B → swap1 → B' (det = -det(B)). Then B' → swap2 → B'' (det = -det(B')). So det(B'') = -det(B') = -(-det(B)) = det(B). So the net effect is that B'' has the same determinant as B. So the product of pivots we computed from the final triangular matrix (which came from B'' after row operations that preserve determinant) equals det(B''). Since the row operations we performed after swaps (adding multiples) do not change determinant, the determinant of the final triangular matrix is equal to det(B''). And we computed product of diagonal entries = 8. So det(B'') = 8. Therefore det(B) = 8. Then det(A) = - det(B) because we had swapped row1 and row3 at the very beginning? Wait earlier: We swapped row1 and row3 of A to get a matrix A1, then det(A) = - det(A1). Then we performed row operations (add multiples) to get a matrix with first row [1, ...] and rest, and det(A1) = det of that matrix because those operations didn't change determinant. Then we extracted det of submatrix B? Actually we had A1 after row swap, then we cleared column1, resulting in matrix M with first row [1, -1,4,5,-4,-3] and zeros below in col1. The determinant of M is 1 * det(B) because it's block triangular (since first row and column? Actually M is not triangular; it has first row with non-zero entries, but after row operations that eliminated column1, we have a matrix of the form [[1, *], [0, B]] where B is the 5x5 submatrix? Wait we had after elimination, the matrix is:
+
+R1: [1, -1, 4, 5, -4, -3]
+R2: [0, -9, 17, 21, -17, -21]
+R3: [0, -3, 7, 10, -8, -10]
+R4: [0, -6, 9, 10, -8, -10]
+R5: [0, -10, 20, 25, -21, -23]
+R6: [0, -2, 4, 5, -5, -3]
+
+This is block triangular? Actually it's not upper triangular because the first row has entries in columns 2-6. But the determinant can be computed by expanding along first column: since only the first row has a non-zero entry at (1,1)=1, and all other entries in column1 are zero, the determinant is 1 * det of the 5x5 submatrix formed by rows2-6, cols2-6. That submatrix is exactly B as we defined. So det(A1) = det(B). And det(A) = - det(A1) = - det(B). So det(A) = - det(B). We found det(B)=8, so det(A) = -8. That matches product of invariants being 8 (absolute value). So determinant is -8, which is consistent with SNF product 8 (since the product of invariant factors is the absolute value of determinant, and sign comes from unimodular transformations). So indeed the SNF must have product 8. Our computed SNF has product 8 (1*1*1*1*2*4=8). So that is consistent.
+
+Thus the invariant factors are: 1,1,1,1,2,4. But we must ensure the order: d1 divides d2 divides d3 divides d4 divides d5 divides d6. Here 1|1|1|1|2|4 works. So answer: 1,1,1,1,2,4.
+
+But wait, earlier we had d4=1, d5=2, d6=4. That's correct.
+
+So final answer: 1,1,1,1,2,4.
+
+We should output as comma-separated list: 1,1,1,1,2,4.
+
+Double-check if any other factor could be 0? No, determinant non-zero, so all d_i >0.
+
+Thus answer: ANSWER: 1,1,1,1,2,4
+
+Now we need to present final answer in the required format: "ANSWER: 1,1,1,1,2,4".
