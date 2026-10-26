@@ -1,0 +1,441 @@
+We need solve Markov chain absorption probabilities and expected time. Need compute accurately. Need final two numbers separated comma. Need think through.
+
+We need solve absorbing Markov chain with states S1..S11 transient? W,L absorbing. Need starting S1. Need probability absorbed in W and expected steps to absorption.
+
+We can compute by solving linear equations. Need high accuracy 4 sig figs. Need final.
+
+Let's label transient 1..11. Absorbing W=win, L=loss. Need f_i = P(absorbed in W before L). e_i = expected steps to absorption (W or L), starting i.
+
+Boundary f_W=1, f_L=0. For transient i:
+f_i = sum_j p_ij f_j.
+e_i = 1 + sum_j p_ij e_j (transient only; absorbing no further? Since steps until absorption; if move to absorbing at next step counted, and then stop. Equation e_i =1+ sum_trans p e_j + absorbing p*0. Yes).
+
+Need solve linear system 11x11 for f, e. Could do manually? Need accurate. We can use structured calculation. Need no actual code. But can perform numerical solving using linear algebra maybe many states. Need be careful.
+
+Let's parse transitions.
+
+States:
+1 -> 1 .1; 5 .2; 8 .5; L .2. No W.
+f1 = .1 f1 + .2 f5 + .5 f8 => .9 f1 - .2 f5 - .5 f8 =0 => f1 = (0.2 f5+0.5 f8)/0.9.
+
+2 -> 2 .2; 5 .5; W .3.
+f2 = .2 f2 + .5 f5 + .3 => .8 f2 = .5 f5 + .3 => f2 = .625 f5 + .375.
+e2 =1+.2 e2+.5 e5 => .8 e2=1+.5e5 => e2=1.25+0.625 e5.
+
+3 -> 5 .2; 7 .4; W .1; L .3.
+f3 = .2 f5 + .4 f7 + .1.
+e3 =1 + .2 e5 + .4 e7.
+
+4 -> 4 .2; 7 .8.
+f4 = .2 f4 + .8 f7 => .8 f4=.8 f7 => f4=f7.
+e4=1+.2e4+.8e7 => .8e4=1+.8e7 => e4=1.25 + e7.
+
+5 -> 3 .2; 6 .3; 9 .2; L .3.
+f5 = .2 f3 + .3 f6 + .2 f9 (L zero)
+e5=1 + .2 e3 + .3 e6 + .2 e9.
+
+6 -> 3 .4; L .6.
+f6=.4 f3.
+e6=1+.4 e3.
+
+7 -> 6 .3; L .7.
+f7=.3 f6.
+e7=1+.3 e6.
+
+8 -> 3 .4; L .6.
+f8=.4 f3.
+e8=1+.4 e3.
+
+9 -> 5 .1; 8 .1; 10 .3; W .5.
+f9=.1 f5 + .1 f8 + .3 f10 + .5.
+e9=1 + .1 e5 + .1 e8 + .3 e10.
+
+10 -> 9 .4; 11 .6.
+f10=.4 f9 + .6 f11.
+e10=1 + .4 e9 + .6 e11.
+
+11 -> 11 .2; W .3; L .5.
+f11=.2 f11 + .3 => .8 f11=.3 => f11=0.375.
+e11=1+.2 e11 => .8 e11=1 => e11=1.25.
+
+Great. Need solve f chain. We can reduce.
+
+f11=0.375.
+f10=.4 f9 + .6*0.375 = .4 f9 + .225.
+
+f8=.4 f3.
+f7=.3 f6=.3*(.4 f3)=.12 f3.
+f4=f7=.12 f3 (not used? no, maybe not linked except none. S4 unreachable from S1? Actually no transitions into S4. Starting S1 never S4. So ignore. But f4 same.)
+f6=.4 f3.
+f5 equation involves f3,f6,f9: f5=.2 f3 + .3(.4 f3)+.2 f9 = .2 f3+.12 f3+.2f9 = .32 f3 + .2 f9.
+
+f3=.2 f5+.4 f7+.1 = .2 f5 + .4(.12 f3)+.1 = .2 f5 + .048 f3 + .1 => .952 f3 = .2 f5 + .1 => f3 = (0.2 f5 +0.1)/0.952. Equiv f5? Let's later.
+
+f1 equation and f2? f2 only depends f5; but f1 uses f5, f8. Also f9 uses f5, f8, f10. Need equations for f5/f9/f3. f2 not involved aside from? No transitions to S2 from others? None? Starting cannot reach S2? S1 no S2, S5 no S2. S2 unreachable. So f2/e2 irrelevant. f4 also unreachable. Need only reachable states: 1,3,5,6,7,8,9,10,11 maybe. S2,S4 irrelevant.
+
+Let's solve f for reachable. Variables f3,f5,f9 maybe. We have:
+f8 = .4 f3.
+f6=.4 f3.
+f7=.12 f3.
+f10=.4 f9+.225.
+f5 = .32 f3 + .2 f9. (Eq A)
+f3 = .2 f5 + .048 f3 + .1 => 0.952 f3 -0.2 f5 =0.1. (Eq B)
+f9 = .1 f5 + .1 f8 + .3 f10 + .5 = .1 f5 + .1(.4 f3)+ .3(.4 f9+.225)+.5
+= .1 f5 + .04 f3 + .12 f9 + .0675 + .5 = .1 f5 + .04 f3 + .12 f9 + .5675.
+Thus .88 f9 = .1 f5 + .04 f3 + .5675 => f9 = (0.1 f5 +0.04 f3 +0.5675)/0.88. (Eq C)
+
+Solve. Substitute A into B? Let's do exact rational maybe. Eq A f5 = 0.32 f3 +0.2 f9.
+Eq B: 0.952 f3 -0.2 f5 =0.1.
+Sub A: 0.952 f3 -0.2(0.32 f3+0.2 f9)=0.1 => (0.952-0.064) f3 -0.04 f9 =0.1 => 0.888 f3 -0.04 f9 =0.1. So f3 = (0.1+0.04 f9)/0.888. (B')
+
+Eq C: f9 = (0.1 f5 +0.04 f3 +0.5675)/0.88.
+Use f5=0.32f3+0.2f9. Numerator =0.1(0.32f3+0.2f9)+0.04f3+0.5675 =0.032f3+0.02f9+0.04f3+0.5675 =0.072f3+0.02f9+0.5675.
+Thus 0.88 f9 = 0.072 f3 +0.02 f9 +0.5675 => 0.86 f9 =0.072 f3+0.5675 => f9 = (0.072 f3 +0.5675)/0.86. (C')
+
+Now solve B' and C'. B': 0.888 f3 -0.04 f9=0.1.
+C': 0.86 f9 -0.072 f3=0.5675.
+
+Let's solve exactly. From B': f3=(0.1+0.04 f9)/0.888 =? 1/0.888 =125/111? 0.888=888/1000=111/125. Yes f3 = (125/111)(0.1+0.04 f9)= (125/111)(1/10 + 1/25 f9) =125/(1110)+125/(2775) f9? Let's maybe decimal.
+
+Plug C. Use equations:
+0.888 f3 -0.04 f9 =0.1   (1)
+-0.072 f3 +0.86 f9 =0.5675 (2)
+
+Compute determinant =0.888*0.86 - (-? matrix [[0.888,-0.04],[-0.072,0.86]]) det=0.888*0.86 - (-0.04*-0.072)=0.76368 -0.00288=0.7608.
+
+f3 = (0.1*0.86 - (-0.04*0.5675))/det? For [[a,b],[c,d]], f3=(rhs1*d - b*rhs2)/det =0.1*0.86 - (-0.04)*0.5675 =0.086+0.0227=0.1087. /0.7608 =? f9=(a*rhs2 - rhs1*c)/det =0.888*0.5675 -0.1*(-0.072)=0.503? compute 0.5675*0.888. 0.5675*(0.9-0.012)=0.51075-0.00681=0.50394. +0.0072=0.51114. /0.7608.
+
+Compute f3=0.1087/0.7608. Let's divide. 0.7608*0.142875? 0.7608*0.143 =0.108? 0.7608*0.1429=0.108717? Need precise.
+
+Let's do high precision manually.
+
+Compute det = 7608/10000? 0.7608.
+0.1087 / 0.7608 = 1087/10000 divided by 7608/10000 =1087/7608. Ah yes. 1087/7608. Compute.
+
+7608*0.142875? =7608*(0.14 +0.002875)=1065.12 +21.873? 7608*0.002875 =7608*23/8000? 0.002875=23/8000, =174984/8000=21.873. Sum 1086.993. Need 1087 so +0.00000092*7608=0.007? So 0.14287592 gives 1087.000? Let's compute exactly.
+
+1087/7608. Use long:
+7608 into 1087.000
+0.142 =1080.336 remainder 6.664? Wait for 1087/7608 using integer long.
+
+1087/7608:
+0.1 ->760.8 rem326.2
+0.04 ->304.32 rem21.88 total .14 rem21.88
+0.002 ->15.216 rem6.664 total .142
+0.0008 ->6.0864 rem0.5776 total .1428
+0.00007 ->0.53256 rem0.04504 total .14287
+0.000005 ->0.03804 rem0.007 total .142875
+0.0000009 ->0.0068472 rem0.0001528 total .1428759
+0.00000002 ->0.00015216 rem0.00000064 total .14287592
+So f3≈0.14287592.
+
+f9=0.51114/0.7608 =51114/100000 / (7608/10000) =51114/76080? Actually 0.51114/0.7608 =5111.4/7608? Let's exact from numerator: 0.51114 = 51114/100000; divide by 7608/10000 = multiply 10000/7608 => 51114/(10*7608)? Wait (51114/100000)*(10000/7608)=51114/(10*7608)=51114/76080=25557/38040. Simplify? Compute decimal.
+
+0.51114/0.7608.
+Use f9 =? Let's compute 25557/38040. 38040*0.671? =25520? yes. Compute precisely.
+
+0.67*38040=25486.8 rem70.2
+0.0018*38040=68.472 rem1.728 total .6718
+0.00004*38040=1.5216 rem0.2064 total .67184
+0.000005*38040=0.1902 rem0.0162 total .671845
+0.0000004*38040=0.015216 rem0.000984 total .6718454
+0.00000002*38040=0.0007608 rem0.0002232 total .67184542
+0.000000005*38040=0.0001902 rem0.000033 total .671845425
+So f9≈0.67184543.
+
+Then f5=0.32 f3 +0.2 f9. f3 .14287592*0.32 =0.0457202944. f9*0.2=0.134369085. sum f5=0.1800893794.
+
+Check B: 0.952* f3 -0.2 f5 =? ok.
+
+Need f1 = (0.2 f5 +0.5 f8)/0.9. f8=.4 f3=0.057150368. 0.2 f5=0.036017876. Sum=0.093168244. /0.9=0.103520271. So P W from S1 ≈0.1035.
+
+Need verify f1 equation no direct W. So probability W ~0.1035. Need 4 sig figs: 0.1035 maybe.
+
+But need expected steps. Solve e for reachable states. Need e1. Equations.
+
+List:
+e11 =1.25.
+e10 =1 + .4 e9 + .6 e11 =1+0.4 e9+0.75 =1.75+0.4 e9.
+
+e8=1+.4 e3.
+e7=1+.3 e6.
+e6=1+.4 e3.
+Thus e7=1+.3(1+.4e3)=1.3+0.12 e3.
+
+e3=1+.2 e5+.4 e7 =1+.2e5+.4(1.3+0.12e3)=1+.2e5+0.52+0.048e3=1.52+0.2e5+0.048e3.
+=> e3 -0.048e3 =1.52+0.2e5 =>0.952 e3 -0.2e5 =1.52. Eq E3.
+
+e5=1+.2 e3+.3 e6+.2 e9. e6=1+.4e3. => e5=1+.2e3+.3(1+.4e3)+.2e9 =1+.2e3+.3+.12e3+.2e9 =1.3 +0.32 e3 +0.2 e9. Eq E5.
+
+e9=1+.1 e5+.1 e8+.3 e10. e8=1+.4e3. e10=1.75+0.4e9.
+So e9 =1 +0.1e5 +0.1(1+.4e3)+0.3(1.75+0.4e9)
+=1 +0.1e5 +0.1+0.04e3 +0.525+0.12e9
+Constants: 1+0.1+0.525=1.625. So e9 =1.625+0.1e5+0.04e3+0.12e9
+=>0.88 e9 =1.625 +0.1 e5+0.04e3. Eq E9.
+
+Need e1. e1=1 +0.1 e1 +0.2 e5 +0.5 e8? From S1 to S1 .1, S5 .2, S8 .5, L .2. No W but absorbing L. e1 =1+0.1e1+0.2e5+0.5e8.
+=>0.9 e1 =1+0.2e5+0.5e8.
+e8=1+.4e3. So 0.5e8=0.5+0.2e3. Thus 0.9e1=1.5+0.2e5+0.2e3.
+e1=(1.5+0.2e5+0.2e3)/0.9.
+
+So solve e3,e5,e9. System:
+(1) 0.952 e3 -0.2 e5 = 1.52. (no e9)
+(2) e5 =1.3 +0.32 e3 +0.2 e9 => -0.32 e3 + e5 -0.2 e9 =1.3.
+(3) 0.88 e9 -0.1 e5 -0.04 e3 =1.625. Or -0.04e3 -0.1e5 +0.88e9=1.625.
+
+Need solve. Use Eq1 to express e5 = (0.952 e3 -1.52)/0.2 =4.76 e3 -7.6. Wait from 0.952 e3 -0.2 e5 =1.52 => -0.2e5=1.52-0.952e3 => e5= (0.952e3 -1.52)/0.2 =4.76 e3 -7.6. That seems e5 positive for e3 >1.596. Possibly.
+
+Plug into Eq2. e5 =1.3 +0.32 e3+0.2e9.
+4.76e3 -7.6 =1.3 +0.32e3 +0.2e9
+=>4.44e3 -8.9 =0.2e9
+=> e9 =22.2 e3 -44.5. Huge? e3 maybe ~? This seems if e3 ~2, e9 ~ -? 22.2*2-44.5= -0.1 impossible. Let's recheck Eq1 sign? e3 equation: e3=1+.2e5+.4e7. e7=1+.3e6, e6=1+.4e3.
+Compute e7 = 1 +0.3 e6 =1+0.3(1+0.4e3)=1+0.3+0.12e3=1.3+0.12e3 correct.
+e3=1+0.2e5+0.4*(1.3+0.12e3)=1+0.2e5+0.52+0.048e3=1.52+0.2e5+0.048e3. Bring: e3-0.048e3=1.52+0.2e5 =>0.952e3=1.52+0.2e5, not 0.952e3 -0.2e5 =1.52? Yes 0.952e3 -0.2e5 =1.52. Then e5=(0.952e3 -1.52)/0.2. For e3 maybe ~1.8, e5=4.76*1.8-7.6=0.968. ok.
+
+Eq2 e5=1.3+0.32e3+0.2e9. If e3=1.8, RHS 1.3+0.576+0.2e9. Need e5=.968 -> 0.2e9=-0.908 => negative. Maybe e3 larger? Let's solve equations. The relation from Eq1+Eq2:
+4.76e3 -7.6 =1.3+0.32e3+0.2e9
+=>4.44e3 -8.9 =0.2e9
+=> e9=22.2 e3 -44.5. For e9 positive require e3 >2.0045. Then e5=4.76*2.0045-7.6=1.941. maybe. Eq3 will determine high e3? Let's continue.
+
+Plug relation into Eq3: 0.88(22.2e3 -44.5) -0.1e5 -0.04e3=1.625.
+0.88*22.2=19.536 e3. 0.88*(-44.5)=-39.16.
+e5=4.76e3 -7.6. -0.1e5 = -0.476e3 +0.76. -0.04e3.
+Sum coefficients 19.536 -0.476 -0.04=19.02 e3. Constants -39.16+0.76=-38.4.
+Equation 19.02 e3 -38.4 =1.625 =>19.02 e3=40.025 => e3=2.104364? Then e5=4.76*2.10436-7.6=10.016? wait 4.76*2.104=10.016, -7.6=2.416. e9=22.2*2.104-44.5=46.716-44.5=2.216. Seems plausible. Expected steps maybe e1 around? e1=(1.5+0.2e5+0.2e3)/0.9 = (1.5+0.483+0.421)/0.9=2.404/0.9=2.671. Need compute accurately.
+
+Let's solve accurately.
+
+e system:
+0.952 e3 - 0.2 e5 = 1.52. (A)
+e5 -0.32e3 -0.2e9 =1.3. (B)
+-0.04e3 -0.1e5 +0.88e9 =1.625. (C)
+
+Let's solve systematically, avoid manual errors. Use exact rational.
+
+A: 0.952=119/125? 0.952=119/125 yes. 0.2=1/5. RHS 1.52=38/25? 1.52=38/25.
+(119/125)e3 - (1/5)e5=38/25.
+Multiply 125:119 e3 -25 e5 =190. => e5=(119 e3 -190)/25=4.76e3-7.6 correct.
+
+B: e5 -0.32 e3 -0.2 e9 =1.3. 0.32=8/25, 0.2=1/5, 1.3=13/10.
+Multiply 50? e5 -(8/25)e3 -(1/5)e9 =13/10.
+Plug e5.
+
+(119/25 e3 -38/5) - (8/25)e3 - (1/5)e9 =13/10.
+(111/25)e3 -38/5 -1/5 e9 =13/10.
+Multiply 50:222 e3 -380 -10 e9 =65 =>222 e3 -10 e9 =445 => e9 = (222 e3 -445)/10? Wait divide 10: 222e3 -10e9=445 =>10e9=222e3-445, e9=22.2e3 -44.5. Yes.
+
+C: -0.04 e3 -0.1 e5 +0.88e9=1.625. Fractions: -1/25 e3 -1/10 e5 +22/25 e9 =13/8? 1.625=13/8.
+Plug e5 and e9 maybe.
+
+e5=119/25 e3 -38/5.
+e9=111/5? Actually 22.2=111/5, 44.5=89/2. e9=(111/5)e3 - 89/2.
+
+C coefficients:
+-1/25 e3 -1/10(119/25 e3 -38/5)+22/25((111/5)e3 -89/2)=13/8.
+Compute:
+Term e3:
+-1/25 = -0.04.
+-1/10*119/25 = -119/250 = -0.476.
++22/25*111/5 = (2442)/(125) = 19.536.
+Sum exact denominator 250? -1/25=-10/250; -119/250; 2442/125=4884/250. Sum (4884-10-119)/250=4755/250=951/50=19.02. Good.
+
+Constant:
+-1/10*(-38/5)= +38/50=19/25=0.76.
++22/25*(-89/2)= -(1958)/(50)= -39.16 = -979/25? 1958/50=979/25=39.16.
+Sum 19/25 -979/25 = -960/25=-38.4=-192/5.
+
+Equation (951/50)e3 -192/5 =13/8.
+Add 192/5: RHS =13/8+192/5=(65+1536)/40=1601/40=40.025.
+Thus e3=(1601/40)*(50/951)=1601*5/(4*951)=8005/3804? Wait 1601*5=8005; denominator 4*951=3804. e3=8005/3804≈2.10436382755. Yes.
+
+Now e5=(119/25)e3 -38/5.
+e3=8005/3804. e5 =119*8005/(25*3804) -38/5.
+38/5 convert denominator? Let's compute decimal.
+
+Compute e3 precisely: 8005/3804. Difference: 3804*2=7608 remainder397. 397/3804=0.10436382755. e3=2.10436382755.
+
+e5=4.76*e3 -7.6. Compute e3*4.76 = e3*(5 -0.24)=10.5218191378 -0.5050473186=10.0167718192. minus7.6=2.4167718192. Let's exact.
+
+e9=22.2*e3 -44.5 = e3*(20+2.2)=42.087276551 +4.629600421=46.716876972? Wait 20*2.10436382755 =42.087276551; 2.2*2.10436382755=4.6296004206; sum=46.7168769716; minus44.5=2.2168769716. Alternatively relation. Let's recompute e5/e9 check C.
+
+e5=2.41677. e9=2.21688.
+
+Now e1 = (1.5+0.2e5+0.2e3)/0.9.
+0.2e5=0.48335436384.
+0.2e3=0.42087276551.
+Sum with 1.5=2.40422712935.
+Divide .9 =2.67136347706.
+
+So expected steps ~2.671. Need 4 sig figs: 2.671. Probability W ~0.103520 -> 0.1035. Need ensure e calculation includes steps until absorbed, not expected hitting? Yes.
+
+But wait: We ignored states S2 and S4. Starting S1 cannot reach? Check S1 transitions to S1,S5,S8,L. S8 to S3,L. S5 to S3,S6,S9,L. S3 to S5,S7,W,L. S7 to S6,L. S6 to S3,L. S9 to S5,S8,S10,W. S10 to S9,S11. S11 to S11,W,L. None to S2/S4. So correct.
+
+Need be extremely accurate? Need final values each with 4 significant figures. Could be 0.1035, 2.671. Let's validate by alternative method or exact computations. Need ensure probability f1 exact.
+
+Let's recalc f exact to avoid arithmetic error.
+
+f equations:
+f11=3/8=0.375
+f10=0.4 f9 +0.6*0.375 =0.4 f9 +0.225.
+
+f8=0.4 f3.
+f7=0.3 f6; f6=0.4 f3 => f7=0.12 f3.
+
+f5=0.2f3+0.3f6+0.2f9 =0.2f3+0.12f3+0.2f9=0.32f3+0.2f9.
+f3=0.2f5+0.4f7+0.1=0.2f5+0.048f3+0.1 =>0.952f3=0.2f5+0.1. Wait earlier I wrote 0.952 f3 -0.2 f5 =0.1? Let's check! I may have sign error! This is crucial.
+
+Original: f3 = .2 f5 + .4 f7 + .1.
+f7=.12 f3, so .4f7=.048f3.
+Thus f3 = .2f5 + .048f3 + .1.
+Bring f3 - .048f3 = .2f5 + .1.
+0.952 f3 = 0.2 f5 + 0.1. Not 0.952 f3 -0.2f5 =0.1? Yes subtract 0.2f5: 0.952 f3 -0.2 f5 =0.1. Correct. Earlier Eq B: 0.952 f3 -0.2 f5 =0.1. Good.
+
+Then Eq A f5=.32 f3+.2f9. Substitute:
+0.952 f3 -0.2(.32 f3+.2f9)=0.1
+=0.952 f3 -0.064 f3 -0.04 f9 =0.1
+0.888 f3 -0.04 f9=0.1. Correct.
+
+f9 equation: f9=.1f5+.1f8+.3f10+.5.
+f8=.4 f3, f10=.4f9+.225.
+So = .1f5+.04f3+.12f9+.0675+.5 =.1f5+.04f3+.12f9+.5675.
+Bring .88f9=.1f5+.04f3+.5675. Correct.
+
+Sub f5=.32f3+.2f9:
+.88f9=.032f3+.02f9+.04f3+.5675=.072f3+.02f9+.5675
+=> .86f9=.072f3+.5675. Correct.
+
+Solve equations:
+0.888 f3 -0.04 f9=0.1
+-0.072 f3 +0.86 f9=0.5675 (since .86f9 - .072f3 = .5675).
+
+Compute determinant 0.888*0.86 - (-0.04)(-0.072)? Matrix:
+[0.888  -0.04] [f3; f9] = [0.100]
+[-0.072  0.86] = [0.5675]
+Det =0.888*0.86 - (-0.04*-0.072)=0.76368 -0.00288=0.7608.
+f3=(0.1*0.86 - (-0.04)*0.5675)/det =0.086 +0.0227=0.1087/det=0.14287592. Good.
+f9=(0.888*0.5675 -0.1*(-0.072))/det =0.50394+0.0072=0.51114/det=0.671845... Good.
+
+f5=0.32*0.14287592 +0.2*0.67184543=0.045720294+0.134369086=0.18008938.
+
+f1=(.2 f5+.5 f8)/.9. f8=.4 f3=.057150368.
+.2 f5=.036017876.
+Sum=.093168244/.9=.103520271. Good.
+
+Let's compute e more accurately and verify equations.
+
+e equations again:
+e11 = 1/(1-.2)=1.25 yes.
+e10=1 + .4 e9 + .6 e11 =1 +0.4e9+0.75=1.75+0.4e9 yes.
+
+e8=1+.4e3 (since to S3 .4, L .6)
+e6=1+.4e3 (to S3 .4, L .6)
+e7=1+.3e6 =1+.3(1+.4e3)=1.3+0.12e3. Check from S7 to S6 0.3, L 0.7. Yes if move to L after one step stop. e7=1+0.3 e6. Correct.
+
+e3=1+.2e5+.4e7. (S3 to S5 .2, S7 .4, W .1,L .3). =1+.2e5+.4(1.3+.12e3)=1+.2e5+.52+.048e3 =1.52+.2e5+.048e3. =>0.952e3 -0.2e5=1.52. Correct.
+
+e5=1+.2e3+.3e6+.2e9 (L .3). e6=1+.4e3. =1+.2e3+.3+.12e3+.2e9=1.3+.32e3+.2e9. Correct.
+
+e9=1+.1e5+.1e8+.3e10 (W .5). e8=1+.4e3; e10=1.75+.4e9.
+=1+.1e5+.1(1+.4e3)+.3(1.75+.4e9)
+1 +.1e5+.1+.04e3+.525+.12e9 =1.625+.1e5+.04e3+.12e9. Bring .88e9=1.625+.1e5+.04e3. Correct.
+
+Solve again with exact:
+A: 0.952 e3 -0.2 e5 =1.52.
+B: e5 -0.32 e3 -0.2 e9 =1.3.
+C: 0.88 e9 -0.1e5 -0.04e3 =1.625.
+
+From A e5=(0.952e3-1.52)/0.2 =4.76e3 -7.6 yes.
+
+B: 4.76e3 -7.6 -0.32e3 -0.2e9 =1.3 =>4.44e3 -8.9 =0.2e9. Wait earlier: 4.76-0.32=4.44. Move -7.6: 4.44e3 -7.6 -0.2e9 =1.3 =>4.44e3 -8.9 =0.2e9. So e9=22.2e3 -44.5. yes.
+
+C: 0.88(22.2e3 -44.5) -0.1(4.76e3 -7.6) -0.04e3 =1.625.
+First term =19.536 e3 -39.16
+second = -0.476 e3 +0.76
+third=-0.04e3
+Sum coefficients 19.536-0.476-0.04=19.02. Constants -39.16+0.76=-38.4.
+19.02e3 -38.4=1.625 =>19.02e3=40.025. e3=40.025/19.02.
+
+Compute 40.025/19.02. Multiply both by? 19.02*2.104 =? Let's exact: 40.025/(19.02). 19.02 =951/50. 40.025=1601/40. Ratio= (1601/40)*(50/951)=1601*5/(4*951)=8005/3804. Yes.
+
+Compute decimal more precisely: 8005/3804.
+3804*2=7608 rem397.
+397/3804. 3804*0.1043 =? Let's do long:
+3970/3804=1 rem166 => 0.1
+1660/3804=0 rem1660 => 0.10
+16600/3804=4 (15216) rem1384 => 0.104
+13840/3804=3 (11412) rem2428 => 0.1043
+24280/3804=6 (22824) rem1456 =>0.10436
+14560/3804=3 (11412) rem3148 =>0.104363
+31480/3804=8 (30432) rem1048 =>0.1043638
+10480/3804=2 (7608) rem2872 =>0.10436382
+28720/3804=7 (26628) rem2092 =>0.104363827
+20920/3804=5 (19020) rem1900 =>0.1043638275
+19000/3804=4 (15216) rem3784 =>0.10436382754
+37840/3804=9 (34236) rem3604 =>0.104363827549
+36040/3804=9 (34236) rem1804 =>0.1043638275499...
+So e3=2.10436382755.
+
+e5 exact: e5=4.76e3 -7.6 = (119/25)*(8005/3804) -38/5.
+Compute numerator common maybe.
+4.76=119/25.
+119*8005 = 8005*(120-1)=960600-8005=952595.
+Denom 25*3804=95100.
+38/5 =38*? denom 95100 /5=19020; 38*19020=722760.
+e5=(952595 -722760)/95100 =229835/95100 =? Divide 5=45967/19020. Decimal.
+
+Compute 229835/95100. 95100*2=190200 rem39635. rem/95100=0.4167718. Let's divide:
+39635/95100.
+0.4=38040 rem1595.
+0.01=951 rem644 =>0.41
+0.006=570.6 rem73.4 =>0.416
+0.0007=66.57 rem6.83 =>0.4167
+0.00007=6.657 rem0.173 =>0.41677
+0.000001=0.0951 rem0.0779 =>0.416771
+0.0000008=0.07608 rem0.00182 =>0.4167718
+0.00000001=0.000951 rem0.00087 =>0.41677181
+So e5=2.41677181914? Let's exact use 45967/19020.
+19020*2=38040 rem7927.
+7927/19020=0.41677181913775 (since 19020*0.41677=7926?).
+Compute 7927/19020:
+0.416 =7912.32 rem14.68
+0.0007=13.314 rem1.366 total .4167
+0.00007=1.3314 rem0.0346 total .41677
+0.000001=0.01902 rem0.01558 total .416771
+0.0000008=0.015216 rem0.000364 total .4167718
+0.00000001=0.0001902 rem0.000174 total .41677181
+0.000000009=0.00017118 rem0.0000028 total .416771819
+So e5=2.41677181914.
+
+e9 exact via e9=22.2e3 -44.5 = (111/5)*(8005/3804) -89/2.
+111*8005=888555? 8005*100=800500; *11=88055; sum888555. Denom 19020.
+89/2 =89*9510/19020 =846390/19020.
+Difference=42165/19020 =? 42165/19020. Divide 15=2811/1268? 19020/15=1268, 42165/15=2811. e9=2811/1268=2.21687697161. Let's compute.
+
+Check e9 from B relation: e9=22.2*2.10436382755 -44.5. 22*2.10436382755=46.295? plus .2=0.42087 =>46.71688 -44.5=2.21687697.
+
+Now e1 exact:
+e1=(1.5 +0.2e5+0.2e3)/0.9.
+= (3/2 +1/5(e5+e3)) / (9/10)
+= (10/9)*(3/2 + (e5+e3)/5)
+= (10/9)*(15/10 + (e5+e3)/5) = (10/9)*((15 +2(e5+e3))/10)= (15+2(e5+e3))/9? Let's check: (3/2)=1.5 =15/10. (e5+e3)/5 =2(e5+e3)/10. Sum=(15+2(e5+e3))/10. times 10/9 = (15+2(e5+e3))/9. Yes.
+
+e5+e3 =2.41677181914 +2.10436382755=4.52113564669.
+2 sum=9.04227129338. +15=24.04227129338. /9=2.67136347704. yes.
+
+So expected steps =2.671363477. 4 sig figs =2.671 (since next digit 3). Probability f1=0.10352027. 4 sig figs =0.1035 (next digit 2). Need format plain decimal numbers separated by commas. Maybe they expect 0.1035,2.671. Need final line exactly.
+
+But let's consider if "4 significant figures" for 0.1035 has four? Digits 1,0,3,5 = four. For 2.671 also four. Good.
+
+Let's ensure no hidden issue: The token moves to same state allowed; W/L absorbing (stays forever). Expected number of steps until it is absorbed (in W or L). In Markov chain expected hitting time. We used equations e_i =1 + sum p_ij e_j for transient, e_absorb=0. Since absorbing states included in transition sum but e=0; if self loop in transient counts step, included. Good.
+
+Let's maybe double-check via computing absorption prob from S1 perhaps simulation intuition. Starting S1 has 20% immediate L. 50% to S8 which has 60% immediate L and 40% to S3; S3 has 30% L, 10% W, etc. W probability maybe ~0.10. S1 has no direct W, paths to W through S3/S9/S11. Fine.
+
+Expected steps ~2.67 seems low because many immediate L/W. Let's calculate e1 directly rough: From S1: 0.1 self,0.2 S5,0.5 S8,0.2 L. If self adds. e8 ~1+0.4e3 ~1.8417. S5 e~2.4168. e1=(1+0.1e1+0.2*2.4168+0.5*1.8417) /? Actually e1=1+0.1e1+0.483+0.921=2.404+0.1e1 =>0.9e1=2.404 ->2.671. yes. Since S8 immediate absorption mostly, low.
+
+Need final answer line. The user says "Think it through, then finish with final line of form ANSWER: <your answer>." We can provide just final. Desired oververbosity 5 but final answer maybe include minimal. Need ensure final line exactly.
+
+Final:
+ANSWER: 0.1035, 2.671
+
+Check spacing? "separated by commas" probably no spaces okay. Use plain decimal. They requested "Give the 2 values, each with 4 significant figures, as plain decimal numbers separated by commas." So final line `ANSWER: 0.1035,2.671`. I'll include.
+

@@ -1,0 +1,858 @@
+We need solve. Need compute Gaussian elimination partial pivoting on 9x9 integer matrix. Need output row permutation original indices r1..r9 and diagonal U. Need careful arithmetic.
+
+We can perform manually with exact rational/integer. Need determine pivot swaps and U diag. We don't necessarily need full L, just permit row swaps and elimination. Need track matrix current rows and original labels. Perform steps, choose max abs in col k among rows current k..n. Swap if needed. Then eliminate below using pivot.
+
+Let's label original rows:
+1: [0,0,0,-3,0,6,4,-2,-5]
+2: [3,-3,-6,3,6,1,3,-4,-1]
+3: [-3,5,2,-5,2,-1,-5,6,2]
+4: [0,-2,-2,3,-2,0,1,-2,1]
+5: [-6,6,6,-2,0,-2,-4,0,4]
+6: [3,-3,3,-3,-6,1,2,-2,-4]
+7: [-3,7,7,-7,4,-1,0,0,-4]
+8: [-3,3,3,2,9,-3,0,-9,2]
+9: [0,2,2,-9,-4,4,-3,6,-7]
+
+Need pivot step k=1 column1 current original rows all. Values col1:
+r1 0
+r2 3
+r3 -3
+r4 0
+r5 -6
+r6 3
+r7 -3
+r8 -3
+r9 0
+largest abs 6 at row5. Swap into position1. r1=5. Now position1 original row5. Other order positions 2..9: original rows 1,2,3,4,6,7,8,9? Need after swap row5 to pos1, row1 to pos5 maybe. Let's maintain current row list positions 1..9:
+pos1: orig5
+pos2: orig1
+pos3: orig2
+pos4: orig3
+pos5: orig4
+pos6: orig6
+pos7: orig7
+pos8: orig8
+pos9: orig9
+Yes.
+
+Step1 pivot row orig5: [-6,6,6,-2,0,-2,-4,0,4]. Need eliminate column1 below. For each i pos2..9, multiplier m = a_i1 / a_pivot (-6). Since a_pivot = -6. Equivalent new row = row_i - m*pivot.
+
+Let's compute U after step1 maybe also relevant future. Need precise.
+
+Pivot p1 = [-6, 6, 6, -2, 0, -2, -4, 0, 4].
+
+Rows current:
+pos2 orig1 a= [0,0,0,-3,0,6,4,-2,-5], col1 0 => no change.
+pos3 orig2 [3,-3,-6,3,6,1,3,-4,-1], m=3/-6=-1/2. new = row - (-1/2)p = row + 0.5 p. Fractions. Let's maybe multiply? We can allow fractions. But later pivots integer? Need exact.
+
+pos4 orig3 [-3,5,2,-5,2,-1,-5,6,2], m=(-3)/(-6)=1/2. new = row - 0.5 p.
+pos5 orig4 [0,-2,-2,3,-2,0,1,-2,1], m=0? col1 0 no change.
+pos6 orig6 [3,-3,3,-3,-6,1,2,-2,-4], m=3/-6=-1/2. new = row +0.5p.
+pos7 orig7 [-3,7,7,-7,4,-1,0,0,-4], m=(-3)/(-6)=1/2. new=row-0.5p.
+pos8 orig8 [-3,3,3,2,9,-3,0,-9,2], m=1/2. new row -0.5p.
+pos9 orig9 [0,2,2,-9,-4,4,-3,6,-7], m=0 no change.
+
+Could do fractions. Need subsequent pivot step k=2 among rows pos2..9 column2 current. Need compare values. Let's compute col2 after eliminations.
+
+For each:
+pos2 orig1 col2 original 0 (since m0).
+pos3 orig2 col2 = -3 +0.5*p_col2(6)= -3+3=0.
+pos4 orig3 col2 = 5 -0.5*6 = 5-3=2.
+pos5 orig4 col2 -2 unchanged.
+pos6 orig6 col2 = -3+0.5*6 =0.
+pos7 orig7 col2 =7 -0.5*6 =4.
+pos8 orig8 col2 =3 -0.5*6 =0.
+pos9 orig9 col2 =2 unchanged.
+So step2 candidates rows pos2..9 col2: pos2 0, pos3 0, pos4 2, pos5 -2, pos6 0, pos7 4, pos8 0, pos9 2. Max abs 4 at pos7. Swap pos2 with pos7. Thus r2 = original row at pos7 after step1 = orig7. Need update current order after swap. Let's track.
+
+Before step2 positions:
+1 orig5
+2 orig1
+3 orig2
+4 orig3
+5 orig4
+6 orig6
+7 orig7
+8 orig8
+9 orig9
+
+Swap pos2 and pos7:
+pos1 orig5
+pos2 orig7
+pos3 orig2
+pos4 orig3
+pos5 orig4
+pos6 orig6
+pos7 orig1
+pos8 orig8
+pos9 orig9
+
+Need perform elimination step2. Pivot row pos2 currently is orig7 row modified after step1? Wait pos7 was orig7 after step1 elimination (col1 eliminated) row = orig7 -0.5 p1. Yes pivot for step2 is that modified row, not original. Need compute pivot row full.
+
+Let's compute all rows after step1 accurately. It may be easier to maintain matrix after each step with fractions or scaled maybe. Let's compute step1 current rows fully.
+
+p1 = orig5 = [-6,6,6,-2,0,-2,-4,0,4].
+
+pos1 = p1.
+
+pos2 orig1 = [0,0,0,-3,0,6,4,-2,-5].
+
+pos3 orig2 + 1/2 p1:
+orig2 [3,-3,-6,3,6,1,3,-4,-1]
++ [ -3,3,3,-1,0,-1,-2,0,2] (half p)
+= [0,0,-3,2,6,0,1,-4,1].
+Check col2 0. Good.
+pos3 = [0,0,-3,2,6,0,1,-4,1].
+
+pos4 orig3 - 1/2 p1:
+orig3 [-3,5,2,-5,2,-1,-5,6,2]
+- [-3,3,3,-1,0,-1,-2,0,2]
+= [0,2,-1,-4,2,0,-3,6,0].
+Wait col4: -5 - (-1)= -4 yes. col5 2-0=2. col6 -1 -(-1)=0. col7 -5 -(-2)= -3. col8 6-0=6. col9 2-2=0.
+pos4 = [0,2,-1,-4,2,0,-3,6,0].
+
+pos5 orig4 unchanged = [0,-2,-2,3,-2,0,1,-2,1].
+
+pos6 orig6 + 1/2 p1:
+orig6 [3,-3,3,-3,-6,1,2,-2,-4]
++ [-3,3,3,-1,0,-1,-2,0,2]
+= [0,0,6,-4,-6,0,0,-2,-2].
+pos6 = [0,0,6,-4,-6,0,0,-2,-2].
+
+pos7 orig7 - 1/2 p1:
+orig7 [-3,7,7,-7,4,-1,0,0,-4]
+- [-3,3,3,-1,0,-1,-2,0,2]
+= [0,4,4,-6,4,0,2,0,-6].
+pos7 = [0,4,4,-6,4,0,2,0,-6].
+
+pos8 orig8 - 1/2 p1:
+orig8 [-3,3,3,2,9,-3,0,-9,2]
+- [-3,3,3,-1,0,-1,-2,0,2]
+= [0,0,0,3,9,-2,2,-9,0].
+pos8 = [0,0,0,3,9,-2,2,-9,0].
+
+pos9 orig9 unchanged = [0,2,2,-9,-4,4,-3,6,-7].
+
+Check pos3 etc.
+
+Now step2 swap pos2 and pos7. Before elimination after swap:
+pos1 orig5 p1 [-6,...]
+pos2 = old pos7 = orig7 mod = [0,4,4,-6,4,0,2,0,-6]
+pos3 = old pos3 orig2 mod = [0,0,-3,2,6,0,1,-4,1]
+pos4 = old pos4 orig3 mod = [0,2,-1,-4,2,0,-3,6,0]
+pos5 = old pos5 orig4 = [0,-2,-2,3,-2,0,1,-2,1]
+pos6 = old pos6 orig6 mod = [0,0,6,-4,-6,0,0,-2,-2]
+pos7 = old pos2 orig1 = [0,0,0,-3,0,6,4,-2,-5]
+pos8 = old pos8 orig8 mod = [0,0,0,3,9,-2,2,-9,0]
+pos9 = old pos9 orig9 = [0,2,2,-9,-4,4,-3,6,-7]
+
+Pivot p2 row pos2 = [0,4,4,-6,4,0,2,0,-6]. Pivot value a22 = 4.
+
+Eliminate col2 below positions 3..9. For each row, m = a_i2 / 4. New row = row_i - m*p2.
+
+Compute after step2 rows. Need track for next pivot columns. Let's compute exact fractions maybe. Values col2:
+pos3 0 -> no change.
+pos4 2 -> m=1/2.
+pos5 -2 -> m=-1/2.
+pos6 0 -> no.
+pos7 0 -> no.
+pos8 0 -> no.
+pos9 2 -> m=1/2.
+
+So only pos4, pos5, pos9 change.
+
+p2 = [0,4,4,-6,4,0,2,0,-6].
+
+pos3 unchanged: [0,0,-3,2,6,0,1,-4,1].
+
+pos4 old [0,2,-1,-4,2,0,-3,6,0] - 1/2 p2:
+half p2 = [0,2,2,-3,2,0,1,0,-3].
+Subtract:
+col1 0
+col2 0
+col3 -1-2=-3
+col4 -4 - (-3)= -1
+col5 2-2=0
+col6 0-0=0
+col7 -3-1=-4
+col8 6-0=6
+col9 0 - (-3)=3
+pos4 = [0,0,-3,-1,0,0,-4,6,3].
+
+pos5 old [0,-2,-2,3,-2,0,1,-2,1] - (-1/2)p2 = old + 1/2 p2:
+half p2 [0,2,2,-3,2,0,1,0,-3].
+= [0,0,0,0,0,0,2,-2,-2]? Check col4 3 + (-3)=0. col5 -2+2=0. col7 1+1=2. col8 -2+0=-2. col9 1-3=-2. Yes.
+pos5 = [0,0,0,0,0,0,2,-2,-2].
+
+pos6 unchanged [0,0,6,-4,-6,0,0,-2,-2].
+
+pos7 unchanged [0,0,0,-3,0,6,4,-2,-5].
+
+pos8 unchanged [0,0,0,3,9,-2,2,-9,0].
+
+pos9 old [0,2,2,-9,-4,4,-3,6,-7] - 1/2 p2:
+half p2 [0,2,2,-3,2,0,1,0,-3].
+= col3 2-2=0
+col4 -9 -(-3)= -6
+col5 -4-2=-6
+col6 4-0=4
+col7 -3-1=-4
+col8 6-0=6
+col9 -7 -(-3)= -4
+col1 0 col2 0
+pos9 = [0,0,0,-6,-6,4,-4,6,-4].
+
+Now step3: positions after step2:
+1 orig5
+2 orig7
+3 orig2
+4 orig3
+5 orig4
+6 orig6
+7 orig1
+8 orig8
+9 orig9
+Wait swap step2 pos2 with pos7 resulted pos7 orig1, yes. Need check pos4 becomes orig3 mod. Current rows:
+pos1 p1 orig5
+pos2 p2 orig7
+pos3 orig2 mod [0,0,-3,2,6,0,1,-4,1]
+pos4 orig3 mod after step2 [0,0,-3,-1,0,0,-4,6,3]
+pos5 orig4 mod [0,0,0,0,0,0,2,-2,-2]
+pos6 orig6 mod [0,0,6,-4,-6,0,0,-2,-2]
+pos7 orig1 mod [0,0,0,-3,0,6,4,-2,-5]
+pos8 orig8 mod [0,0,0,3,9,-2,2,-9,0]
+pos9 orig9 mod [0,0,0,-6,-6,4,-4,6,-4]
+
+Now step3 pivot column3 among rows pos3..9. Values:
+pos3 col3 -3
+pos4 col3 -3
+pos5 0
+pos6 6
+pos7 0
+pos8 0
+pos9 0
+Max abs 6 at pos6. Swap pos3 with pos6. Thus r3 = original row at pos6 currently = orig6. Need update order.
+
+Before step3 order positions:
+1 orig5
+2 orig7
+3 orig2
+4 orig3
+5 orig4
+6 orig6
+7 orig1
+8 orig8
+9 orig9
+Swap pos3 and pos6:
+pos1 orig5
+pos2 orig7
+pos3 orig6
+pos4 orig3
+pos5 orig4
+pos6 orig2
+pos7 orig1
+pos8 orig8
+pos9 orig9
+So r3=6.
+
+Pivot row p3 = old pos6 = orig6 mod after step2 = [0,0,6,-4,-6,0,0,-2,-2]. Pivot value 6.
+
+Eliminate col3 below positions 4..9. Current after swap:
+pos1 p1
+pos2 p2
+pos3 p3 [0,0,6,-4,-6,0,0,-2,-2]
+pos4 = old pos4 [0,0,-3,-1,0,0,-4,6,3]
+pos5 = old pos5 [0,0,0,0,0,0,2,-2,-2]
+pos6 = old pos3 [0,0,-3,2,6,0,1,-4,1]
+pos7 = old pos7 [0,0,0,-3,0,6,4,-2,-5]
+pos8 = old pos8 [0,0,0,3,9,-2,2,-9,0]
+pos9 = old pos9 [0,0,0,-6,-6,4,-4,6,-4]
+
+Wait pos4 and pos6 etc after swap: old pos4 stays pos4? Swap pos3 with pos6, so old pos6 to pos3, old pos3 to pos6. Yes.
+
+Eliminate rows with nonzero col3: pos4 col3 -3, pos6 col3 -3. Others 0. Multipliers m = a_i3 / pivot = (-3)/6 = -1/2 for both.
+
+New row pos4 = old pos4 - (-1/2)*p3 = old + 0.5 p3.
+p3 half = [0,0,3,-2,-3,0,0,-1,-1].
+pos4 old [0,0,-3,-1,0,0,-4,6,3] + half:
+col3 -3+3=0
+col4 -1-2=-3
+col5 0-3=-3
+col6 0
+col7 -4+0=-4
+col8 6-1=5
+col9 3-1=2
+pos4 = [0,0,0,-3,-3,0,-4,5,2].
+
+pos6 old (old pos3) [0,0,-3,2,6,0,1,-4,1] + half:
+col3 -3+3=0
+col4 2-2=0
+col5 6-3=3
+col6 0
+col7 1+0=1
+col8 -4-1=-5
+col9 1-1=0
+pos6 = [0,0,0,0,3,0,1,-5,0].
+
+Other rows unchanged:
+pos5 [0,0,0,0,0,0,2,-2,-2]
+pos7 [0,0,0,-3,0,6,4,-2,-5]
+pos8 [0,0,0,3,9,-2,2,-9,0]
+pos9 [0,0,0,-6,-6,4,-4,6,-4]
+
+Now step4: pivot column4 among positions 4..9. Current rows positions:
+1 orig5
+2 orig7
+3 orig6
+4 orig3 (modified) [0,0,0,-3,-3,0,-4,5,2]
+5 orig4 [0,0,0,0,0,0,2,-2,-2]
+6 orig2 [0,0,0,0,3,0,1,-5,0]
+7 orig1 [0,0,0,-3,0,6,4,-2,-5]
+8 orig8 [0,0,0,3,9,-2,2,-9,0]
+9 orig9 [0,0,0,-6,-6,4,-4,6,-4]
+Values col4:
+pos4 -3 abs3
+pos5 0
+pos6 0
+pos7 -3 abs3
+pos8 3 abs3
+pos9 -6 abs6 max at pos9. Swap pos4 with pos9. Thus r4 = original row at pos9 currently = orig9. Update order.
+
+Before step4 order:
+1 orig5
+2 orig7
+3 orig6
+4 orig3
+5 orig4
+6 orig2
+7 orig1
+8 orig8
+9 orig9
+Swap pos4 and pos9:
+pos1 orig5
+pos2 orig7
+pos3 orig6
+pos4 orig9
+pos5 orig4
+pos6 orig2
+pos7 orig1
+pos8 orig8
+pos9 orig3
+So r4=9.
+
+Pivot p4 = old pos9 = [0,0,0,-6,-6,4,-4,6,-4]. Pivot value -6.
+
+Need eliminate col4 below positions 5..9. Current after swap:
+pos4 pivot p4.
+pos5 old pos5 [0,0,0,0,0,0,2,-2,-2]
+pos6 old pos6 [0,0,0,0,3,0,1,-5,0]
+pos7 old pos7 [0,0,0,-3,0,6,4,-2,-5]
+pos8 old pos8 [0,0,0,3,9,-2,2,-9,0]
+pos9 old pos4 [0,0,0,-3,-3,0,-4,5,2]
+
+Rows with nonzero col4: pos7 -3, pos8 3, pos9 -3. pos5,pos6 zero.
+
+Pivot p4 = [0,0,0,-6,-6,4,-4,6,-4].
+
+For pos7 col4=-3, m = (-3)/(-6)=1/2. new = row - 0.5 p4.
+pos7 old [0,0,0,-3,0,6,4,-2,-5].
+half p4 = [0,0,0,-3,-3,2,-2,3,-2].
+Subtract:
+col4 -3 - (-3)=0
+col5 0 - (-3)=3
+col6 6 - 2=4
+col7 4 - (-2)=6
+col8 -2 - 3 = -5
+col9 -5 - (-2)= -3
+pos7 = [0,0,0,0,3,4,6,-5,-3].
+
+For pos8 col4=3, m=3/(-6)=-1/2. new = row - (-1/2)p = row + 0.5 p4.
+pos8 old [0,0,0,3,9,-2,2,-9,0] + half [0,0,0,-3,-3,2,-2,3,-2]:
+col4 3-3=0
+col5 9-3=6
+col6 -2+2=0
+col7 2-2=0
+col8 -9+3=-6
+col9 0-2=-2
+pos8 = [0,0,0,0,6,0,0,-6,-2].
+
+For pos9 col4=-3, m=(-3)/(-6)=1/2. new = old pos4 - 0.5 p4.
+old pos9 [0,0,0,-3,-3,0,-4,5,2] - half [0,0,0,-3,-3,2,-2,3,-2]:
+col4 -3 -(-3)=0
+col5 -3 -(-3)=0
+col6 0-2=-2
+col7 -4 -(-2)= -2
+col8 5-3=2
+col9 2 -(-2)=4
+pos9 = [0,0,0,0,0,-2,-2,2,4].
+
+pos5 [0,0,0,0,0,0,2,-2,-2] unchanged.
+pos6 [0,0,0,0,3,0,1,-5,0] unchanged.
+
+Now step5: pivot column5 among positions 5..9. Current rows positions:
+1 orig5
+2 orig7
+3 orig6
+4 orig9
+5 orig4: [0,0,0,0,0,0,2,-2,-2]
+6 orig2: [0,0,0,0,3,0,1,-5,0]
+7 orig1: after step4 [0,0,0,0,3,4,6,-5,-3]
+8 orig8: [0,0,0,0,6,0,0,-6,-2]
+9 orig3: [0,0,0,0,0,-2,-2,2,4]
+
+Values col5:
+pos5 0
+pos6 3
+pos7 3
+pos8 6
+pos9 0
+Max abs 6 at pos8. Swap pos5 with pos8. Thus r5 = original row at pos8 currently = orig8. Update.
+
+Before step5 order:
+1 orig5
+2 orig7
+3 orig6
+4 orig9
+5 orig4
+6 orig2
+7 orig1
+8 orig8
+9 orig3
+Swap pos5 and pos8:
+pos1 orig5
+pos2 orig7
+pos3 orig6
+pos4 orig9
+pos5 orig8
+pos6 orig2
+pos7 orig1
+pos8 orig4
+pos9 orig3
+So r5=8.
+
+Pivot p5 = old pos8 = [0,0,0,0,6,0,0,-6,-2]. Pivot value 6.
+
+Eliminate col5 below positions 6..9. Current after swap:
+pos5 pivot.
+pos6 old pos6 [0,0,0,0,3,0,1,-5,0] col5 3, m=3/6=1/2.
+pos7 old pos7 [0,0,0,0,3,4,6,-5,-3] m=1/2.
+pos8 old pos5 [0,0,0,0,0,0,2,-2,-2] col5 0 no.
+pos9 old pos9 [0,0,0,0,0,-2,-2,2,4] col5 0 no.
+
+p5 = [0,0,0,0,6,0,0,-6,-2]; half = [0,0,0,0,3,0,0,-3,-1].
+
+pos6 new = old [0,0,0,0,3,0,1,-5,0] - half:
+col5 3-3=0
+col6 0-0=0
+col7 1-0=1
+col8 -5 -(-3)= -2
+col9 0 -(-1)=1
+pos6 = [0,0,0,0,0,0,1,-2,1].
+
+pos7 new = [0,0,0,0,3,4,6,-5,-3] - half:
+col5 0
+col6 4-0=4
+col7 6-0=6
+col8 -5 -(-3)= -2
+col9 -3 -(-1)= -2
+pos7 = [0,0,0,0,0,4,6,-2,-2].
+
+pos8 unchanged [0,0,0,0,0,0,2,-2,-2].
+pos9 unchanged [0,0,0,0,0,-2,-2,2,4].
+
+Step6: pivot column6 among positions 6..9. Current positions:
+1 orig5
+2 orig7
+3 orig6
+4 orig9
+5 orig8
+6 orig2 [0,0,0,0,0,0,1,-2,1]
+7 orig1 [0,0,0,0,0,4,6,-2,-2]
+8 orig4 [0,0,0,0,0,0,2,-2,-2]
+9 orig3 [0,0,0,0,0,-2,-2,2,4]
+
+Values col6:
+pos6 0
+pos7 4
+pos8 0
+pos9 -2
+Max abs 4 at pos7. Swap pos6 with pos7. Thus r6 = original row at pos7 currently = orig1. Update.
+
+Before step6 order:
+1 orig5
+2 orig7
+3 orig6
+4 orig9
+5 orig8
+6 orig2
+7 orig1
+8 orig4
+9 orig3
+Swap pos6 and pos7:
+pos1 orig5
+pos2 orig7
+pos3 orig6
+pos4 orig9
+pos5 orig8
+pos6 orig1
+pos7 orig2
+pos8 orig4
+pos9 orig3
+r6=1.
+
+Pivot p6 = old pos7 = [0,0,0,0,0,4,6,-2,-2]. Pivot value 4.
+
+Eliminate col6 below positions 7..9. Current after swap:
+pos6 p6.
+pos7 old pos6 [0,0,0,0,0,0,1,-2,1] col6 0 no.
+pos8 old pos8 [0,0,0,0,0,0,2,-2,-2] col6 0 no.
+pos9 old pos9 [0,0,0,0,0,-2,-2,2,4] col6 -2, m = -2/4 = -1/2. New = row - (-1/2)p6 = row + 0.5 p6.
+
+p6 half = [0,0,0,0,0,2,3,-1,-1].
+pos9 old [0,0,0,0,0,-2,-2,2,4] + half:
+col6 -2+2=0
+col7 -2+3=1
+col8 2-1=1
+col9 4-1=3
+pos9 = [0,0,0,0,0,0,1,1,3].
+
+pos7 unchanged [0,0,0,0,0,0,1,-2,1].
+pos8 unchanged [0,0,0,0,0,0,2,-2,-2].
+
+Step7: pivot column7 among positions 7..9. Current:
+pos7 orig2? Wait after swap pos7=orig2 row old pos6 [0,0,0,0,0,0,1,-2,1].
+pos8 orig4 [0,0,0,0,0,0,2,-2,-2]
+pos9 orig3 [0,0,0,0,0,0,1,1,3] after step6.
+Values col7:
+pos7 1
+pos8 2
+pos9 1
+Max abs 2 at pos8. Swap pos7 with pos8. Thus r7 = original row at pos8 currently = orig4. Update.
+
+Before step7 order:
+1 orig5
+2 orig7
+3 orig6
+4 orig9
+5 orig8
+6 orig1
+7 orig2
+8 orig4
+9 orig3
+Swap pos7 and pos8:
+pos1 orig5
+pos2 orig7
+pos3 orig6
+pos4 orig9
+pos5 orig8
+pos6 orig1
+pos7 orig4
+pos8 orig2
+pos9 orig3
+r7=4.
+
+Pivot p7 = old pos8 = [0,0,0,0,0,0,2,-2,-2]. Pivot value 2.
+
+Eliminate col7 below positions 8..9. Current after swap:
+pos7 p7.
+pos8 old pos7 [0,0,0,0,0,0,1,-2,1] col7 1, m=1/2. new = row - 0.5 p7.
+pos9 old pos9 [0,0,0,0,0,0,1,1,3] col7 1, m=1/2. new = row -0.5 p7.
+
+p7 half = [0,0,0,0,0,0,1,-1,-1].
+
+pos8 new = [0,0,0,0,0,0,1,-2,1] - [0,0,0,0,0,0,1,-1,-1]:
+col7 0
+col8 -2 -(-1)= -1
+col9 1 -(-1)=2
+pos8 = [0,0,0,0,0,0,0,-1,2].
+
+pos9 new = [0,0,0,0,0,0,1,1,3] - half:
+col7 0
+col8 1 -(-1)=2
+col9 3 -(-1)=4
+pos9 = [0,0,0,0,0,0,0,2,4].
+
+Step8: pivot column8 among positions 8..9.
+pos8 col8 -1
+pos9 col8 2
+Max abs 2 at pos9. Swap pos8 with pos9. Thus r8 = original row at pos9 currently = orig3. Update.
+Before:
+pos1 orig5
+pos2 orig7
+pos3 orig6
+pos4 orig9
+pos5 orig8
+pos6 orig1
+pos7 orig4
+pos8 orig2
+pos9 orig3
+Swap pos8,pos9:
+pos8 orig3, pos9 orig2. r8=3.
+
+Pivot p8 = old pos9 = [0,0,0,0,0,0,0,2,4]. Pivot value 2.
+
+Eliminate col8 below pos9. Current pos9 after swap = old pos8 [0,0,0,0,0,0,0,-1,2]. col8 -1. m = (-1)/2 = -1/2. new = row - (-1/2)p8 = row +0.5 p8.
+p8 half=[0,0,0,0,0,0,0,1,2].
+pos9 new = [0,0,0,0,0,0,0,-1,2]+half = [0,0,0,0,0,0,0,0,4].
+
+Step9 no elimination. U diagonal: from rows positions 1..9 diagonal entries.
+
+Need ensure row permutation list r1..r9:
+r1=5
+r2=7
+r3=6
+r4=9
+r5=8
+r6=1
+r7=4
+r8=3
+r9=2? Wait after step8 swap pos8 and pos9: pos9 orig2. Since n=9, r9 = original row at pos9 = orig2. Let's check full final order from above:
+After step7 swap:
+pos1 orig5
+pos2 orig7
+pos3 orig6
+pos4 orig9
+pos5 orig8
+pos6 orig1
+pos7 orig4
+pos8 orig2
+pos9 orig3
+Step8 swap pos8 with pos9:
+pos1 orig5
+pos2 orig7
+pos3 orig6
+pos4 orig9
+pos5 orig8
+pos6 orig1
+pos7 orig4
+pos8 orig3
+pos9 orig2
+Step9 no swap. So r = [5,7,6,9,8,1,4,3,2]. Need verify all original rows exactly once: {5,7,6,9,8,1,4,3,2} yes.
+
+Now diagonal entries U11..U99. Need from final rows:
+U11 = pivot step1 value = -6.
+U22 = step2 pivot = 4.
+U33 = step3 pivot = 6.
+U44 = step4 pivot = -6.
+U55 = step5 pivot = 6.
+U66 = step6 pivot = 4.
+U77 = step7 pivot = 2.
+U88 = step8 pivot = 2.
+U99 = after step8 final row pos9 diagonal entry col9 = 4. Need check U99 is entry at pos9 col9 = 4. Yes.
+
+So tentative answer: 5,7,6,9,8,1,4,3,2,-6,4,6,-6,6,4,2,2,4.
+
+Need be absolutely sure no arithmetic mistakes. Need verify all steps carefully. Since manual, must double-check with independent validation maybe compute determinant? Diagonal product relates det(U)=det(PA)= ±det(A). Product diag = (-6)*4*6*(-6)*6*4*2*2*4. Let's compute: -6*4=-24; *6=-144; *-6=864; *6=5184; *4=20736; *2=41472; *2=82944; *4=331776. Permutation sign? Need sign of P from row permutation [5,7,6,9,8,1,4,3,2]. Could compute if det A? Not helpful. But can verify pivots by doing elimination via maybe computing full U rows and checking.
+
+Let's systematically verify calculations from step1 onward. I can re-run using a more structured method maybe compute U rows final and check against original elimination. Or check each pivot selection and updates. Need ensure no row values affected by earlier swaps incorrectly. Let's reconstruct with labels and maybe use exact matrix after each step.
+
+Initial original rows I'll denote O1..O9:
+O1 = [0,0,0,-3,0,6,4,-2,-5]
+O2 = [3,-3,-6,3,6,1,3,-4,-1]
+O3 = [-3,5,2,-5,2,-1,-5,6,2]
+O4 = [0,-2,-2,3,-2,0,1,-2,1]
+O5 = [-6,6,6,-2,0,-2,-4,0,4]
+O6 = [3,-3,3,-3,-6,1,2,-2,-4]
+O7 = [-3,7,7,-7,4,-1,0,0,-4]
+O8 = [-3,3,3,2,9,-3,0,-9,2]
+O9 = [0,2,2,-9,-4,4,-3,6,-7]
+
+Step1 pivot O5. Multipliers:
+O2? pos originally row O2 at pos? Actually after swap pos2 O1, pos3 O2, pos4 O3, pos5 O4, pos6 O6, pos7 O7, pos8 O8, pos9 O9.
+
+Elim col1:
+O1 col1 0 -> unchanged. O2 col1 3, pivot -6, m=-1/2, new = O2 - (-1/2)O5 = O2 + 0.5 O5. Let's recompute O2 + .5 O5:
+O2 [3,-3,-6,3,6,1,3,-4,-1]
+0.5 O5 [-3,3,3,-1,0,-1,-2,0,2]
+sum [0,0,-3,2,6,0,1,-4,1]. yes.
+O3 col1 -3, m=0.5, new O3 - .5 O5 = [-3,5,2,-5,2,-1,-5,6,2] - [-3,3,3,-1,0,-1,-2,0,2] = [0,2,-1,-4,2,0,-3,6,0]. yes.
+O4 col1 0 unchanged [0,-2,-2,3,-2,0,1,-2,1].
+O6 col1 3 m=-1/2 new O6+.5O5:
+[3,-3,3,-3,-6,1,2,-2,-4]+[-3,3,3,-1,0,-1,-2,0,2]=[0,0,6,-4,-6,0,0,-2,-2]. yes.
+O7 col1 -3 m=0.5 new O7-.5O5:
+[-3,7,7,-7,4,-1,0,0,-4]-[-3,3,3,-1,0,-1,-2,0,2]=[0,4,4,-6,4,0,2,0,-6]. yes.
+O8 col1 -3 m=0.5 new O8-.5O5:
+[-3,3,3,2,9,-3,0,-9,2]-[-3,3,3,-1,0,-1,-2,0,2]=[0,0,0,3,9,-2,2,-9,0]. yes.
+O9 col1 0 unchanged [0,2,2,-9,-4,4,-3,6,-7].
+Good.
+
+Step2 pivot max col2 among rows positions after swap? At step1 positions:
+pos1 O5 [-6,6,6,-2,0,-2,-4,0,4]
+pos2 O1 [0,0,0,-3,0,6,4,-2,-5] col2 0
+pos3 O2' [0,0,-3,2,6,0,1,-4,1] col2 0
+pos4 O3' [0,2,-1,-4,2,0,-3,6,0] col2 2
+pos5 O4 [0,-2,-2,3,-2,0,1,-2,1] col2 -2
+pos6 O6' [0,0,6,-4,-6,0,0,-2,-2] col2 0
+pos7 O7' [0,4,4,-6,4,0,2,0,-6] col2 4
+pos8 O8' [0,0,0,3,9,-2,2,-9,0] col2 0
+pos9 O9 [0,2,2,-9,-4,4,-3,6,-7] col2 2. max 4 pos7. Swap pos2 O1 with pos7 O7'. Yes r2 O7.
+
+After swap positions:
+1 O5
+2 O7' [0,4,4,-6,4,0,2,0,-6]
+3 O2' [0,0,-3,2,6,0,1,-4,1]
+4 O3' [0,2,-1,-4,2,0,-3,6,0]
+5 O4 [0,-2,-2,3,-2,0,1,-2,1]
+6 O6' [0,0,6,-4,-6,0,0,-2,-2]
+7 O1 [0,0,0,-3,0,6,4,-2,-5]
+8 O8' [0,0,0,3,9,-2,2,-9,0]
+9 O9 [0,2,2,-9,-4,4,-3,6,-7]
+
+Elim col2 using O7' pivot 4:
+O3' col2 0 no.
+O4? pos4 O3' col2 2, m=1/2. New O3' -0.5 O7':
+O3' [0,2,-1,-4,2,0,-3,6,0] - [0,2,2,-3,2,0,1,0,-3] = [0,0,-3,-1,0,0,-4,6,3]. yes.
+O5 O4 col2 -2, m=-1/2. new O4 +0.5 O7':
+[0,-2,-2,3,-2,0,1,-2,1]+[0,2,2,-3,2,0,1,0,-3]=[0,0,0,0,0,0,2,-2,-2]. yes.
+O9 col2 2 m=1/2. O9 - 0.5 O7':
+[0,2,2,-9,-4,4,-3,6,-7]-[0,2,2,-3,2,0,1,0,-3]=[0,0,0,-6,-6,4,-4,6,-4]. yes.
+Good.
+
+Step3 positions after step2 as above. Col3 candidates:
+pos3 O2' col3 -3
+pos4 O3'' col3 -3
+pos5 O4'' col3 0
+pos6 O6' col3 6
+pos7 O1 col3 0
+pos8 O8' col3 0
+pos9 O9'' col3 0. max 6 pos6. Swap pos3 O2' with pos6 O6'. r3 O6. Good.
+
+After swap:
+pos3 O6' [0,0,6,-4,-6,0,0,-2,-2]
+pos4 O3'' [0,0,-3,-1,0,0,-4,6,3]
+pos5 O4'' [0,0,0,0,0,0,2,-2,-2]
+pos6 O2' [0,0,-3,2,6,0,1,-4,1]
+pos7 O1 [0,0,0,-3,0,6,4,-2,-5]
+pos8 O8' [0,0,0,3,9,-2,2,-9,0]
+pos9 O9'' [0,0,0,-6,-6,4,-4,6,-4]
+
+Elim col3 pivot 6:
+pos4 col3 -3 m=-1/2, new pos4 +0.5 p. p O6' half [0,0,3,-2,-3,0,0,-1,-1]:
+O3'' [0,0,-3,-1,0,0,-4,6,3]+half = [0,0,0,-3,-3,0,-4,5,2]. yes.
+pos6 col3 -3 same, O2' + half:
+[0,0,-3,2,6,0,1,-4,1]+[0,0,3,-2,-3,0,0,-1,-1]=[0,0,0,0,3,0,1,-5,0]. yes.
+Good.
+
+Step4 after step3 positions:
+1 O5
+2 O7'
+3 O6'
+4 O3''' [0,0,0,-3,-3,0,-4,5,2]
+5 O4'' [0,0,0,0,0,0,2,-2,-2]
+6 O2'' [0,0,0,0,3,0,1,-5,0]
+7 O1 [0,0,0,-3,0,6,4,-2,-5]
+8 O8' [0,0,0,3,9,-2,2,-9,0]
+9 O9'' [0,0,0,-6,-6,4,-4,6,-4]
+Col4 values: pos4 -3, pos5 0, pos6 0, pos7 -3, pos8 3, pos9 -6 max pos9. Swap pos4 with pos9. r4 O9. Good.
+
+After swap:
+pos4 O9'' [0,0,0,-6,-6,4,-4,6,-4]
+pos5 O4''
+pos6 O2''
+pos7 O1
+pos8 O8'
+pos9 O3''' [0,0,0,-3,-3,0,-4,5,2]
+
+Elim col4 pivot -6:
+pos7 O1 col4 -3 m=1/2, O1 - .5 pivot:
+pivot half [0,0,0,-3,-3,2,-2,3,-2].
+O1 [0,0,0,-3,0,6,4,-2,-5] - half = [0,0,0,0,3,4,6,-5,-3]. yes.
+pos8 O8' col4 3 m=-1/2, O8' + .5 pivot:
+[0,0,0,3,9,-2,2,-9,0]+[0,0,0,-3,-3,2,-2,3,-2]=[0,0,0,0,6,0,0,-6,-2]. yes.
+pos9 O3''' col4 -3 m=1/2, O3''' - .5 pivot:
+[0,0,0,-3,-3,0,-4,5,2]-[0,0,0,-3,-3,2,-2,3,-2]=[0,0,0,0,0,-2,-2,2,4]. yes.
+Good.
+
+Step5 positions after step4:
+1 O5
+2 O7
+3 O6
+4 O9
+5 O4'' (pos5) [0,0,0,0,0,0,2,-2,-2]
+6 O2'' [0,0,0,0,3,0,1,-5,0]
+7 O1' [0,0,0,0,3,4,6,-5,-3]
+8 O8'' [0,0,0,0,6,0,0,-6,-2]
+9 O3'''' [0,0,0,0,0,-2,-2,2,4]
+Col5: pos5 0, pos6 3, pos7 3, pos8 6, pos9 0 max pos8. Swap pos5 with pos8. r5 O8. Good.
+
+After swap:
+pos5 O8'' [0,0,0,0,6,0,0,-6,-2]
+pos6 O2'' [0,0,0,0,3,0,1,-5,0]
+pos7 O1' [0,0,0,0,3,4,6,-5,-3]
+pos8 O4'' [0,0,0,0,0,0,2,-2,-2]
+pos9 O3'''' [0,0,0,0,0,-2,-2,2,4]
+
+Elim col5 pivot 6:
+pos6 col5 3 m=1/2, O2'' - .5 pivot:
+p half [0,0,0,0,3,0,0,-3,-1].
+O2'' [0,0,0,0,3,0,1,-5,0] - half = [0,0,0,0,0,0,1,-2,1]. yes.
+pos7 col5 3 m=1/2, O1' - half:
+[0,0,0,0,3,4,6,-5,-3]-[0,0,0,0,3,0,0,-3,-1]=[0,0,0,0,0,4,6,-2,-2]. yes.
+Good.
+
+Step6 positions:
+1 O5
+2 O7
+3 O6
+4 O9
+5 O8
+6 O2''' [0,0,0,0,0,0,1,-2,1]
+7 O1'' [0,0,0,0,0,4,6,-2,-2]
+8 O4'' [0,0,0,0,0,0,2,-2,-2]
+9 O3'''' [0,0,0,0,0,-2,-2,2,4]
+Col6 values: pos6 0, pos7 4, pos8 0, pos9 -2 max pos7. Swap pos6 with pos7. r6 O1. Good.
+
+After swap:
+pos6 O1'' [0,0,0,0,0,4,6,-2,-2]
+pos7 O2''' [0,0,0,0,0,0,1,-2,1]
+pos8 O4'' [0,0,0,0,0,0,2,-2,-2]
+pos9 O3'''' [0,0,0,0,0,-2,-2,2,4]
+
+Elim col6 pivot 4:
+pos9 col6 -2, m=-1/2, O3'''' +0.5 pivot:
+half [0,0,0,0,0,2,3,-1,-1].
+O3 [0,0,0,0,0,-2,-2,2,4] + half = [0,0,0,0,0,0,1,1,3]. yes.
+Step7 positions:
+pos7 O2''' [0,0,0,0,0,0,1,-2,1]
+pos8 O4'' [0,0,0,0,0,0,2,-2,-2]
+pos9 O3''' [0,0,0,0,0,0,1,1,3]
+Col7 values: 1,2,1 max pos8. Swap pos7 and pos8. r7 O4. Good.
+
+After swap:
+pos7 O4'' [0,0,0,0,0,0,2,-2,-2]
+pos8 O2''' [0,0,0,0,0,0,1,-2,1]
+pos9 O3''' [0,0,0,0,0,0,1,1,3]
+
+Elim col7 pivot 2:
+pos8 col7 1, m=1/2, O2''' - half pivot:
+half [0,0,0,0,0,0,1,-1,-1].
+O2''' [0,0,0,0,0,0,1,-2,1] - half = [0,0,0,0,0,0,0,-1,2]. yes.
+pos9 col7 1, O3''' - half = [0,0,0,0,0,0,0,2,4]. yes.
+Step8 positions:
+pos8 O2'''' [0,0,0,0,0,0,0,-1,2]
+pos9 O3'''' [0,0,0,0,0,0,0,2,4]
+Col8 values -1,2 max pos9. Swap pos8 and pos9. r8 O3. Good.
+After swap:
+pos8 O3'''' [0,0,0,0,0,0,0,2,4]
+pos9 O2'''' [0,0,0,0,0,0,0,-1,2]
+Elim col8 pivot 2:
+pos9 col8 -1, m=-1/2, O2'''' +0.5 pivot:
+half [0,0,0,0,0,0,0,1,2].
+O2'''' [0,... -1,2]+half = [0,...,0,4]. yes.
+Diagonal:
+pos1 O5 diag col1 = -6.
+pos2 O7' diag col2 = 4.
+pos3 O6' diag col3 = 6.
+pos4 O9'' diag col4 = -6.
+pos5 O8'' diag col5 = 6.
+pos6 O1'' diag col6 = 4.
+pos7 O4'' diag col7 = 2.
+pos8 O3'''' diag col8 = 2.
+pos9 final diag col9 = 4. Good.
+
+Need produce final line exactly: ANSWER: 5,7,6,9,8,1,4,3,2,-6,4,6,-6,6,4,2,2,4
+
+Let's ensure requested "Give r_1,...,r_n followed by diagonal entries U11,...,Unn, as one comma-separated list (2n numbers; diagonal entries integers)." Yes 18 numbers.
+
+Need include thought? Final answer only perhaps with final line. They requested think step-by-step then finish final. We can just final.
+
