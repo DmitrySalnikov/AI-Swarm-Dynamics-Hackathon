@@ -11,7 +11,10 @@ followed by the visible JSON reply. Regimes (the order of the opening task and o
            step from one task to the next differs between agents (no two agents share a successor for long).
 Set A is the new ladder set (bench/ladder/set_v3), set B the set used in the swarm runs (bench/ladder/set_v2), so the
 main phase can be compared with them. Provider: Together AI, DeepSeek-V4.1-Flash; the budget and the recorded costs
-are in USD (the inherited fields keep their `_rub` names).
+are in USD (the inherited fields keep their `_rub` names). --tasks-per-agent K stops every agent after its first K
+tasks (the opening task counts); the run directory is then <regime>_k<K>. --order-seed draws the task orders from
+another seed than the run seed (which also seeds the requests), so a run can repeat the orders of an earlier one with
+new sampling; its directory is seed_<seed>_order_<order seed>.
 
   python -m swarm_pipeline.baseline_sim --set-a bench/ladder/set_v3/rung_1.jsonl --set-b bench/ladder/set_v2/rung_1.jsonl \\
       --regime latin --seed 1 --out <root> --offline
@@ -71,19 +74,23 @@ def orders(regime,a_ids,b_ids,agents,seed):
 
 
 class BaselineRunner(SequentialRunner):
-    def __init__(self,*args,regime,a_ids,b_ids,**kwargs):
+    def __init__(self,*args,regime,a_ids,b_ids,cut=None,order_seed=None,**kwargs):
         super().__init__(*args,**kwargs)
         if regime not in REGIMES:raise ValueError('Unknown regime')
-        self.regime,self.a_ids,self.b_ids=regime,a_ids,b_ids
+        if cut is not None and not 1<=cut<=len(b_ids)+1:raise ValueError('--tasks-per-agent must be between 1 and |B| + 1')
+        self.regime,self.a_ids,self.b_ids,self.cut=regime,a_ids,b_ids,cut
+        self.order_seed=self.config.seed if order_seed is None else order_seed
         self.manifest.update(protocol_version='baseline-sim-v1',regime=regime,set_a=a_ids,set_b=b_ids,currency='USD',
                              memory='own reasoning in <think> tags + visible reply',provider=base.API_URL,
+                             tasks_per_agent=cut or len(b_ids)+1,order_seed=self.order_seed,
                              baseline_source_hash=hashlib.sha256(Path(__file__).read_bytes()).hexdigest())
-        self.directory=self.root/regime/f'seed_{self.config.seed}'
+        suffix='' if self.order_seed==self.config.seed else f'_order_{self.order_seed}'
+        self.directory=self.root/(regime+(f'_k{cut}' if cut else ''))/f'seed_{self.config.seed}{suffix}'
 
     def initial_state(self):
         state=super().initial_state()
-        for i,o in enumerate(orders(self.regime,self.a_ids,self.b_ids,self.config.agents,self.config.seed),1):
-            state['agents'][str(i)]['order']=o
+        for i,o in enumerate(orders(self.regime,self.a_ids,self.b_ids,self.config.agents,self.order_seed),1):
+            state['agents'][str(i)]['order']=o[:self.cut] if self.cut else o
         return state
 
     def apply(self,q,r):
@@ -112,6 +119,8 @@ def main():
     parser.add_argument('--budget-usd',type=float,default=0);parser.add_argument('--workers',type=int,default=10)
     parser.add_argument('--max-tokens',type=int,default=40000);parser.add_argument('--temperature',type=float,default=1.0)
     parser.add_argument('--max-context-bytes',type=int,default=3_000_000)
+    parser.add_argument('--tasks-per-agent',type=int,help='stop each agent after its first K tasks (opening task included)')
+    parser.add_argument('--order-seed',type=int,help='seed of the task orders (default: --seed)')
     args=parser.parse_args()
     a,b=base.load_tasks(args.set_a),base.load_tasks(args.set_b)
     tasks=a+b
@@ -130,7 +139,7 @@ def main():
                        budget_rub=args.budget_usd,price_in=PRICE_IN/1e6,price_out=PRICE_OUT/1e6,offline=args.offline)
     client=SequentialOfflineClient() if args.offline else RetainingClient(key)
     runner=BaselineRunner(tasks,config,root,client,workers=args.workers,partial_continuation=True,regime=args.regime,
-                          a_ids=[t['id'] for t in a],b_ids=[t['id'] for t in b])
+                          a_ids=[t['id'] for t in a],b_ids=[t['id'] for t in b],cut=args.tasks_per_agent,order_seed=args.order_seed)
     result=runner.run()
     print(json.dumps({k:result.get(k) for k in ('status','offline','calls','spent_root_rub')}))
     if result['status']!='completed':raise SystemExit(1)
