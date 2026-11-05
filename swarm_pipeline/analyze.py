@@ -22,7 +22,21 @@ from embedding_eval.dynamics import metrics_at, unit
 from swarm_pipeline.supervision import write_json, read_json
 
 MODEL = "qwen/qwen3-embedding-4b"
-URL = "https://openrouter.ai/api/v1/embeddings"
+# Embedding provider, chosen by EMBEDDING_PROVIDER (default polza). Both serve this model from deepinfra/us; the
+# provider tag in vector_key keeps their caches (and the untagged cache of the earlier OpenRouter runs) apart.
+#   polza       Polza.ai, 2.3 RUB per 1M input tokens, receipts in usage.cost_rub
+#   openrouter  OpenRouter pinned to DeepInfra without fallbacks, 0.02 USD per 1M input tokens, receipts in usage.cost
+PROVIDERS = {
+    "polza": {"url": "https://polza.ai/api/v1/embeddings", "key": "POLZAAI_API_KEY", "price": 2.3 / 1e6,
+              "currency": "RUB", "envelope": 100.0, "extra": {}},
+    "openrouter": {"url": "https://openrouter.ai/api/v1/embeddings", "key": "OPENROUTER_API_KEY", "price": 0.02 / 1e6,
+                   "currency": "USD", "envelope": 1.0,
+                   "extra": {"provider": {"order": ["deepinfra"], "allow_fallbacks": False}}},
+}
+PROVIDER = os.environ.get("EMBEDDING_PROVIDER", "polza")
+URL = PROVIDERS[PROVIDER]["url"]
+PRICE_PER_TOKEN, CURRENCY = PROVIDERS[PROVIDER]["price"], PROVIDERS[PROVIDER]["currency"]
+RUB_PER_TOKEN = PROVIDERS["polza"]["price"]
 PHASES = ("negotiation", "solving", "exchange")
 STYLES = {
     "cooperative": ("#2a78d6", "-", "o", "swarm"),
@@ -97,7 +111,7 @@ def load_agents(root, condition, seed, tokenizer):
 
 
 def vector_key(text):
-    return hashlib.sha256((MODEL + "|no-instruction|" + text).encode()).hexdigest()
+    return hashlib.sha256((PROVIDER + "|" + MODEL + "|no-instruction|" + text).encode()).hexdigest()
 
 
 def embed(texts, out, workers=4, cache_dir=None):
@@ -115,15 +129,14 @@ def embed(texts, out, workers=4, cache_dir=None):
         batch.append(item); chars += len(item[1])
     if batch:
         batches.append(batch)
-    # The existing Windows proxy is needed for OpenRouter; Cloud.ru stays direct
-    # in the generation launcher. This process changes no global system setting.
-    os.environ.pop("NO_PROXY", None); os.environ.pop("no_proxy", None)
-    proxies = urllib.request.getproxies()
-    key = os.environ["OPENROUTER_API_KEY"]
-    estimate_usd = sum(len(t) / 2 * .02 / 1e6 for _, t in todo)
-    if estimate_usd > 1:
-        raise RuntimeError("Embedding volume exceeds the $1 diagnostic envelope")
-    print(f"Embeddings: {len(unique)} unique windows, {len(todo)} uncached, {len(batches)} batches; estimated ${estimate_usd:.4f}", flush=True)
+    # The provider is reached directly (no proxy); the estimate takes two characters per token.
+    provider = PROVIDERS[PROVIDER]
+    key = os.environ[provider["key"]]
+    estimate = sum(len(t) / 2 * PRICE_PER_TOKEN for _, t in todo)
+    if estimate > provider["envelope"]:
+        raise RuntimeError(f"Embedding volume exceeds the {provider['envelope']} {CURRENCY} diagnostic envelope")
+    print(f"Embeddings via {PROVIDER}: {len(unique)} unique windows, {len(todo)} uncached, {len(batches)} batches; "
+          f"estimated {estimate:.4f} {CURRENCY}", flush=True)
 
     def request_batch(batch):
         identity = hashlib.sha256("".join(k for k, _ in batch).encode()).hexdigest()
@@ -133,13 +146,14 @@ def embed(texts, out, workers=4, cache_dir=None):
         for retry in range(4):
             attempts += 1
             write_json(request_path, {"model": MODEL, "hashes": [k for k, _ in batch], "attempts": attempts,
-                                      "estimated_usd_per_attempt": sum(len(t) / 2 * .02 / 1e6 for _, t in batch),
-                                      "started_at": time.time(), "via": "system_proxy"})
-            payload = {"model": MODEL, "input": [t for _, t in batch], "encoding_format": "float"}
+                                      "estimated_per_attempt": sum(len(t) / 2 * PRICE_PER_TOKEN for _, t in batch),
+                                      "currency": CURRENCY,
+                                      "started_at": time.time(), "via": PROVIDER})
+            payload = {"model": MODEL, "input": [t for _, t in batch], "encoding_format": "float", **provider["extra"]}
             req = urllib.request.Request(URL, data=json.dumps(payload).encode(),
                     headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"})
             try:
-                opener = urllib.request.build_opener(urllib.request.ProxyHandler(proxies))
+                opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
                 with opener.open(req, timeout=120) as stream:
                     response = json.load(stream)
                 vectors = sorted(response["data"], key=lambda d: d["index"])
@@ -147,7 +161,9 @@ def embed(texts, out, workers=4, cache_dir=None):
                 matrix = np.asarray([v["embedding"] for v in vectors], dtype=np.float32)
                 assert matrix.shape[1] == 2560 and np.isfinite(matrix).all()
                 matrix = unit(matrix)
-                receipt = {"model": response.get("model"), "usage": response.get("usage"),
+                # Polza: usage.cost_rub (alias usage.cost) in rubles; OpenRouter: usage.cost in US dollars.
+                receipt = {"model": response.get("model"), "provider": response.get("provider"), "via": PROVIDER,
+                           "currency": CURRENCY, "usage": response.get("usage"),
                            "attempts": attempts, "vectors": len(batch), "completed_at": time.time()}
                 write_json(request_path.with_suffix(".response.json"), receipt)
                 for (tag, _), vector in zip(batch, matrix):
@@ -346,7 +362,7 @@ def main():
                 writer = csv.DictWriter(stream, fieldnames=list(rows[0]));writer.writeheader();writer.writerows(rows)
             reports.append({"file": name, "phase_spans": spans, "points": {c:len(r) for c,r in series.items()}})
     receipts = [read_json(p) for p in (args.out / "embedding-requests").glob("*.response.json")]
-    manifest = {"model": MODEL, "provider": "OpenRouter via system proxy", "dimensions":2560,
+    manifest = {"model": MODEL, "provider": PROVIDER, "dimensions":2560,
         "tokenizer":"deepseek-ai/DeepSeek-V3", "instruction":None, "normalisation":"L2", "widths":args.widths,
         "source":"own generated reasoning and visible JSON only; all answers regardless of correctness; interrupted observed fragments retained",
         "replicates":1, "bands":None, "phase_alignment":"two distribution endpoints; one commit for v2, two exchange endpoints for v1; solving resampled to maximum window count, retaining 10 agents",
