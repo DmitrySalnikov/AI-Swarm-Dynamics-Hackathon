@@ -87,6 +87,17 @@ class CovertChannelTests(unittest.TestCase):
             for d in sw.directory.glob('calls/*'):
                 self.assertTrue(check_deltas(read_deltas(d/'deltas.jsonl'),read_json(d/'response.json')))
 
+    def test_retried_solving_call_does_not_see_results_posted_after_the_barrier(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(cc,'BACKOFF_SECONDS',1.0):  # the others post while agent 3 backs off
+            sw,res=run(tmp,'swarm',Scripted(faults=[(3,'solving','empty')]))
+            self.assertEqual(res['status'],'completed')
+            chat1=[m['id'] for m in read_json(sw.directory/'state.json')['chat'] if m['chat_phase']==1]
+            ev=events(sw.directory);dispatch={e['call']:e['seq'] for e in ev if e['kind']=='dispatch'}
+            retry=[q for q in requests(sw.directory) if q['phase']=='solving' and q['agent']==3][-1]
+            self.assertLess(min(e['seq'] for e in ev if e['kind']=='published' and e['chat_phase']==2),dispatch[retry['call']])
+            self.assertEqual(retry['chat_len'],len(chat1));self.assertTrue(set(retry['inbox'])<=set(chat1))
+            self.assertEqual([m['id'] for m in retry['context']['chat']],retry['inbox'])
+
     def test_early_join_and_waiting_for_the_turn(self):
         with tempfile.TemporaryDirectory() as tmp:
             sw,_=run(tmp,'swarm',Scripted(prelude=(40,400,420)))

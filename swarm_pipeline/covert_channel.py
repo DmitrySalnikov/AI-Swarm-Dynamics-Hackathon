@@ -226,6 +226,8 @@ class CovertRunner(base.Runner):
         """The call-time context, the ids of the chat messages it delivers and the chat length it covers."""
         agent, chat = self.state['agents'][str(i)], self.state['chat']
         phase, task = PHASE[agent['stage']], self.current(agent)
+        if phase == 'solving':  # also on a retry: results posted after the barrier never reach a solving prompt
+            chat = [m for m in chat if m['chat_phase'] == 1]
         new = chat[agent['seen']:]
         if phase == 'prelude' or (phase == 'solving' and self.arm != 'swarm'):
             c = {'agent': i, 'current_task': task, 'task': {'id': task, 'prompt': self.tasks[task]['prompt']},
